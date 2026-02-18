@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: law-firm
+  datasource:
+    url: jdbc:postgresql://localhost:5432/system
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+  jmx:
+    enabled: false
+
+  # Dev resources: avoid caching static resources so LiveReload changes appear immediately
+  web:
+    resources:
+      cache:
+        period: 0
+      static-locations: classpath:/static/
+
+  devtools:
+    restart:
+      enabled: true
+      poll-interval: 1s
+      quiet-period: 400ms
+    livereload:
+      enabled: true
+
+server:
+  port: 8080

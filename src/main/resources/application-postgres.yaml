@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: law-firm
+  datasource:
+    url: jdbc:postgresql://localhost:5432/system
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+  jmx:
+    enabled: false
+
+server:
+  port: 8080
+
+# springdoc properties
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /api/docs
+    urls:
+      - name: clients
+        url: /v3/api-docs/clients
+
+# Note: Using 'update' to preserve existing data. For explicit migrations use Flyway.
