@@ -3,249 +3,149 @@ package com.lawfirm.law.firm.exception;
 import com.lawfirm.law.firm.dto.ApiError;
 import com.lawfirm.law.firm.dto.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
 import org.springframework.dao.DataIntegrityViolationException;
-import com.lawfirm.law.firm.exception.ValidationErrorCode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
-import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.web.context.request.WebRequest;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.orm.jpa.JpaSystemException;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-@ControllerAdvice
-public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+@RestControllerAdvice
+public class GlobalExceptionHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    /** Maps DB column names to API field names for integrity-violation messages. */
+    private static final Map<String, String> COLUMN_TO_FIELD = Map.of(
+            "cpf", "cpf",
+            "rg", "rg",
+            "email", "email",
+            "mobile_phone", "mobilePhone",
+            "benefit_number", "benefitNumber",
+            "nit_pis", "nitPis",
+            "ctps", "ctps",
+            "ctps_series", "ctpsSeries",
+            "reference_phone", "referencePhone"
+    );
 
-    @Override
-    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
-                                                                  HttpHeaders headers,
-                                                                  HttpStatusCode status,
-                                                                  WebRequest request) {
-        List<ApiError> errors = new ArrayList<>();
-        for (FieldError f : ex.getBindingResult().getFieldErrors()) {
-            errors.add(new ApiError(f.getField(), f.getDefaultMessage(), "VALIDATION_ERROR"));
-        }
-        ApiResponse<?> body = ApiResponse.error(errors);
-        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    /** Matches the key column inside Postgres "Key (column)=(value)" messages. */
+    private static final Pattern KEY_PATTERN = Pattern.compile("Key \\(([^)]+)\\)");
+
+    // ── Bean-validation (@Valid) ──
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex) {
+        List<ApiError> errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(fe -> new ApiError(fe.getField(), fe.getDefaultMessage(), "VALIDATION_ERROR"))
+                .toList();
+        return badRequest(errors);
     }
+
+    // ── Constraint violations (path-variable / @Validated) ──
 
     @ExceptionHandler(ConstraintViolationException.class)
-    protected ResponseEntity<Object> handleConstraintViolation(ConstraintViolationException ex) {
-        List<ApiError> errors = new ArrayList<>();
-        ex.getConstraintViolations().forEach(v ->
-            errors.add(new ApiError(v.getPropertyPath().toString(), v.getMessage(), "VALIDATION_ERROR"))
-        );
-        ApiResponse<?> body = ApiResponse.error(errors);
-        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<ApiResponse<Void>> handleConstraint(ConstraintViolationException ex) {
+        List<ApiError> errors = ex.getConstraintViolations().stream()
+                .map(cv -> {
+                    String path = cv.getPropertyPath().toString();
+                    String field = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1) : path;
+                    return new ApiError(field, cv.getMessage(), "VALIDATION_ERROR");
+                })
+                .toList();
+        return badRequest(errors);
     }
+
+    // ── Custom validation exceptions ──
 
     @ExceptionHandler(ValidationException.class)
-    protected ResponseEntity<Object> handleValidationException(ValidationException ex) {
-        String code = ex.getCode();
-        String message = ex.getMessage();
-        if (ex.getValidationErrorCode() != null) {
-            code = ex.getValidationErrorCode().getCode();
-            // prefer an explicit message passed in the exception; fall back to the enum message
-            if (message == null || message.isBlank()) {
-                message = ex.getValidationErrorCode().getMessage();
-            }
-        }
-        List<ApiError> errors = List.of(new ApiError(ex.getField(), message, code));
-        ApiResponse<?> body = ApiResponse.error(errors);
-        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<ApiResponse<Void>> handleCustomValidation(ValidationException ex) {
+        String code = ex.getValidationErrorCode() != null
+                ? ex.getValidationErrorCode().getCode()
+                : ex.getCode();
+        return badRequest(List.of(new ApiError(ex.getField(), ex.getMessage(), code)));
     }
+
+    // ── Business rule violations ──
 
     @ExceptionHandler(BusinessException.class)
-    protected ResponseEntity<Object> handleBusiness(BusinessException ex) {
-        String code = ex.getCode();
-        String message = ex.getMessage();
-        if (ex.getBusinessErrorCode() != null) {
-            code = ex.getBusinessErrorCode().getCode();
-            message = ex.getBusinessErrorCode().getMessage();
-        }
-        List<ApiError> errors = List.of(new ApiError(null, message, code));
-        ApiResponse<?> body = ApiResponse.error(errors);
-        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
+        String code = ex.getBusinessErrorCode() != null
+                ? ex.getBusinessErrorCode().getCode()
+                : ex.getCode();
+        return badRequest(List.of(new ApiError(null, ex.getMessage(), code)));
     }
+
+    // ── Not found ──
 
     @ExceptionHandler(NotFoundException.class)
-    protected ResponseEntity<Object> handleNotFound(NotFoundException ex) {
-        List<ApiError> errors = List.of(new ApiError(null, ex.getMessage(), "NOT_FOUND"));
-        ApiResponse<?> body = ApiResponse.error(errors);
-        return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(NotFoundException ex) {
+        return respond(HttpStatus.NOT_FOUND,
+                List.of(new ApiError(null, ex.getMessage(), "NOT_FOUND")));
     }
+
+    // ── DB unique-constraint violations ──
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    protected ResponseEntity<Object> handleDataIntegrity(DataIntegrityViolationException ex) {
-        log.warn("Data integrity violation: {}", ex.getMessage());
-
-        // Build a concatenated message from the exception and all causes to increase chance of finding column/constraint info
-        StringBuilder all = new StringBuilder();
-        if (ex.getMessage() != null) all.append(ex.getMessage()).append("; ");
-        Throwable current = ex.getMostSpecificCause();
-        while (current != null) {
-            if (current.getMessage() != null) all.append(current.getMessage()).append("; ");
-            current = current.getCause();
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        String detail = rootMessage(ex);
+        Matcher m = KEY_PATTERN.matcher(detail);
+        if (m.find()) {
+            String column = m.group(1).trim();
+            String field = COLUMN_TO_FIELD.getOrDefault(column, column);
+            return respond(HttpStatus.CONFLICT,
+                    List.of(new ApiError(field, "Valor duplicado para campo único", "DUPLICATE_VALUE")));
         }
-        String specific = all.length() > 0 ? all.toString() : null;
-
-        List<ApiError> errors = new ArrayList<>();
-
-        if (specific != null) {
-            // Try multiple patterns to extract constraint name or the column(s) mentioned from the aggregated message
-            String extracted = null;
-            java.util.regex.Pattern pConstraint = java.util.regex.Pattern.compile("constraint \"([^\"]+)\"", java.util.regex.Pattern.CASE_INSENSITIVE);
-            java.util.regex.Pattern pKey = java.util.regex.Pattern.compile("key \\(([^)]+)\\)\\s*=?", java.util.regex.Pattern.CASE_INSENSITIVE);
-            java.util.regex.Pattern pColumn = java.util.regex.Pattern.compile("column \"([^\"]+)\"", java.util.regex.Pattern.CASE_INSENSITIVE);
-            java.util.regex.Pattern pSimple = java.util.regex.Pattern.compile("\\b([a-z0-9_]+)\\b", java.util.regex.Pattern.CASE_INSENSITIVE);
-
-            java.util.regex.Matcher m = pConstraint.matcher(specific);
-            if (m.find()) {
-                extracted = m.group(1);
-            } else {
-                m = pKey.matcher(specific);
-                if (m.find()) {
-                    extracted = m.group(1);
-                } else {
-                    m = pColumn.matcher(specific);
-                    if (m.find()) {
-                        extracted = m.group(1);
-                    }
-                }
-            }
-
-            // If still not found, try to find likely column-like tokens in the message
-            if (extracted == null) {
-                m = pSimple.matcher(specific);
-                while (m.find()) {
-                    String cand = m.group(1);
-                    // ignore very short tokens
-                    if (cand.length() > 2 && cand.matches("[a-z0-9_].*")) {
-                        // prefer tokens containing known substrings
-                        if (cand.toLowerCase().contains("ctps") || cand.toLowerCase().contains("benefit") || cand.toLowerCase().contains("nit") || cand.toLowerCase().contains("cpf") || cand.toLowerCase().contains("email") || cand.toLowerCase().contains("rg") || cand.toLowerCase().contains("mobile") || cand.toLowerCase().contains("reference")) {
-                            extracted = cand;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (extracted != null) {
-                String token = extracted.split(",")[0].trim();
-                token = token.replaceAll("=.*$", "").replaceAll("\\)\\z", "").trim();
-
-                String field = mapDbColumnToField(token);
-                if (field == null) field = mapDbColumnToField(specific);
-
-                if (field != null) {
-                    String userMessage;
-                    switch (field) {
-                        case "benefitNumber": userMessage = "Número do benefício já cadastrado"; break;
-                        case "cpf": userMessage = "CPF já cadastrado"; break;
-                        case "email": userMessage = "E-mail já cadastrado"; break;
-                        case "mobilePhone": userMessage = "Telefone móvel já cadastrado"; break;
-                        case "referencePhone": userMessage = "Telefone de referência já cadastrado"; break;
-                        case "rg": userMessage = "RG já cadastrado"; break;
-                        case "ctps": userMessage = "CTPS já cadastrado"; break;
-                        case "nitPis": userMessage = "NIT/PIS já cadastrado"; break;
-                        default: userMessage = "Valor duplicado para campo único"; break;
-                    }
-                    errors.add(new ApiError(field, userMessage, ValidationErrorCode.DUPLICATE_VALUE.getCode()));
-                    ApiResponse<?> body = ApiResponse.error(errors);
-                    return new ResponseEntity<>(body, HttpStatus.CONFLICT);
-                }
-            }
-        }
-
-        // Fallback: generic DB integrity error
-        SystemErrorCode code = SystemErrorCode.DATABASE_INTEGRITY_ERROR;
-        errors.add(new ApiError(null, code.getMessage(), code.getCode()));
-        ApiResponse<?> body = ApiResponse.error(errors);
-        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+        return respond(HttpStatus.CONFLICT,
+                List.of(new ApiError(null, SystemErrorCode.DATABASE_INTEGRITY_ERROR.getMessage(),
+                        SystemErrorCode.DATABASE_INTEGRITY_ERROR.getCode())));
     }
 
-    // Map DB constraint/column to API field name when possible
-    private String mapDbColumnToField(String constraintOrColumn) {
-        String s = constraintOrColumn.toLowerCase();
-        if (s.contains("benefit_number") || s.contains("benefitnumber")) return "benefitNumber";
-        if (s.contains("cpf")) return "cpf";
-        if (s.contains("email")) return "email";
-        if (s.contains("mobile_phone") || s.contains("mobilephone") || s.contains("mobile")) return "mobilePhone";
-    if (s.contains("reference_phone") || s.contains("referencephone") || s.contains("reference_phone")) return "referencePhone";
-    if (s.matches(".*\brg\b.*")) return "rg";
-    if (s.matches(".*\\bctps\\b.*")) return "ctps";
-        if (s.contains("nit_pis") || s.contains("nitpis") || s.contains("nit")) return "nitPis";
-        return null;
+    // ── Malformed JSON body ──
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnreadable(HttpMessageNotReadableException ex) {
+        String msg = ex.getMostSpecificCause() != null
+                ? ex.getMostSpecificCause().getMessage()
+                : ex.getMessage();
+        return badRequest(List.of(new ApiError(null, msg, "INVALID_REQUEST_BODY")));
     }
 
-    @ExceptionHandler({ NullPointerException.class })
-    protected ResponseEntity<Object> handleNullPointer(NullPointerException ex) {
-        log.error("NullPointerException", ex);
-        SystemErrorCode code = SystemErrorCode.NULL_POINTER_ERROR;
-        List<ApiError> errors = List.of(new ApiError(null, code.getMessage(), code.getCode()));
-        ApiResponse<?> body = ApiResponse.error(errors);
-        return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
+    @ExceptionHandler(JpaSystemException.class)
+    public ResponseEntity<ApiResponse<Void>> handleJpaSystem(JpaSystemException ex) {
+        Throwable root = ex;
+        while (root.getCause() != null) root = root.getCause();
+        String msg = root.getMessage() != null ? root.getMessage() : ex.getMessage();
+        return respond(HttpStatus.INTERNAL_SERVER_ERROR,
+                List.of(new ApiError(null, "Persistence error: " + msg, "PERSISTENCE_ERROR")));
     }
 
-    @ExceptionHandler({ IllegalArgumentException.class })
-    protected ResponseEntity<Object> handleIllegalArgument(IllegalArgumentException ex) {
-        log.error("IllegalArgumentException", ex);
-        SystemErrorCode code = SystemErrorCode.ILLEGAL_ARGUMENT_ERROR;
-        List<ApiError> errors = List.of(new ApiError(null, code.getMessage(), code.getCode()));
-        ApiResponse<?> body = ApiResponse.error(errors);
-        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
-    }
-
-    @Override
-    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
-                                                                  HttpHeaders headers,
-                                                                  HttpStatusCode status,
-                                                                  WebRequest request) {
-        // Try to detect enum conversion errors caused by our @JsonCreator in Situation
-        Throwable cause = ex.getMostSpecificCause();
-        if (cause instanceof IllegalArgumentException) {
-            String msg = cause.getMessage();
-            if (msg != null && msg.toLowerCase().contains("unknown situation")) {
-                // Return a validation-style error specific for invalid situation
-                List<ApiError> errors = List.of(new ApiError("situation", ValidationErrorCode.INVALID_SITUATION.getMessage(), ValidationErrorCode.INVALID_SITUATION.getCode()));
-                ApiResponse<?> body = ApiResponse.error(errors);
-                return new ResponseEntity<>(body, headers, HttpStatus.BAD_REQUEST);
-            }
-        }
-
-        // Fallback: malformed JSON or other deserialization issue
-        SystemErrorCode code = SystemErrorCode.CONVERSION_ERROR;
-        List<ApiError> errors = List.of(new ApiError(null, code.getMessage(), code.getCode()));
-        ApiResponse<?> body = ApiResponse.error(errors);
-        return new ResponseEntity<>(body, headers, HttpStatus.BAD_REQUEST);
-    }
-
-    @ExceptionHandler({ ClassCastException.class })
-    protected ResponseEntity<Object> handleConversion(ClassCastException ex) {
-        log.error("Conversion error", ex);
-        SystemErrorCode code = SystemErrorCode.CONVERSION_ERROR;
-        List<ApiError> errors = List.of(new ApiError(null, code.getMessage(), code.getCode()));
-        ApiResponse<?> body = ApiResponse.error(errors);
-        return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    // ── Catch-all ──
 
     @ExceptionHandler(Exception.class)
-    protected ResponseEntity<Object> handleGeneric(Exception ex) {
-        log.error("Unhandled exception", ex);
-        SystemErrorCode code = SystemErrorCode.SYSTEM_ERROR;
-        List<ApiError> errors = List.of(new ApiError(null, code.getMessage(), code.getCode()));
-        ApiResponse<?> body = ApiResponse.error(errors);
-        return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
+        return respond(HttpStatus.INTERNAL_SERVER_ERROR,
+                List.of(new ApiError(null, SystemErrorCode.SYSTEM_ERROR.getMessage(),
+                        SystemErrorCode.SYSTEM_ERROR.getCode())));
+    }
+
+    // ── Helpers ──
+
+    private static ResponseEntity<ApiResponse<Void>> badRequest(List<ApiError> errors) {
+        return respond(HttpStatus.BAD_REQUEST, errors);
+    }
+
+    private static ResponseEntity<ApiResponse<Void>> respond(HttpStatus status, List<ApiError> errors) {
+        return ResponseEntity.status(status).body(ApiResponse.error(errors));
+    }
+
+    private static String rootMessage(Throwable t) {
+        Throwable cause = t;
+        while (cause.getCause() != null) cause = cause.getCause();
+        return cause.getMessage() != null ? cause.getMessage() : "";
     }
 }

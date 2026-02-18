@@ -44,7 +44,9 @@ public class ClientControllerTest {
         mockMvc.perform(get("/api/v1/clients"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(content().string("[]"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data").isEmpty());
     }
 
     @Test
@@ -77,12 +79,13 @@ public class ClientControllerTest {
                         .content(body))
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Location"))
-                .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.fullName").value("Test User"))
-                .andExpect(jsonPath("$.email").value("test.user@example.com"))
-                .andExpect(jsonPath("$.gender").value("Masculino"))
-                .andExpect(jsonPath("$.maritalStatus").value("Solteiro(a)"))
-                .andExpect(jsonPath("$.benefit").value("Aposentadoria por idade"))
-                .andExpect(jsonPath("$.situation").value("formulário preenchido"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").exists())
+                .andExpect(jsonPath("$.data.fullName").value("Test User"))
+                .andExpect(jsonPath("$.data.email").value("test.user@example.com"))
+                .andExpect(jsonPath("$.data.gender").value("Masculino"))
+                .andExpect(jsonPath("$.data.maritalStatus").value("Solteiro(a)"))
+                .andExpect(jsonPath("$.data.benefit").value("Aposentadoria por idade"))
+                .andExpect(jsonPath("$.data.situation").value("formulário preenchido"));
     }
 }
