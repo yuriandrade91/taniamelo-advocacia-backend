@@ -10,7 +10,7 @@ public enum ValidationErrorCode {
     INVALID_DATE("Data em formato inválido"),
     INVALID_PHONE("Telefone em formato inválido"),
     INVALID_ENUM_VALUE("Valor de enum inválido"),
-    // Generic duplicate value error for unique constraints
+    INVALID_SITUATION("Situação inválida"),
     DUPLICATE_VALUE("Valor duplicado para campo único");
 
     private final String message;

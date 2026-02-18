@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
@@ -204,6 +205,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         List<ApiError> errors = List.of(new ApiError(null, code.getMessage(), code.getCode()));
         ApiResponse<?> body = ApiResponse.error(errors);
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+                                                                  HttpHeaders headers,
+                                                                  HttpStatusCode status,
+                                                                  WebRequest request) {
+        // Try to detect enum conversion errors caused by our @JsonCreator in Situation
+        Throwable cause = ex.getMostSpecificCause();
+        if (cause instanceof IllegalArgumentException) {
+            String msg = cause.getMessage();
+            if (msg != null && msg.toLowerCase().contains("unknown situation")) {
+                // Return a validation-style error specific for invalid situation
+                List<ApiError> errors = List.of(new ApiError("situation", ValidationErrorCode.INVALID_SITUATION.getMessage(), ValidationErrorCode.INVALID_SITUATION.getCode()));
+                ApiResponse<?> body = ApiResponse.error(errors);
+                return new ResponseEntity<>(body, headers, HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        // Fallback: malformed JSON or other deserialization issue
+        SystemErrorCode code = SystemErrorCode.CONVERSION_ERROR;
+        List<ApiError> errors = List.of(new ApiError(null, code.getMessage(), code.getCode()));
+        ApiResponse<?> body = ApiResponse.error(errors);
+        return new ResponseEntity<>(body, headers, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler({ ClassCastException.class })
