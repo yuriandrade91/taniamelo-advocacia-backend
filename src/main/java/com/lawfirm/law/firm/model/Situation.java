@@ -3,7 +3,6 @@ package com.lawfirm.law.firm.model;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
-import java.text.Normalizer;
 
 public enum Situation {
     FORMULARIO_PREENCHIDO("Formulário preenchido"),
@@ -23,23 +22,10 @@ public enum Situation {
     @JsonCreator
     public static Situation fromLabel(String label) {
         if (label == null) return null;
-
         for (Situation s : values()) {
             if (s.label.equalsIgnoreCase(label)) return s;
         }
-
-        String normalizedInput = normalize(label);
-        for (Situation s : values()) {
-            if (normalize(s.label).equals(normalizedInput)) return s;
-        }
-
         throw new IllegalArgumentException("Unknown situation: " + label);
-    }
-
-    private static String normalize(String s) {
-        return Normalizer.normalize(s, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .toLowerCase();
     }
 
     @Override

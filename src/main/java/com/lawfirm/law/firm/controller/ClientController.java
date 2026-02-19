@@ -25,6 +25,7 @@ import java.util.UUID;
 public class ClientController {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM-dd-yyyy");
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ClientController.class);
 
     private final ClientService clientService;
     private final ClientMapper mapper;
@@ -52,6 +53,7 @@ public class ClientController {
             @RequestParam(required = false) String searchTerm,
             @RequestParam(name = "benefitType", required = false) List<BenefitType> benefitType,
             @RequestParam(name = "situation", required = false) List<Situation> situation,
+            @RequestParam(name = "situation[]", required = false) List<Situation> situationArray,
             @RequestParam(name = "createdFrom", required = false) String createdFromStr,
             @RequestParam(name = "createdTo", required = false) String createdToStr) {
 
@@ -59,8 +61,23 @@ public class ClientController {
         int requestedPageSize = (pageSizeParam != null) ? pageSizeParam : (size <= 0 ? 10 : size);
         int pageIndex = requestedPageNumber - 1;
 
+        // Support both `situation` and `situation[]` parameter naming (some clients send brackets)
+        if ((situation == null || situation.isEmpty()) && situationArray != null && !situationArray.isEmpty()) {
+            situation = situationArray;
+        } else if (situation != null && situationArray != null && !situationArray.isEmpty()) {
+            // merge unique values
+            for (Situation s : situationArray) {
+                if (!situation.contains(s)) situation.add(s);
+            }
+        }
+
         Instant createdFrom = parseInstant(createdFromStr, true);
         Instant createdTo = parseInstant(createdToStr, false);
+
+        // DEBUG: log parsed situations
+        if (log.isDebugEnabled()) {
+            log.debug("Parsed situation params: {}", situation);
+        }
 
         Page<ClientListResponseDTO> result = clientService.listSummary(
                 pageIndex, requestedPageSize, searchTerm, benefitType, situation, createdFrom, createdTo);
