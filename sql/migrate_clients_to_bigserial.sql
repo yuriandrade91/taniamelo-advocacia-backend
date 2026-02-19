@@ -33,12 +33,14 @@ CREATE TABLE IF NOT EXISTS clients_new (
         'Aposentadoria por invalidez'
     )),
     situation VARCHAR(100) CHECK (situation IN (
-        'formulário preenchido',
-        'análise documental',
-        'planejamento em execução',
-        'planejamento concluído',
-        'benefício futuro',
-        'benefício concluido'
+        'Formulário preenchido',
+        'Análise documental',
+        'Planejamento em execução',
+        'Planejamento concluído',
+        'Benefício futuro',
+        'Benefício em submetido',
+        'Benefício em revisão',
+        'Benefício concluído'
     )),
     benefit_number VARCHAR(30) UNIQUE,
     nit_pis VARCHAR(20) UNIQUE,
