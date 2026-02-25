@@ -21,4 +21,6 @@ public interface ClientService {
     ClientDetailsDTO update(UUID id, ClientDetailsDTO client);
     ClientDetailsDTO patch(UUID id, ClientPatchRequestDTO patch);
     void delete(UUID id);
+    java.util.List<com.lawfirm.law.firm.dto.ClientSituationHistoryDTO> historyByClientId(UUID clientId);
+    org.springframework.data.domain.Page<com.lawfirm.law.firm.dto.ClientSituationHistoryDTO> historyByClientId(UUID clientId, int page, int size);
 }

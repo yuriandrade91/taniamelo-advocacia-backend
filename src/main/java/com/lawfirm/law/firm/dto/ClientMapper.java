@@ -23,6 +23,10 @@ public interface ClientMapper {
     // map create DTO to DTO (used in controller)
     ClientDetailsDTO fromCreate(ClientCreateRequestDTO createDto);
 
+    // history mapping
+    @org.mapstruct.Mapping(target = "currentSituation", source = "newSituation")
+    ClientSituationHistoryDTO toHistoryDTO(com.lawfirm.law.firm.model.ClientSituationHistory h);
+
     @AfterMapping
     default void computeAge(Client entity, @MappingTarget ClientDetailsDTO dto) {
         if (entity != null && entity.getBirthDate() != null) {

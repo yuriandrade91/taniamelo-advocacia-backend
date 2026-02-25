@@ -6,7 +6,7 @@ import com.lawfirm.law.firm.model.Situation;
 import java.time.Instant;
 import java.util.UUID;
 
-@JsonPropertyOrder({"id", "fullName", "cpf", "mobilePhone", "benefit", "situation", "benefitNumber", "createdAt", "updatedAt"})
+@JsonPropertyOrder({"id", "fullName", "cpf", "mobilePhone", "benefit", "situation", "beneficiaryNumber", "createdAt", "updatedAt"})
 public class ClientListResponseDTO {
     private UUID id;
     private String fullName;
@@ -15,7 +15,7 @@ public class ClientListResponseDTO {
     private BenefitType benefit;
     private Situation situation;
     private Instant createdAt;
-    private String benefitNumber;
+    private String beneficiaryNumber;
     private Instant updatedAt;
 
     public UUID getId() { return id; }
@@ -39,8 +39,8 @@ public class ClientListResponseDTO {
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public String getBenefitNumber() { return benefitNumber; }
-    public void setBenefitNumber(String benefitNumber) { this.benefitNumber = benefitNumber; }
+    public String getBeneficiaryNumber() { return beneficiaryNumber; }
+    public void setBeneficiaryNumber(String beneficiaryNumber) { this.beneficiaryNumber = beneficiaryNumber; }
 
     public Instant getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }

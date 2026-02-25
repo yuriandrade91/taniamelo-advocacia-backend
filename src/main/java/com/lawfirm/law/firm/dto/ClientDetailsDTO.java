@@ -60,9 +60,11 @@ public class ClientDetailsDTO {
 
     private MaritalStatus maritalStatus; // enum
 
+    @NotNull
     private BenefitType benefit;
+    @NotNull
     private Situation situation;
-    private String benefitNumber;
+    private String beneficiaryNumber;
 
     private String nitPis;
     private String profession;
@@ -124,8 +126,8 @@ public class ClientDetailsDTO {
     public Situation getSituation() { return situation; }
     public void setSituation(Situation situation) { this.situation = situation; }
 
-    public String getBenefitNumber() { return benefitNumber; }
-    public void setBenefitNumber(String benefitNumber) { this.benefitNumber = benefitNumber; }
+    public String getBeneficiaryNumber() { return beneficiaryNumber; }
+    public void setBeneficiaryNumber(String beneficiaryNumber) { this.beneficiaryNumber = beneficiaryNumber; }
 
     public String getNitPis() { return nitPis; }
     public void setNitPis(String nitPis) { this.nitPis = nitPis; }

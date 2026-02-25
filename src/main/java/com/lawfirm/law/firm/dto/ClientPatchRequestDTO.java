@@ -1,19 +1,18 @@
 package com.lawfirm.law.firm.dto;
 
-import com.lawfirm.law.firm.model.Situation;
-
 public class ClientPatchRequestDTO {
-    private Situation situation;
+    // accept raw string from frontend (enum name or label); service will convert to Situation
+    private String situation;
     private Boolean nonBillable;
 
     public ClientPatchRequestDTO() {
     }
 
-    public Situation getSituation() {
+    public String getSituation() {
         return situation;
     }
 
-    public void setSituation(Situation situation) {
+    public void setSituation(String situation) {
         this.situation = situation;
     }
 

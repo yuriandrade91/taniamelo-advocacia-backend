@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Repository
 public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecificationExecutor<Client> {
-	boolean existsByBenefitNumberIgnoreCase(String benefitNumber);
+	boolean existsByBeneficiaryNumberIgnoreCase(String beneficiaryNumber);
 	boolean existsByCpf(String cpf);
 	boolean existsByNitPis(String nitPis);
 	boolean existsByCtps(String ctps);

@@ -131,7 +131,7 @@
                 "maritalStatus": "Casado(a)",
                 "benefit": "Aposentadoria por idade",
                 "situation": "formulário preenchido",
-                "benefitNumber": "BN-2026-0001",
+                "beneficiaryNumber": "BN-2026-0001",
                 "nitPis": "NIT12345678",
                 "profession": "Professor",
                 "ctps": "CTPS-12345",
@@ -366,7 +366,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseClient"
+                  "$ref": "#/components/schemas/ApiResponseClientPatch"
                 }
               }
             }
@@ -547,6 +547,55 @@
         }
       }
     }
+    ,
+    "/api/v1/clients/{id}/history": {
+      "get": {
+        "tags": [
+          "clients collection"
+        ],
+        "summary": "Get situation history for a client (paginated, newest first)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1 },
+            "description": "1-based page number (default: 1)"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 10 },
+            "description": "Number of items per page (default: 10)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseClientHistory" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseClientHistory" }
+              }
+            }
+          }
+        }
+      }
+    }
   },
   "tags": [
     {
@@ -565,7 +614,9 @@
           "motherName",
           "mobilePhone",
           "inssPassword",
-          "gender"
+          "gender",
+          "benefit",
+          "situation"
         ],
         "properties": {
           "id": {
@@ -654,7 +705,7 @@
             ],
             "description": "Labels from Situation enum"
           },
-          "benefitNumber": {
+          "beneficiaryNumber": {
             "type": "string"
           },
           "nitPis": {
@@ -706,7 +757,7 @@
           "mobilePhone": { "type": "string" },
           "benefit": { "type": "string", "description": "Label from BenefitType enum" },
           "situation": { "type": "string", "description": "Label from Situation enum" },
-          "benefitNumber": { "type": "string" },
+          "beneficiaryNumber": { "type": "string" },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time", "readOnly": true }
         }
@@ -720,7 +771,9 @@
           "motherName",
           "mobilePhone",
           "inssPassword",
-          "gender"
+          "gender",
+          "benefit",
+          "situation"
         ],
         "properties": {
           "fullName": {
@@ -767,7 +820,7 @@
           "situation": {
             "type": "string"
           },
-          "benefitNumber": {
+          "beneficiaryNumber": {
             "type": "string"
           },
           "nitPis": {
@@ -852,7 +905,7 @@
             "type": "string",
             "description": "Labels from Situation enum"
           },
-          "benefitNumber": {
+          "beneficiaryNumber": {
             "type": "string"
           },
           "nitPis": {
@@ -967,6 +1020,57 @@
             },
             "nullable": true
           }
+        }
+      }
+      ,
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "pageNumber": { "type": "integer" },
+          "pageSize": { "type": "integer" },
+          "totalRecords": { "type": "integer" },
+          "totalPages": { "type": "integer" },
+          "hasNextPage": { "type": "boolean" },
+          "hasPreviousPage": { "type": "boolean" }
+        }
+      },
+      "ClientPatchResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" }
+        }
+      },
+      "ApiResponseClientPatch": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/ClientPatchResponse" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } }
+        }
+      },
+      "ClientSituationHistory": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "currentSituation": { "type": "string", "description": "Label from Situation enum" },
+          "changedAt": { "type": "string", "format": "date-time" },
+          "changedBy": { "type": "integer", "nullable": true }
+        }
+      },
+      "ClientHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "client": { "$ref": "#/components/schemas/Client" },
+          "history": { "type": "array", "items": { "$ref": "#/components/schemas/ClientSituationHistory" } }
+        }
+      },
+      "ApiResponseClientHistory": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/ClientSituationHistory" } },
+          "pagination": { "$ref": "#/components/schemas/Pagination" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ApiError" } }
         }
       }
     }

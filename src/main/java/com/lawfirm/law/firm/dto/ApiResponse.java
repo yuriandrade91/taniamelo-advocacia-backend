@@ -29,6 +29,14 @@ public class ApiResponse<T> {
         return r;
     }
 
+    public static <T> ApiResponse<T> successObject(T data, Pagination pagination) {
+        ApiResponse<T> r = new ApiResponse<>();
+        r.success = true;
+        r.data = data;
+        r.pagination = pagination;
+        return r;
+    }
+
     public static <T> ApiResponse<T> error(List<ApiError> errors) {
         ApiResponse<T> r = new ApiResponse<>();
         r.success = false;

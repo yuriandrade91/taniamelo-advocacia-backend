@@ -26,7 +26,7 @@ public class GlobalExceptionHandler {
             "rg", "rg",
             "email", "email",
             "mobile_phone", "mobilePhone",
-            "benefit_number", "benefitNumber",
+            "beneficiary_number", "beneficiaryNumber",
             "nit_pis", "nitPis",
             "ctps", "ctps",
             "ctps_series", "ctpsSeries",

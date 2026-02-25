@@ -59,7 +59,7 @@ public class ClientControllerTest {
         dto.setEmail("test.user@example.com");
         dto.setMobilePhone("+5511999999999");
         dto.setReferencePhone("+5511988888888");
-        dto.setBenefitNumber("BN123");
+    dto.setBeneficiaryNumber("BN123");
         dto.setNitPis("NIT123");
         dto.setCtps("CTPS123");
         dto.setCtpsSeries("S1");

@@ -25,7 +25,6 @@ import java.util.UUID;
 public class ClientController {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM-dd-yyyy");
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ClientController.class);
 
     private final ClientService clientService;
     private final ClientMapper mapper;
@@ -74,11 +73,6 @@ public class ClientController {
         Instant createdFrom = parseInstant(createdFromStr, true);
         Instant createdTo = parseInstant(createdToStr, false);
 
-        // DEBUG: log parsed situations
-        if (log.isDebugEnabled()) {
-            log.debug("Parsed situation params: {}", situation);
-        }
-
         Page<ClientListResponseDTO> result = clientService.listSummary(
                 pageIndex, requestedPageSize, searchTerm, benefitType, situation, createdFrom, createdTo);
 
@@ -94,6 +88,20 @@ public class ClientController {
         return ResponseEntity.ok(ApiResponse.successObject(dto));
     }
 
+    @GetMapping("/{id}/history")
+    public ResponseEntity<ApiResponse<com.lawfirm.law.firm.dto.ClientSituationHistoryDTO>> historyById(
+            @PathVariable UUID id,
+            @RequestParam(name = "pageNumber", defaultValue = "1") int pageNumber,
+            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize) {
+    // ensure client exists
+    clientService.findById(id).orElseThrow(() -> new NotFoundException("Client not found with id: " + id));
+        int pageIndex = Math.max(0, pageNumber - 1);
+    // return only the paged history content (data is array of history items)
+    var page = clientService.historyByClientId(id, pageIndex, pageSize);
+    Pagination p = new Pagination(pageNumber, pageSize, page.getTotalElements());
+    return ResponseEntity.ok(ApiResponse.successList(page.getContent(), p));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ClientDetailsDTO>> update(
             @PathVariable UUID id, @Valid @RequestBody ClientDetailsDTO client) {
@@ -101,9 +109,38 @@ public class ClientController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<ApiResponse<ClientDetailsDTO>> patch(
+    public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> patch(
             @PathVariable UUID id, @RequestBody ClientPatchRequestDTO patch) {
-        return ResponseEntity.ok(ApiResponse.successObject(clientService.patch(id, patch)));
+        // load current state to decide which values actually change
+        com.lawfirm.law.firm.dto.ClientDetailsDTO previous = clientService.findById(id)
+                .orElseThrow(() -> new NotFoundException("Client not found with id: " + id));
+
+        boolean changedSituation = false;
+        if (patch.getSituation() != null) {
+            try {
+                com.lawfirm.law.firm.model.Situation incoming = com.lawfirm.law.firm.model.Situation.fromLabel(patch.getSituation());
+                changedSituation = !java.util.Objects.equals(previous.getSituation(), incoming);
+            } catch (IllegalArgumentException ex) {
+                // invalid situation; delegate to service.patch to produce consistent validation error
+                clientService.patch(id, patch);
+            }
+        }
+
+        boolean changedNonBillable = false;
+        if (patch.getNonBillable() != null) {
+            changedNonBillable = !java.util.Objects.equals(previous.getNonBillable(), patch.getNonBillable());
+        }
+
+        // perform update (will record history if situation changed)
+        clientService.patch(id, patch);
+
+        java.util.List<String> msgs = new java.util.ArrayList<>();
+        if (changedSituation) msgs.add("situação atualizada com sucesso!");
+        if (changedNonBillable) msgs.add("arrecadação atualizada com sucesso");
+        if (msgs.isEmpty()) msgs.add("nenhuma alteração realizada");
+
+        ClientPatchResponseDTO resp = new ClientPatchResponseDTO(String.join(" e ", msgs));
+        return ResponseEntity.ok(ApiResponse.successObject(resp));
     }
 
     @DeleteMapping("/{id}")

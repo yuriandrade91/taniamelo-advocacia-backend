@@ -44,8 +44,16 @@ public class Client {
     private String inssPassword;
 
     @NotNull
-    @Column(name = "gender", nullable = false, length = 100)
+    @Column(name = "gender", nullable = false, length = 10)
     private Gender gender;
+
+    @NotNull
+    @Column(name = "situation", length = 100)
+    private Situation situation;
+
+    @NotNull
+    @Column(name = "benefit", length = 100)
+    private BenefitType benefit;
 
     // ============================================
     // OPCIONAIS - GERADOS AUTOMATICAMENTE
@@ -74,15 +82,9 @@ public class Client {
 
     @Column(name = "marital_status", length = 50)
     private MaritalStatus maritalStatus; // Solteiro(a), Casado(a), Separada(a), Divorciado(a), Viúvo(a)
-
-    @Column(name = "benefit", length = 255)
-    private BenefitType benefit;
-
-    @Column(name = "situation", length = 100)
-    private Situation situation;
-
-    @Column(name = "benefit_number", unique = true, length = 30)
-    private String benefitNumber;
+    
+    @Column(name = "beneficiary_number", unique = true, length = 30)
+    private String beneficiaryNumber;
 
     @Column(name = "nit_pis", unique = true, length = 20)
     private String nitPis;
@@ -175,8 +177,8 @@ public class Client {
     public Situation getSituation() { return situation; }
     public void setSituation(Situation situation) { this.situation = situation; }
 
-    public String getBenefitNumber() { return benefitNumber; }
-    public void setBenefitNumber(String benefitNumber) { this.benefitNumber = benefitNumber; }
+    public String getBeneficiaryNumber() { return beneficiaryNumber; }
+    public void setBeneficiaryNumber(String beneficiaryNumber) { this.beneficiaryNumber = beneficiaryNumber; }
 
     public String getNitPis() { return nitPis; }
     public void setNitPis(String nitPis) { this.nitPis = nitPis; }

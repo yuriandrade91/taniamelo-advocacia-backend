@@ -98,6 +98,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Flyway for database migrations -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+
 		<!-- Spring Boot DevTools: live reload for development -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

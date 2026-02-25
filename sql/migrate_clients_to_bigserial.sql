@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS clients_new (
     nit_pis VARCHAR(20) UNIQUE,
     profession VARCHAR(100),
     ctps VARCHAR(30) UNIQUE,
-    ctps_series VARCHAR(20) UNIQUE,
+    ctps_series VARCHAR(20),
     contribution_time INTEGER,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     non_billable BOOLEAN NOT NULL DEFAULT false,
