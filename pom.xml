@@ -201,6 +201,80 @@
 					<jmxPort>0</jmxPort>
 				</configuration>
 			</plugin>
+
+			<!-- Formatter (the "Prettier" of this project): enforces one canonical
+			     Java style via google-java-format (AOSP = 4-space, matching the
+			     codebase's existing indentation). Bound to process-classes (right
+			     after compile, before test) rather than verify/test, since the
+			     pre-commit hook - and CI - must be able to check formatting/lint
+			     independently of the test suite's own health. `mvn compile` fails
+			     on unformatted code; the pre-commit hook runs `spotless:apply`
+			     first so commits never actually hit that failure locally. -->
+			<plugin>
+				<groupId>com.diffplug.spotless</groupId>
+				<artifactId>spotless-maven-plugin</artifactId>
+				<version>3.8.0</version>
+				<configuration>
+					<java>
+						<includes>
+							<include>src/main/java/**/*.java</include>
+							<include>src/test/java/**/*.java</include>
+						</includes>
+						<googleJavaFormat>
+							<version>1.35.0</version>
+							<style>AOSP</style>
+						</googleJavaFormat>
+						<removeUnusedImports/>
+						<trimTrailingWhitespace/>
+						<endWithNewline/>
+					</java>
+				</configuration>
+				<executions>
+					<execution>
+						<id>spotless-check</id>
+						<phase>process-classes</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Linter: catches bug-prone patterns and unused code that formatting
+			     alone doesn't fix. Deliberately does NOT enforce import style
+			     (several controllers/entities use wildcard imports on purpose),
+			     so it only flags genuine issues, not the existing codebase's
+			     conventions. Bound to process-classes for the same reason as
+			     Spotless above - independent of the test phase. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-checkstyle-plugin</artifactId>
+				<version>3.6.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>com.puppycrawl.tools</groupId>
+						<artifactId>checkstyle</artifactId>
+						<version>13.8.0</version>
+					</dependency>
+				</dependencies>
+				<configuration>
+					<configLocation>checkstyle.xml</configLocation>
+					<includeTestSourceDirectory>true</includeTestSourceDirectory>
+					<consoleOutput>true</consoleOutput>
+					<violationSeverity>warning</violationSeverity>
+					<failOnViolation>true</failOnViolation>
+					<failsOnError>true</failsOnError>
+				</configuration>
+				<executions>
+					<execution>
+						<id>checkstyle-check</id>
+						<phase>process-classes</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 
