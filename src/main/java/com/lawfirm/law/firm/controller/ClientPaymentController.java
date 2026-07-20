@@ -13,7 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Financeiro do cliente", description = "Parcelas de honorários cobradas do cliente")
+@Tag(name = "Cliente - Financeiro", description = "Parcelas de honorários cobradas do cliente")
 @RestController
 @RequestMapping("/api/v1/clients/{clientId}/payments")
 public class ClientPaymentController {

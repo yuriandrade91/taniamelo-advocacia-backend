@@ -16,7 +16,7 @@
 @paymentId = dbd42043-8c6a-4587-a0fb-d1e76598bbb3
 @paymentId2 = 4de81d53-c8a8-4326-a574-ec9755d76aba
 
-### ── 1. AUTH ───────────────────────────────────────────────
+### ── 1. AUTENTICAÇÃO ───────────────────────────────────────
 
 ### Login (usuário do seed; senha: password)
 # @name login
@@ -28,7 +28,7 @@ Content-Type: application/json
 ###
 @token = {{login.response.body.data.token}}
 
-### ── 2. CLIENTES ───────────────────────────────────────────
+### ── 2. CLIENTE - CLIENTES ─────────────────────────────────
 
 ### Listar (filtros padrão: pageNumber/pageSize/searchTerm/benefitType/situation/createdFrom/createdTo)
 GET {{host}}/api/v1/clients?pageNumber=1&pageSize=10&searchTerm=maria&situation=Análise documental&createdFrom=2026-01-01
@@ -89,11 +89,12 @@ Content-Type: application/json
 
 { "notBillable": true }
 
-### Histórico de situação (paginado)
-GET {{host}}/api/v1/clients/{{clientId}}/situation-history?pageNumber=1&pageSize=10
+### Excluir cliente
+DELETE {{host}}/api/v1/clients/{{clientId}}
 Authorization: Bearer {{token}}
 
-### Dados pessoais — GET / PUT
+### ── 3. CLIENTE - DADOS PESSOAIS ───────────────────────────
+
 GET {{host}}/api/v1/clients/{{clientId}}/personal-data
 Authorization: Bearer {{token}}
 
@@ -121,30 +122,7 @@ Content-Type: application/json
   "hasDisability": false
 }
 
-### Dados profissionais — GET / PUT
-GET {{host}}/api/v1/clients/{{clientId}}/professional-data
-Authorization: Bearer {{token}}
-
-###
-PUT {{host}}/api/v1/clients/{{clientId}}/professional-data
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "profession": "Costureira",
-  "nitPis": "123.45678.90-1",
-  "ctps": "12345",
-  "ctpsSeries": "00123",
-  "contributionTime": "16 anos, 4 meses, 10 dias",
-  "beneficiaryNumber": null,
-  "inssPassword": "inss@123"
-}
-
-### Excluir cliente
-DELETE {{host}}/api/v1/clients/{{clientId}}
-Authorization: Bearer {{token}}
-
-### ── 3. ENDEREÇOS ──────────────────────────────────────────
+### ── 4. CLIENTE - ENDEREÇO(S) ──────────────────────────────
 
 GET {{host}}/api/v1/clients/{{clientId}}/addresses?pageNumber=1&pageSize=10
 Authorization: Bearer {{token}}
@@ -190,7 +168,58 @@ Content-Type: application/json
 DELETE {{host}}/api/v1/clients/{{clientId}}/addresses/{{addressId2}}
 Authorization: Bearer {{token}}
 
-### ── 4. ARQUIVOS ───────────────────────────────────────────
+### ── 5. CLIENTE - DADOS PROFISSIONAIS ──────────────────────
+
+GET {{host}}/api/v1/clients/{{clientId}}/professional-data
+Authorization: Bearer {{token}}
+
+###
+PUT {{host}}/api/v1/clients/{{clientId}}/professional-data
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "profession": "Costureira",
+  "nitPis": "123.45678.90-1",
+  "ctps": "12345",
+  "ctpsSeries": "00123",
+  "contributionTime": "16 anos, 4 meses, 10 dias",
+  "beneficiaryNumber": null,
+  "inssPassword": "inss@123"
+}
+
+### ── 6. CLIENTE - ENTREVISTA ───────────────────────────────
+
+GET {{host}}/api/v1/clients/{{clientId}}/interviews?pageNumber=1&pageSize=10
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/api/v1/clients/{{clientId}}/interviews
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "occurredAt": "2026-07-18T14:00:00Z",
+  "durationMinutes": 45,
+  "content": "<h3>Entrevista</h3><p>Conteúdo vindo do componente <strong>rich text</strong>.</p>"
+}
+
+###
+GET {{host}}/api/v1/clients/{{clientId}}/interviews/{{interviewId}}
+Authorization: Bearer {{token}}
+
+###
+PUT {{host}}/api/v1/clients/{{clientId}}/interviews/{{interviewId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "durationMinutes": 50, "content": "<p>Conteúdo revisado.</p>" }
+
+###
+DELETE {{host}}/api/v1/clients/{{clientId}}/interviews/{{interviewId}}
+Authorization: Bearer {{token}}
+
+### ── 7. CLIENTE - ARQUIVOS ─────────────────────────────────
 
 ### — Documentos (11 tipos) —
 
@@ -278,38 +307,13 @@ Authorization: Bearer {{token}}
 DELETE {{host}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationId}}
 Authorization: Bearer {{token}}
 
-### ── 5. ENTREVISTA ─────────────────────────────────────────
+### ── 8. CLIENTE - SITUAÇÃO ─────────────────────────────────
 
-GET {{host}}/api/v1/clients/{{clientId}}/interviews?pageNumber=1&pageSize=10
+### Histórico de situação (paginado)
+GET {{host}}/api/v1/clients/{{clientId}}/situation-history?pageNumber=1&pageSize=10
 Authorization: Bearer {{token}}
 
-###
-POST {{host}}/api/v1/clients/{{clientId}}/interviews
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "occurredAt": "2026-07-18T14:00:00Z",
-  "durationMinutes": 45,
-  "content": "<h3>Entrevista</h3><p>Conteúdo vindo do componente <strong>rich text</strong>.</p>"
-}
-
-###
-GET {{host}}/api/v1/clients/{{clientId}}/interviews/{{interviewId}}
-Authorization: Bearer {{token}}
-
-###
-PUT {{host}}/api/v1/clients/{{clientId}}/interviews/{{interviewId}}
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{ "durationMinutes": 50, "content": "<p>Conteúdo revisado.</p>" }
-
-###
-DELETE {{host}}/api/v1/clients/{{clientId}}/interviews/{{interviewId}}
-Authorization: Bearer {{token}}
-
-### ── 6. FINANCEIRO ─────────────────────────────────────────
+### ── 9. CLIENTE - FINANCEIRO ───────────────────────────────
 
 GET {{host}}/api/v1/clients/{{clientId}}/payments?pageNumber=1&pageSize=10
 Authorization: Bearer {{token}}

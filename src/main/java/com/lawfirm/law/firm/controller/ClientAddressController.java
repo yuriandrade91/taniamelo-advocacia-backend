@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(
-        name = "Endereços do cliente",
+        name = "Cliente - Endereço(s)",
         description =
                 "Endereços residencial/comercial/correspondência do cliente (um marcado como principal)")
 @RestController

@@ -65,21 +65,28 @@ public class OpenApiConfig {
     }
 
     /**
-     * Ordem das collections no Swagger UI: auth -> clientes -> endereços -> arquivos -> entrevista
-     * -> financeiro (em vez da ordem alfabética/de descoberta padrão do springdoc). Roda depois da
-     * descoberta automática de tags via @Tag nos controllers, então dedupe por nome e reordena pela
-     * lista fixa abaixo; tags não listadas ficam ao final, na ordem em que apareceram.
+     * Ordem das collections no Swagger UI: auth -> cliente/clientes -> dados pessoais -> endereços
+     * -> dados profissionais -> entrevista -> arquivos -> situação -> financeiro (em vez da ordem
+     * alfabética/de descoberta padrão do springdoc). Personal-data, professional-data e
+     * situation-history vivem no mesmo ClientController mas são movidos para suas próprias tags via
+     * {@code @Operation(tags = ...)} por operação, sobrescrevendo a tag de classe só nesses
+     * métodos. Roda depois da descoberta automática de tags via @Tag/@Operation nos controllers,
+     * então dedupe por nome e reordena pela lista fixa abaixo; tags não listadas ficam ao final, na
+     * ordem em que apareceram.
      */
     @Bean
     public GlobalOpenApiCustomizer orderedTags() {
         List<String> order =
                 List.of(
                         "Autenticação",
-                        "Clientes",
-                        "Endereços do cliente",
-                        "Arquivos do cliente",
-                        "Entrevistas",
-                        "Financeiro do cliente");
+                        "Cliente - Clientes",
+                        "Cliente - Dados Pessoais",
+                        "Cliente - Endereço(s)",
+                        "Cliente - Dados Profissionais",
+                        "Cliente - Entrevista",
+                        "Cliente - Arquivos",
+                        "Cliente - Situação",
+                        "Cliente - Financeiro");
         return openApi -> {
             Map<String, Tag> byName = new LinkedHashMap<>();
             for (Tag tag : openApi.getTags()) {

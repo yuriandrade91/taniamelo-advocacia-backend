@@ -16,7 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(
-        name = "Entrevista do cliente",
+        name = "Cliente - Entrevista",
         description = "Entrevistas/atendimentos do cliente: data, duração e conteúdo rich text")
 @RestController
 @RequestMapping("/api/v1/clients/{clientId}/interviews")

@@ -31,7 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
  * tela: /files/documents e /files/simulations.
  */
 @Tag(
-        name = "Arquivos do cliente",
+        name = "Cliente - Arquivos",
         description =
                 "Documentos (11 tipos) e simulações do cliente - upload, listagem paginada, download, "
                         + "edição de metadados e exclusão (soft delete)")

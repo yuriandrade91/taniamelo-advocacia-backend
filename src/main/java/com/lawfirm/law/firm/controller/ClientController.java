@@ -6,11 +6,6 @@ import com.lawfirm.law.firm.dto.ClientDetailsDTO;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPatchResponseDTO;
-import com.lawfirm.law.firm.dto.ClientPersonalDataRequestDTO;
-import com.lawfirm.law.firm.dto.ClientPersonalDataResponseDTO;
-import com.lawfirm.law.firm.dto.ClientProfessionalDataRequestDTO;
-import com.lawfirm.law.firm.dto.ClientProfessionalDataResponseDTO;
-import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
 import com.lawfirm.law.firm.dto.NotBillableRequestDTO;
 import com.lawfirm.law.firm.dto.Pagination;
@@ -38,7 +33,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Tag(
-        name = "Informações do Cliente",
+        name = "Cliente - Clientes",
         description = "Cadastro e acompanhamento de clientes do escritório previdenciário")
 @RestController
 @RequestMapping("/api/v1/clients")
@@ -168,65 +163,6 @@ public class ClientController {
                         ? "Cliente marcado como não cobrável."
                         : "Cliente marcado como cobrável.";
         return ResponseEntity.ok(ApiResponse.successObject(new ClientPatchResponseDTO(message)));
-    }
-
-    @Operation(
-            summary = "Histórico de mudanças de situação",
-            description =
-                    "Lista paginada no envelope padrão, mais recente primeiro, com o usuário que fez cada mudança.")
-    @GetMapping("/{id}/situation-history")
-    public ResponseEntity<ApiResponse<ClientSituationHistoryDTO>> history(
-            @PathVariable UUID id,
-            @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1")
-                    int pageNumber,
-            @Parameter(description = "Tamanho da página") @RequestParam(defaultValue = "10")
-                    int pageSize) {
-        Page<ClientSituationHistoryDTO> page =
-                clientService.historyByClientId(id, pageNumber, pageSize);
-        return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
-    }
-
-    @Operation(
-            summary = "Dados pessoais do cliente",
-            description =
-                    "Aba 'Dados pessoais': identidade e contato. Dados profissionais e endereços têm endpoints próprios.")
-    @GetMapping("/{id}/personal-data")
-    public ResponseEntity<ApiResponse<ClientPersonalDataResponseDTO>> getPersonalData(
-            @PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.successObject(clientService.getPersonalData(id)));
-    }
-
-    @Operation(
-            summary = "Atualizar dados pessoais",
-            description =
-                    "Substituição completa só do subconjunto de dados pessoais - não altera dados "
-                            + "profissionais, endereços, benefício, situação ou arrecadação.")
-    @PutMapping("/{id}/personal-data")
-    public ResponseEntity<ApiResponse<ClientPersonalDataResponseDTO>> updatePersonalData(
-            @PathVariable UUID id, @Valid @RequestBody ClientPersonalDataRequestDTO dto) {
-        return ResponseEntity.ok(
-                ApiResponse.successObject(clientService.updatePersonalData(id, dto)));
-    }
-
-    @Operation(
-            summary = "Dados profissionais do cliente",
-            description =
-                    "Aba 'Dados profissionais': profissão, NIT/PIS, CTPS, tempo de contribuição (com total em "
-                            + "meses derivado no servidor), número do benefício e senha do INSS.")
-    @GetMapping("/{id}/professional-data")
-    public ResponseEntity<ApiResponse<ClientProfessionalDataResponseDTO>> getProfessionalData(
-            @PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.successObject(clientService.getProfessionalData(id)));
-    }
-
-    @Operation(
-            summary = "Atualizar dados profissionais",
-            description = "Substituição completa só do subconjunto de dados profissionais.")
-    @PutMapping("/{id}/professional-data")
-    public ResponseEntity<ApiResponse<ClientProfessionalDataResponseDTO>> updateProfessionalData(
-            @PathVariable UUID id, @Valid @RequestBody ClientProfessionalDataRequestDTO dto) {
-        return ResponseEntity.ok(
-                ApiResponse.successObject(clientService.updateProfessionalData(id, dto)));
     }
 
     @Operation(
