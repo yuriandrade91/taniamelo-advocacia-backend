@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  db:
+    # keep data on a named volume (already declared in base compose) and add a robust healthcheck
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-login} -d ${DB_NAME:-system}"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+      start_period: 10s
+
+  app:
+    # map a local logs folder so you can inspect application logs from the host
+    volumes:
+      - ./logs:/app/logs
+      - ./scripts/wait-for-db.sh:/app/wait-for-db.sh:ro
+      # mount external Spring config so you can edit without rebuilding the image
+      - ./src/main/resources/application-dev.yaml:/app/config/application-dev.yaml:ro
+    environment:
+      # ensure the app connects to the database service inside the compose network
+      # use the compose service name `db` as host so the container does not try localhost
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      # tell Spring to load external config file (overrides packaged resources)
+      SPRING_CONFIG_LOCATION: /app/config/application-dev.yaml
+  # healthcheck removed temporarily to avoid automatic unhealthy state during debugging
+
+volumes:
+  # ensure the logs directory is available as a named volume on demand
+  db-data: 
