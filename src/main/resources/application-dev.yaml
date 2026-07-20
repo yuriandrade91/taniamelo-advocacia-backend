@@ -1,0 +1,40 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/lawfirm}
+    username: ${SPRING_DATASOURCE_USERNAME:lawuser}
+    password: ${SPRING_DATASOURCE_PASSWORD:changeme}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    # Flyway owns the schema; Hibernate only validates the mapping matches it.
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  # The app always applies its own migrations on startup (single owner of schema
+  # changes - no separate flyway container). Override via SPRING_FLYWAY_ENABLED
+  # only if you have a specific reason to skip it.
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+
+# Useful defaults for local development
+spring.main:
+  allow-bean-definition-overriding: true

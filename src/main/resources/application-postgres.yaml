@@ -7,8 +7,11 @@ spring:
     password: postgres
     driver-class-name: org.postgresql.Driver
   jpa:
+    # Flyway is the single source of truth for schema in every profile - Hibernate only
+    # validates that entity mappings match what migrations produced. Never 'update'/'create'
+    # here: that would let Hibernate silently alter schema outside of migration history.
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     show-sql: false
     properties:
@@ -24,14 +27,5 @@ spring:
 server:
   port: 8080
 
-# springdoc properties
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /api/docs
-    urls:
-      - name: clients
-        url: /v3/api-docs/clients
-
-# Note: Using 'update' to preserve existing data. For explicit migrations use Flyway.
+# springdoc config lives in application.yaml (base) so it applies to every profile;
+# no need to repeat/override it here.
