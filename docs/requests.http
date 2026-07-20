@@ -1,0 +1,344 @@
+### ============================================================
+### Tania Melo Advocacia — requests de exemplo (todos os endpoints)
+### Use com o REST Client do VS Code / IntelliJ HTTP Client.
+### Pré-requisito: banco migrado + db/mock-data/seed_mock.sql aplicado.
+### IDs de exemplo abaixo são os UUIDs (v4) gerados pelo seed para a
+### cliente "Maria Aparecida da Silva" — ajuste se o seed for reaplicado.
+### ============================================================
+
+@host = http://localhost:8080
+@clientId = 7d7ff165-cb15-481b-8e9a-b755ba876ca1
+@addressId = fd8b3b47-b7d0-4f4e-bc71-e0caaab5cd6b
+@addressId2 = ea4fcff4-c329-4a44-9a12-4312cf5dbb52
+@documentId = 762c9bf3-3ac5-4856-a34d-8b3a47bef9ab
+@simulationId = e64ad7ff-1f74-479e-9d64-e113182c9211
+@interviewId = 14f828e3-c7a0-4790-a44b-8ced4be6d5b5
+@paymentId = dbd42043-8c6a-4587-a0fb-d1e76598bbb3
+@paymentId2 = 4de81d53-c8a8-4326-a574-ec9755d76aba
+
+### ── 1. AUTH ───────────────────────────────────────────────
+
+### Login (usuário do seed; senha: password)
+# @name login
+POST {{host}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "email": "dra.tania@taniamelo.adv.br", "password": "password" }
+
+###
+@token = {{login.response.body.data.token}}
+
+### ── 2. CLIENTES ───────────────────────────────────────────
+
+### Listar (filtros padrão: pageNumber/pageSize/searchTerm/benefitType/situation/createdFrom/createdTo)
+GET {{host}}/api/v1/clients?pageNumber=1&pageSize=10&searchTerm=maria&situation=Análise documental&createdFrom=2026-01-01
+Authorization: Bearer {{token}}
+
+### Criar
+POST {{host}}/api/v1/clients
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "Novo Cliente de Teste",
+  "birthDate": "1965-05-20",
+  "cpf": "529.982.247-25",
+  "motherName": "Mãe do Cliente",
+  "mobilePhone": "(31) 91234-5678",
+  "inssPassword": "senha-inss",
+  "gender": "Masculino",
+  "situation": "Formulário preenchido",
+  "benefit": "Aposentadoria por idade",
+  "clientType": "Potencial"
+}
+
+### Detalhe
+GET {{host}}/api/v1/clients/{{clientId}}
+Authorization: Bearer {{token}}
+
+### Atualização completa (PUT — objeto completo)
+PUT {{host}}/api/v1/clients/{{clientId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "Maria Aparecida da Silva",
+  "birthDate": "1961-03-12",
+  "cpf": "390.533.447-05",
+  "motherName": "Josefa da Silva",
+  "mobilePhone": "(31) 98888-1111",
+  "inssPassword": "inss@123",
+  "gender": "Feminino",
+  "situation": "Planejamento em execução",
+  "benefit": "Aposentadoria por idade",
+  "profession": "Costureira aposentável",
+  "notes": "Atualizado via PUT completo"
+}
+
+### Atualização parcial (PATCH — situação e/ou arrecadação)
+PATCH {{host}}/api/v1/clients/{{clientId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "situation": "Planejamento concluído", "notBillable": false }
+
+### Toggle arrecadação (PATCH de propósito único)
+PATCH {{host}}/api/v1/clients/{{clientId}}/not-billable
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "notBillable": true }
+
+### Histórico de situação (paginado)
+GET {{host}}/api/v1/clients/{{clientId}}/situation-history?pageNumber=1&pageSize=10
+Authorization: Bearer {{token}}
+
+### Dados pessoais — GET / PUT
+GET {{host}}/api/v1/clients/{{clientId}}/personal-data
+Authorization: Bearer {{token}}
+
+###
+PUT {{host}}/api/v1/clients/{{clientId}}/personal-data
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "Maria Aparecida da Silva",
+  "birthDate": "1961-03-12",
+  "cpf": "390.533.447-05",
+  "rg": "MG-11.222.333",
+  "rgIssuer": "SSP-MG",
+  "rgIssueDate": "1979-06-01",
+  "motherName": "Josefa da Silva",
+  "gender": "Feminino",
+  "maritalStatus": "Casado(a)",
+  "nationality": "Brasileira",
+  "mobilePhone": "(31) 98888-1111",
+  "isWhatsapp": true,
+  "referencePhone": "(31) 97777-2222",
+  "referenceResponsible": "João da Silva (filho)",
+  "email": "maria.silva@gmail.com",
+  "hasDisability": false
+}
+
+### Dados profissionais — GET / PUT
+GET {{host}}/api/v1/clients/{{clientId}}/professional-data
+Authorization: Bearer {{token}}
+
+###
+PUT {{host}}/api/v1/clients/{{clientId}}/professional-data
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "profession": "Costureira",
+  "nitPis": "123.45678.90-1",
+  "ctps": "12345",
+  "ctpsSeries": "00123",
+  "contributionTime": "16 anos, 4 meses, 10 dias",
+  "beneficiaryNumber": null,
+  "inssPassword": "inss@123"
+}
+
+### Excluir cliente
+DELETE {{host}}/api/v1/clients/{{clientId}}
+Authorization: Bearer {{token}}
+
+### ── 3. ENDEREÇOS ──────────────────────────────────────────
+
+GET {{host}}/api/v1/clients/{{clientId}}/addresses?pageNumber=1&pageSize=10
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/api/v1/clients/{{clientId}}/addresses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "addressType": "Comercial",
+  "street": "Rua Nova",
+  "addressNumber": "10",
+  "neighborhood": "Centro",
+  "city": "Belo Horizonte",
+  "state": "MG",
+  "zipCode": "30100-000",
+  "isPrimary": false
+}
+
+###
+GET {{host}}/api/v1/clients/{{clientId}}/addresses/{{addressId}}
+Authorization: Bearer {{token}}
+
+###
+PUT {{host}}/api/v1/clients/{{clientId}}/addresses/{{addressId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "addressType": "Residencial",
+  "street": "Rua das Acácias",
+  "addressNumber": "128",
+  "complement": "Casa",
+  "neighborhood": "Santa Efigênia",
+  "city": "Belo Horizonte",
+  "state": "MG",
+  "zipCode": "30240-000",
+  "isPrimary": true
+}
+
+###
+DELETE {{host}}/api/v1/clients/{{clientId}}/addresses/{{addressId2}}
+Authorization: Bearer {{token}}
+
+### ── 4. ARQUIVOS ───────────────────────────────────────────
+
+### — Documentos (11 tipos) —
+
+GET {{host}}/api/v1/clients/{{clientId}}/files/documents?pageNumber=1&pageSize=10&documentType=Documentos médicos
+Authorization: Bearer {{token}}
+
+### Upload em lote (multipart: files[] + metadata[] na mesma ordem)
+POST {{host}}/api/v1/clients/{{clientId}}/files/documents
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=BOUNDARY
+
+--BOUNDARY
+Content-Disposition: form-data; name="files"; filename="rg.pdf"
+Content-Type: application/pdf
+
+< ./exemplo.pdf
+--BOUNDARY
+Content-Disposition: form-data; name="metadata"
+Content-Type: application/json
+
+[{ "documentType": "Documentos de identificação do segurado", "notes": "RG frente e verso" }]
+--BOUNDARY--
+
+###
+GET {{host}}/api/v1/clients/{{clientId}}/files/documents/{{documentId}}
+Authorization: Bearer {{token}}
+
+### Download
+GET {{host}}/api/v1/clients/{{clientId}}/files/documents/{{documentId}}/download
+Authorization: Bearer {{token}}
+
+### Editar tipo/observações (PATCH)
+PATCH {{host}}/api/v1/clients/{{clientId}}/files/documents/{{documentId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "documentType": "Documentos cadastrais / dados pessoais", "notes": "Reclassificado" }
+
+###
+DELETE {{host}}/api/v1/clients/{{clientId}}/files/documents/{{documentId}}
+Authorization: Bearer {{token}}
+
+### — Simulações —
+
+GET {{host}}/api/v1/clients/{{clientId}}/files/simulations?pageNumber=1&pageSize=10
+Authorization: Bearer {{token}}
+
+### Upload (a mais recente vira principal automaticamente)
+POST {{host}}/api/v1/clients/{{clientId}}/files/simulations
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=BOUNDARY
+
+--BOUNDARY
+Content-Disposition: form-data; name="files"; filename="simulacao.pdf"
+Content-Type: application/pdf
+
+< ./simulacao.pdf
+--BOUNDARY
+Content-Disposition: form-data; name="metadata"
+Content-Type: application/json
+
+[{ "simulationDate": "2026-07-15", "version": "v1.0.2", "vinculos": 4, "notes": "Cenário com período rural" }]
+--BOUNDARY--
+
+###
+GET {{host}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationId}}
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationId}}/download
+Authorization: Bearer {{token}}
+
+### Editar metadados
+PATCH {{host}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "version": "v1.0.3", "vinculos": 5 }
+
+### Trocar a principal
+PATCH {{host}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationId}}/principal
+Authorization: Bearer {{token}}
+
+###
+DELETE {{host}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationId}}
+Authorization: Bearer {{token}}
+
+### ── 5. ENTREVISTA ─────────────────────────────────────────
+
+GET {{host}}/api/v1/clients/{{clientId}}/interviews?pageNumber=1&pageSize=10
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/api/v1/clients/{{clientId}}/interviews
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "occurredAt": "2026-07-18T14:00:00Z",
+  "durationMinutes": 45,
+  "content": "<h3>Entrevista</h3><p>Conteúdo vindo do componente <strong>rich text</strong>.</p>"
+}
+
+###
+GET {{host}}/api/v1/clients/{{clientId}}/interviews/{{interviewId}}
+Authorization: Bearer {{token}}
+
+###
+PUT {{host}}/api/v1/clients/{{clientId}}/interviews/{{interviewId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "durationMinutes": 50, "content": "<p>Conteúdo revisado.</p>" }
+
+###
+DELETE {{host}}/api/v1/clients/{{clientId}}/interviews/{{interviewId}}
+Authorization: Bearer {{token}}
+
+### ── 6. FINANCEIRO ─────────────────────────────────────────
+
+GET {{host}}/api/v1/clients/{{clientId}}/payments?pageNumber=1&pageSize=10
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/api/v1/clients/{{clientId}}/payments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "description": "Honorários - parcela avulsa",
+  "amount": 500.00,
+  "installmentNumber": 1,
+  "installmentTotal": 1,
+  "dueDate": "2026-08-10",
+  "paymentMethod": "Pix"
+}
+
+###
+GET {{host}}/api/v1/clients/{{clientId}}/payments/{{paymentId}}
+Authorization: Bearer {{token}}
+
+### PATCH parcial (marcar como pago assume paidDate = hoje)
+PATCH {{host}}/api/v1/clients/{{clientId}}/payments/{{paymentId2}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "Pago", "paymentMethod": "Pix" }
+
+###
+DELETE {{host}}/api/v1/clients/{{clientId}}/payments/{{paymentId2}}
+Authorization: Bearer {{token}}
