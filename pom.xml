@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.0.1</version>
+		<version>4.1.0</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.lawfirm</groupId>
@@ -27,8 +27,10 @@
 		<url/>
 	</scm>
 	<properties>
-		<java.version>17</java.version>
-		<mapstruct.version>1.5.5.Final</mapstruct.version>
+		<java.version>25</java.version>
+		<mapstruct.version>1.6.3</mapstruct.version>
+		<jjwt.version>0.12.6</jjwt.version>
+		<springdoc.version>3.0.3</springdoc.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -39,6 +41,35 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<!-- Actuator: required for the docker-compose healthcheck (/actuator/health) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
+		<!-- Spring Security + JWT authentication -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-api</artifactId>
+			<version>${jjwt.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-impl</artifactId>
+			<version>${jjwt.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-jackson</artifactId>
+			<version>${jjwt.version}</version>
+			<scope>runtime</scope>
 		</dependency>
 
 		<!-- JPA for persistence -->
@@ -98,10 +129,16 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- Flyway for database migrations -->
+		<!-- Flyway for database migrations (Spring Boot 4 moved the autoconfiguration
+		     into its own starter; flyway-core alone does not enable it) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-flyway</artifactId>
+		</dependency>
+		<!-- Flyway 10+ moved per-database support into separate modules -->
 		<dependency>
 			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-core</artifactId>
+			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 
 		<!-- Spring Boot DevTools: live reload for development -->
@@ -112,7 +149,20 @@
 			<optional>true</optional>
 		</dependency>
 
-		<!-- NOTE: springdoc removed to avoid runtime incompatibilities; serving a static OpenAPI JSON + Swagger UI via CDN -->
+		<!-- Auto-starts docker-compose.yml (the "db" service) when the app boots locally,
+		     and stops it on shutdown. Never active when running from the packaged jar/container. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-docker-compose</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+		<!-- OpenAPI/Swagger UI generated automatically from the controllers, always in sync -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc.version}</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
