@@ -1,6 +1,10 @@
 package com.lawfirm.law.firm.dto;
 
+import org.springframework.data.domain.Page;
+
+/** Bloco de paginação do envelope padrão da API (pageNumber é 1-based). */
 public class Pagination {
+
     private int pageNumber;
     private int pageSize;
     private long totalRecords;
@@ -8,7 +12,8 @@ public class Pagination {
     private boolean hasNextPage;
     private boolean hasPreviousPage;
 
-    public Pagination() {}
+    public Pagination() {
+    }
 
     public Pagination(int pageNumber, int pageSize, long totalRecords) {
         this.pageNumber = pageNumber;
@@ -19,7 +24,11 @@ public class Pagination {
         this.hasNextPage = this.pageNumber < this.totalPages;
     }
 
-    // getters/setters
+    /** Constrói o bloco de paginação a partir de um Page do Spring Data. */
+    public static Pagination of(Page<?> page) {
+        return new Pagination(page.getNumber() + 1, page.getSize(), page.getTotalElements());
+    }
+
     public int getPageNumber() { return pageNumber; }
     public void setPageNumber(int pageNumber) { this.pageNumber = pageNumber; }
 

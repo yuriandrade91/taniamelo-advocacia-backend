@@ -1,14 +1,11 @@
 package com.lawfirm.law.firm.exception;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
-
-@ResponseStatus(HttpStatus.BAD_REQUEST)
+/**
+ * Violação de regra de negócio (HTTP 422). Erro "esperado": a requisição é
+ * válida na forma, mas o estado do domínio não permite a operação. Logado como
+ * WARN pela central de erros - nunca como erro de sistema.
+ */
 public class BusinessException extends RuntimeException {
-    private static final long serialVersionUID = 1L;
-
-    // fixed business error code
-    private final String code = "BUSINESS_RULE";
 
     private final BusinessErrorCode errorCode;
 
@@ -22,12 +19,9 @@ public class BusinessException extends RuntimeException {
         this.errorCode = errorCode;
     }
 
-    public BusinessException(BusinessErrorCode errorCode, String message, Throwable cause) {
-        super(message != null ? message : (errorCode != null ? errorCode.getMessage() : null), cause);
-        this.errorCode = errorCode;
+    public BusinessErrorCode getErrorCode() { return errorCode; }
+
+    public String getCode() {
+        return errorCode != null ? errorCode.getCode() : "BUSINESS_RULE";
     }
-
-    public BusinessErrorCode getBusinessErrorCode() { return errorCode; }
-
-    public String getCode() { return code; }
 }
