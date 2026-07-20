@@ -11,8 +11,8 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Resposta completa de um cliente (somente saída). Endereços, arquivos,
- * entrevistas e pagamentos são recursos próprios sob /clients/{id}/...
+ * Resposta completa de um cliente (somente saída). Endereços, arquivos, entrevistas e pagamentos
+ * são recursos próprios sob /clients/{id}/...
  */
 @JsonPropertyOrder({"id"})
 public class ClientDetailsDTO {
@@ -89,112 +89,291 @@ public class ClientDetailsDTO {
 
     private UUID updatedBy;
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public LocalDate getBirthDate() { return birthDate; }
-    public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
+    public String getFullName() {
+        return fullName;
+    }
 
-    public Integer getAge() { return age; }
-    public void setAge(Integer age) { this.age = age; }
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
 
-    public String getCpf() { return cpf; }
-    public void setCpf(String cpf) { this.cpf = cpf; }
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
 
-    public String getMotherName() { return motherName; }
-    public void setMotherName(String motherName) { this.motherName = motherName; }
+    public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+    }
 
-    public String getMobilePhone() { return mobilePhone; }
-    public void setMobilePhone(String mobilePhone) { this.mobilePhone = mobilePhone; }
+    public Integer getAge() {
+        return age;
+    }
 
-    public String getInssPassword() { return inssPassword; }
-    public void setInssPassword(String inssPassword) { this.inssPassword = inssPassword; }
+    public void setAge(Integer age) {
+        this.age = age;
+    }
 
-    public Gender getGender() { return gender; }
-    public void setGender(Gender gender) { this.gender = gender; }
+    public String getCpf() {
+        return cpf;
+    }
 
-    public String getRg() { return rg; }
-    public void setRg(String rg) { this.rg = rg; }
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
 
-    public String getRgIssuer() { return rgIssuer; }
-    public void setRgIssuer(String rgIssuer) { this.rgIssuer = rgIssuer; }
+    public String getMotherName() {
+        return motherName;
+    }
 
-    public LocalDate getRgIssueDate() { return rgIssueDate; }
-    public void setRgIssueDate(LocalDate rgIssueDate) { this.rgIssueDate = rgIssueDate; }
+    public void setMotherName(String motherName) {
+        this.motherName = motherName;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public String getMobilePhone() {
+        return mobilePhone;
+    }
 
-    public String getReferencePhone() { return referencePhone; }
-    public void setReferencePhone(String referencePhone) { this.referencePhone = referencePhone; }
+    public void setMobilePhone(String mobilePhone) {
+        this.mobilePhone = mobilePhone;
+    }
 
-    public String getReferenceResponsible() { return referenceResponsible; }
-    public void setReferenceResponsible(String referenceResponsible) { this.referenceResponsible = referenceResponsible; }
+    public String getInssPassword() {
+        return inssPassword;
+    }
 
-    public MaritalStatus getMaritalStatus() { return maritalStatus; }
-    public void setMaritalStatus(MaritalStatus maritalStatus) { this.maritalStatus = maritalStatus; }
+    public void setInssPassword(String inssPassword) {
+        this.inssPassword = inssPassword;
+    }
 
-    public BenefitType getBenefit() { return benefit; }
-    public void setBenefit(BenefitType benefit) { this.benefit = benefit; }
+    public Gender getGender() {
+        return gender;
+    }
 
-    public Situation getSituation() { return situation; }
-    public void setSituation(Situation situation) { this.situation = situation; }
+    public void setGender(Gender gender) {
+        this.gender = gender;
+    }
 
-    public String getBeneficiaryNumber() { return beneficiaryNumber; }
-    public void setBeneficiaryNumber(String beneficiaryNumber) { this.beneficiaryNumber = beneficiaryNumber; }
+    public String getRg() {
+        return rg;
+    }
 
-    public String getNitPis() { return nitPis; }
-    public void setNitPis(String nitPis) { this.nitPis = nitPis; }
+    public void setRg(String rg) {
+        this.rg = rg;
+    }
 
-    public String getProfession() { return profession; }
-    public void setProfession(String profession) { this.profession = profession; }
+    public String getRgIssuer() {
+        return rgIssuer;
+    }
 
-    public String getCtps() { return ctps; }
-    public void setCtps(String ctps) { this.ctps = ctps; }
+    public void setRgIssuer(String rgIssuer) {
+        this.rgIssuer = rgIssuer;
+    }
 
-    public String getCtpsSeries() { return ctpsSeries; }
-    public void setCtpsSeries(String ctpsSeries) { this.ctpsSeries = ctpsSeries; }
+    public LocalDate getRgIssueDate() {
+        return rgIssueDate;
+    }
 
-    public String getContributionTime() { return contributionTime; }
-    public void setContributionTime(String contributionTime) { this.contributionTime = contributionTime; }
+    public void setRgIssueDate(LocalDate rgIssueDate) {
+        this.rgIssueDate = rgIssueDate;
+    }
 
-    public Integer getContributionInMonths() { return contributionInMonths; }
-    public void setContributionInMonths(Integer contributionInMonths) { this.contributionInMonths = contributionInMonths; }
+    public String getEmail() {
+        return email;
+    }
 
-    public String getNationality() { return nationality; }
-    public void setNationality(String nationality) { this.nationality = nationality; }
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-    public Boolean getIsWhatsapp() { return isWhatsapp; }
-    public void setIsWhatsapp(Boolean isWhatsapp) { this.isWhatsapp = isWhatsapp; }
+    public String getReferencePhone() {
+        return referencePhone;
+    }
 
-    public Boolean getHasDisability() { return hasDisability; }
-    public void setHasDisability(Boolean hasDisability) { this.hasDisability = hasDisability; }
+    public void setReferencePhone(String referencePhone) {
+        this.referencePhone = referencePhone;
+    }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public String getReferenceResponsible() {
+        return referenceResponsible;
+    }
 
-    public UUID getResponsibleUserId() { return responsibleUserId; }
-    public void setResponsibleUserId(UUID responsibleUserId) { this.responsibleUserId = responsibleUserId; }
+    public void setReferenceResponsible(String referenceResponsible) {
+        this.referenceResponsible = referenceResponsible;
+    }
 
-    public ClientType getClientType() { return clientType; }
-    public void setClientType(ClientType clientType) { this.clientType = clientType; }
+    public MaritalStatus getMaritalStatus() {
+        return maritalStatus;
+    }
 
-    public Boolean getNotBillable() { return notBillable; }
-    public void setNotBillable(Boolean notBillable) { this.notBillable = notBillable; }
+    public void setMaritalStatus(MaritalStatus maritalStatus) {
+        this.maritalStatus = maritalStatus;
+    }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public BenefitType getBenefit() {
+        return benefit;
+    }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public void setBenefit(BenefitType benefit) {
+        this.benefit = benefit;
+    }
 
-    public UUID getCreatedBy() { return createdBy; }
-    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public Situation getSituation() {
+        return situation;
+    }
 
-    public UUID getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
+    public void setSituation(Situation situation) {
+        this.situation = situation;
+    }
 
+    public String getBeneficiaryNumber() {
+        return beneficiaryNumber;
+    }
+
+    public void setBeneficiaryNumber(String beneficiaryNumber) {
+        this.beneficiaryNumber = beneficiaryNumber;
+    }
+
+    public String getNitPis() {
+        return nitPis;
+    }
+
+    public void setNitPis(String nitPis) {
+        this.nitPis = nitPis;
+    }
+
+    public String getProfession() {
+        return profession;
+    }
+
+    public void setProfession(String profession) {
+        this.profession = profession;
+    }
+
+    public String getCtps() {
+        return ctps;
+    }
+
+    public void setCtps(String ctps) {
+        this.ctps = ctps;
+    }
+
+    public String getCtpsSeries() {
+        return ctpsSeries;
+    }
+
+    public void setCtpsSeries(String ctpsSeries) {
+        this.ctpsSeries = ctpsSeries;
+    }
+
+    public String getContributionTime() {
+        return contributionTime;
+    }
+
+    public void setContributionTime(String contributionTime) {
+        this.contributionTime = contributionTime;
+    }
+
+    public Integer getContributionInMonths() {
+        return contributionInMonths;
+    }
+
+    public void setContributionInMonths(Integer contributionInMonths) {
+        this.contributionInMonths = contributionInMonths;
+    }
+
+    public String getNationality() {
+        return nationality;
+    }
+
+    public void setNationality(String nationality) {
+        this.nationality = nationality;
+    }
+
+    public Boolean getIsWhatsapp() {
+        return isWhatsapp;
+    }
+
+    public void setIsWhatsapp(Boolean isWhatsapp) {
+        this.isWhatsapp = isWhatsapp;
+    }
+
+    public Boolean getHasDisability() {
+        return hasDisability;
+    }
+
+    public void setHasDisability(Boolean hasDisability) {
+        this.hasDisability = hasDisability;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public UUID getResponsibleUserId() {
+        return responsibleUserId;
+    }
+
+    public void setResponsibleUserId(UUID responsibleUserId) {
+        this.responsibleUserId = responsibleUserId;
+    }
+
+    public ClientType getClientType() {
+        return clientType;
+    }
+
+    public void setClientType(ClientType clientType) {
+        this.clientType = clientType;
+    }
+
+    public Boolean getNotBillable() {
+        return notBillable;
+    }
+
+    public void setNotBillable(Boolean notBillable) {
+        this.notBillable = notBillable;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public UUID getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(UUID createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public UUID getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(UUID updatedBy) {
+        this.updatedBy = updatedBy;
+    }
 }

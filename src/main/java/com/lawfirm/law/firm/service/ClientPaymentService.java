@@ -13,18 +13,16 @@ import com.lawfirm.law.firm.model.PaymentStatus;
 import com.lawfirm.law.firm.repository.ClientPaymentRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Parcelas de honorários por cliente. Cada linha é uma parcela individual
- * (não um contrato inteiro) - ver comentário em {@link ClientPayment}.
- * "Atrasado" nunca é persistido: é calculado na leitura a partir de
- * status=PENDENTE + vencimento no passado.
+ * Parcelas de honorários por cliente. Cada linha é uma parcela individual (não um contrato inteiro)
+ * - ver comentário em {@link ClientPayment}. "Atrasado" nunca é persistido: é calculado na leitura
+ * a partir de status=PENDENTE + vencimento no passado.
  */
 @Service
 public class ClientPaymentService {
@@ -32,7 +30,8 @@ public class ClientPaymentService {
     private final ClientPaymentRepository repository;
     private final ClientRepository clientRepository;
 
-    public ClientPaymentService(ClientPaymentRepository repository, ClientRepository clientRepository) {
+    public ClientPaymentService(
+            ClientPaymentRepository repository, ClientRepository clientRepository) {
         this.repository = repository;
         this.clientRepository = clientRepository;
     }
@@ -56,11 +55,15 @@ public class ClientPaymentService {
         return toDTO(repository.save(entity));
     }
 
-    public org.springframework.data.domain.Page<ClientPaymentResponseDTO> list(UUID clientId, int pageNumber, int pageSize) {
+    public org.springframework.data.domain.Page<ClientPaymentResponseDTO> list(
+            UUID clientId, int pageNumber, int pageSize) {
         findClientOrThrow(clientId);
-        var pageable = org.springframework.data.domain.PageRequest.of(Math.max(0, pageNumber - 1),
-                pageSize <= 0 ? 10 : pageSize,
-                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "dueDate"));
+        var pageable =
+                org.springframework.data.domain.PageRequest.of(
+                        Math.max(0, pageNumber - 1),
+                        pageSize <= 0 ? 10 : pageSize,
+                        org.springframework.data.domain.Sort.by(
+                                org.springframework.data.domain.Sort.Direction.ASC, "dueDate"));
         return repository.findByClient_IdAndDeletedAtIsNull(clientId, pageable).map(this::toDTO);
     }
 
@@ -69,7 +72,8 @@ public class ClientPaymentService {
     }
 
     @Transactional
-    public ClientPaymentResponseDTO update(UUID clientId, UUID paymentId, ClientPaymentUpdateRequestDTO dto) {
+    public ClientPaymentResponseDTO update(
+            UUID clientId, UUID paymentId, ClientPaymentUpdateRequestDTO dto) {
         ClientPayment entity = findPaymentOrThrow(clientId, paymentId);
 
         if (dto.getDescription() != null) {
@@ -126,13 +130,15 @@ public class ClientPaymentService {
     // ── Private helpers ──
 
     private Client findClientOrThrow(UUID clientId) {
-        return clientRepository.findById(clientId)
+        return clientRepository
+                .findById(clientId)
                 .orElseThrow(() -> NotFoundException.of("Cliente", clientId));
     }
 
     private ClientPayment findPaymentOrThrow(UUID clientId, UUID paymentId) {
         findClientOrThrow(clientId);
-        return repository.findByIdAndClient_IdAndDeletedAtIsNull(paymentId, clientId)
+        return repository
+                .findByIdAndClient_IdAndDeletedAtIsNull(paymentId, clientId)
                 .orElseThrow(() -> NotFoundException.of("Parcela", paymentId));
     }
 
@@ -140,7 +146,9 @@ public class ClientPaymentService {
         try {
             return PaymentStatus.fromLabel(raw);
         } catch (IllegalArgumentException ex) {
-            throw new ValidationException("status", ValidationErrorCode.INVALID_ENUM_VALUE,
+            throw new ValidationException(
+                    "status",
+                    ValidationErrorCode.INVALID_ENUM_VALUE,
                     "Status de pagamento inválido: " + raw);
         }
     }
@@ -150,7 +158,9 @@ public class ClientPaymentService {
         try {
             return PaymentMethod.fromLabel(raw);
         } catch (IllegalArgumentException ex) {
-            throw new ValidationException("paymentMethod", ValidationErrorCode.INVALID_ENUM_VALUE,
+            throw new ValidationException(
+                    "paymentMethod",
+                    ValidationErrorCode.INVALID_ENUM_VALUE,
                     "Forma de pagamento inválida: " + raw);
         }
     }
@@ -165,11 +175,13 @@ public class ClientPaymentService {
         dto.setDueDate(entity.getDueDate());
         dto.setPaidDate(entity.getPaidDate());
         dto.setStatus(entity.getStatus() != null ? entity.getStatus().getLabel() : null);
-        dto.setPaymentMethod(entity.getPaymentMethod() != null ? entity.getPaymentMethod().getLabel() : null);
+        dto.setPaymentMethod(
+                entity.getPaymentMethod() != null ? entity.getPaymentMethod().getLabel() : null);
         dto.setNotes(entity.getNotes());
-        dto.setOverdue(entity.getStatus() == PaymentStatus.PENDENTE
-                && entity.getDueDate() != null
-                && entity.getDueDate().isBefore(LocalDate.now()));
+        dto.setOverdue(
+                entity.getStatus() == PaymentStatus.PENDENTE
+                        && entity.getDueDate() != null
+                        && entity.getDueDate().isBefore(LocalDate.now()));
         dto.setCreatedBy(entity.getCreatedBy());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedBy(entity.getUpdatedBy());

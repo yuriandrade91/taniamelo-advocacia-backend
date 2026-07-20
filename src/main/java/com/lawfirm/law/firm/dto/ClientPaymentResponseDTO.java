@@ -19,55 +19,132 @@ public class ClientPaymentResponseDTO {
     private String status;
     private String paymentMethod;
     private String notes;
+
     /** Derivado em runtime: PENDENTE com vencimento no passado. Nunca persistido. */
     private boolean overdue;
+
     private UUID createdBy;
     private Instant createdAt;
     private UUID updatedBy;
     private Instant updatedAt;
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public BigDecimal getAmount() { return amount; }
-    public void setAmount(BigDecimal amount) { this.amount = amount; }
+    public String getDescription() {
+        return description;
+    }
 
-    public Integer getInstallmentNumber() { return installmentNumber; }
-    public void setInstallmentNumber(Integer installmentNumber) { this.installmentNumber = installmentNumber; }
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-    public Integer getInstallmentTotal() { return installmentTotal; }
-    public void setInstallmentTotal(Integer installmentTotal) { this.installmentTotal = installmentTotal; }
+    public BigDecimal getAmount() {
+        return amount;
+    }
 
-    public LocalDate getDueDate() { return dueDate; }
-    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
+    public void setAmount(BigDecimal amount) {
+        this.amount = amount;
+    }
 
-    public LocalDate getPaidDate() { return paidDate; }
-    public void setPaidDate(LocalDate paidDate) { this.paidDate = paidDate; }
+    public Integer getInstallmentNumber() {
+        return installmentNumber;
+    }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public void setInstallmentNumber(Integer installmentNumber) {
+        this.installmentNumber = installmentNumber;
+    }
 
-    public String getPaymentMethod() { return paymentMethod; }
-    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+    public Integer getInstallmentTotal() {
+        return installmentTotal;
+    }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public void setInstallmentTotal(Integer installmentTotal) {
+        this.installmentTotal = installmentTotal;
+    }
 
-    public boolean isOverdue() { return overdue; }
-    public void setOverdue(boolean overdue) { this.overdue = overdue; }
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
 
-    public UUID getCreatedBy() { return createdBy; }
-    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
+    }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public LocalDate getPaidDate() {
+        return paidDate;
+    }
 
-    public UUID getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
+    public void setPaidDate(LocalDate paidDate) {
+        this.paidDate = paidDate;
+    }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public boolean isOverdue() {
+        return overdue;
+    }
+
+    public void setOverdue(boolean overdue) {
+        this.overdue = overdue;
+    }
+
+    public UUID getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(UUID createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public UUID getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(UUID updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

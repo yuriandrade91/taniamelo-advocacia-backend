@@ -19,36 +19,91 @@ public class ClientFileDocumentResponseDTO {
     private Instant updatedAt;
     private String downloadUrl;
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public String getDocumentType() { return documentType; }
-    public void setDocumentType(String documentType) { this.documentType = documentType; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public String getOriginalFilename() { return originalFilename; }
-    public void setOriginalFilename(String originalFilename) { this.originalFilename = originalFilename; }
+    public String getDocumentType() {
+        return documentType;
+    }
 
-    public String getMimeType() { return mimeType; }
-    public void setMimeType(String mimeType) { this.mimeType = mimeType; }
+    public void setDocumentType(String documentType) {
+        this.documentType = documentType;
+    }
 
-    public Long getFileSizeBytes() { return fileSizeBytes; }
-    public void setFileSizeBytes(Long fileSizeBytes) { this.fileSizeBytes = fileSizeBytes; }
+    public String getOriginalFilename() {
+        return originalFilename;
+    }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public void setOriginalFilename(String originalFilename) {
+        this.originalFilename = originalFilename;
+    }
 
-    public UUID getUploadedBy() { return uploadedBy; }
-    public void setUploadedBy(UUID uploadedBy) { this.uploadedBy = uploadedBy; }
+    public String getMimeType() {
+        return mimeType;
+    }
 
-    public Instant getUploadedAt() { return uploadedAt; }
-    public void setUploadedAt(Instant uploadedAt) { this.uploadedAt = uploadedAt; }
+    public void setMimeType(String mimeType) {
+        this.mimeType = mimeType;
+    }
 
-    public UUID getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
+    public Long getFileSizeBytes() {
+        return fileSizeBytes;
+    }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public void setFileSizeBytes(Long fileSizeBytes) {
+        this.fileSizeBytes = fileSizeBytes;
+    }
 
-    public String getDownloadUrl() { return downloadUrl; }
-    public void setDownloadUrl(String downloadUrl) { this.downloadUrl = downloadUrl; }
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public UUID getUploadedBy() {
+        return uploadedBy;
+    }
+
+    public void setUploadedBy(UUID uploadedBy) {
+        this.uploadedBy = uploadedBy;
+    }
+
+    public Instant getUploadedAt() {
+        return uploadedAt;
+    }
+
+    public void setUploadedAt(Instant uploadedAt) {
+        this.uploadedAt = uploadedAt;
+    }
+
+    public UUID getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(UUID updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getDownloadUrl() {
+        return downloadUrl;
+    }
+
+    public void setDownloadUrl(String downloadUrl) {
+        this.downloadUrl = downloadUrl;
+    }
 }

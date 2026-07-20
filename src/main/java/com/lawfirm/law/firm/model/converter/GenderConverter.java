@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 @Converter(autoApply = true)
 public class GenderConverter implements AttributeConverter<Gender, String> {
     private static final Logger log = LoggerFactory.getLogger(GenderConverter.class);
+
     @Override
     public String convertToDatabaseColumn(Gender attribute) {
         return attribute == null ? null : attribute.getLabel();

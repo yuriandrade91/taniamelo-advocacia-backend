@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 @Converter(autoApply = true)
 public class SituationConverter implements AttributeConverter<Situation, String> {
     private static final Logger log = LoggerFactory.getLogger(SituationConverter.class);
+
     @Override
     public String convertToDatabaseColumn(Situation attribute) {
         return attribute == null ? null : attribute.getLabel();

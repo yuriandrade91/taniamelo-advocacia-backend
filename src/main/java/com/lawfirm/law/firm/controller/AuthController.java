@@ -27,32 +27,46 @@ public class AuthController {
     private final JwtService jwtService;
     private final UserRepository userRepository;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtService jwtService,
-                           UserRepository userRepository) {
+    public AuthController(
+            AuthenticationManager authenticationManager,
+            JwtService jwtService,
+            UserRepository userRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userRepository = userRepository;
     }
 
-    @Operation(summary = "Login", description = "Autentica com e-mail/senha e devolve um token JWT (Bearer) " +
-            "a ser usado no header Authorization dos demais endpoints. Único endpoint que não exige token.")
+    @Operation(
+            summary = "Login",
+            description =
+                    "Autentica com e-mail/senha e devolve um token JWT (Bearer) "
+                            + "a ser usado no header Authorization dos demais endpoints. Único endpoint que não exige token.")
     @SecurityRequirements
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResponseDTO>> login(@Valid @RequestBody LoginRequestDTO request) {
-        // Throws BadCredentialsException / DisabledException on failure, handled by GlobalExceptionHandler.
+    public ResponseEntity<ApiResponse<LoginResponseDTO>> login(
+            @Valid @RequestBody LoginRequestDTO request) {
+        // Throws BadCredentialsException / DisabledException on failure, handled by
+        // GlobalExceptionHandler.
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
-        User user = userRepository.findByEmailIgnoreCase(request.getEmail())
-                .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado"));
+        User user =
+                userRepository
+                        .findByEmailIgnoreCase(request.getEmail())
+                        .orElseThrow(
+                                () ->
+                                        new IllegalStateException(
+                                                "Usuário autenticado não encontrado"));
 
-        String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
-        LoginResponseDTO body = new LoginResponseDTO(
-                token,
-                jwtService.getExpirationMillis() / 1000,
-                user.getFullName(),
-                user.getEmail(),
-                user.getRole().name());
+        String token =
+                jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
+        LoginResponseDTO body =
+                new LoginResponseDTO(
+                        token,
+                        jwtService.getExpirationMillis() / 1000,
+                        user.getFullName(),
+                        user.getEmail(),
+                        user.getRole().name());
 
         return ResponseEntity.ok(ApiResponse.successObject(body));
     }

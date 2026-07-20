@@ -1,14 +1,13 @@
 package com.lawfirm.law.firm.dto;
 
 import com.lawfirm.law.firm.model.Client;
-import org.mapstruct.AfterMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.ReportingPolicy;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
-
 import java.time.Period;
 import java.time.ZoneId;
+import org.mapstruct.AfterMapping;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface ClientMapper {
@@ -18,8 +17,13 @@ public interface ClientMapper {
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "contributionInMonths", ignore = true)
-    @Mapping(target = "notBillable", expression = "java(dto.getNotBillable() != null ? dto.getNotBillable() : false)")
-    @Mapping(target = "clientType", expression = "java(dto.getClientType() != null ? dto.getClientType() : com.lawfirm.law.firm.model.ClientType.POTENCIAL)")
+    @Mapping(
+            target = "notBillable",
+            expression = "java(dto.getNotBillable() != null ? dto.getNotBillable() : false)")
+    @Mapping(
+            target = "clientType",
+            expression =
+                    "java(dto.getClientType() != null ? dto.getClientType() : com.lawfirm.law.firm.model.ClientType.POTENCIAL)")
     Client toEntity(ClientCreateRequestDTO dto);
 
     // ── Update: request DTO -> existing entity (in place) ──
@@ -28,8 +32,14 @@ public interface ClientMapper {
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "contributionInMonths", ignore = true)
-    @Mapping(target = "notBillable", expression = "java(dto.getNotBillable() != null ? dto.getNotBillable() : entity.getNotBillable())")
-    @Mapping(target = "clientType", expression = "java(dto.getClientType() != null ? dto.getClientType() : entity.getClientType())")
+    @Mapping(
+            target = "notBillable",
+            expression =
+                    "java(dto.getNotBillable() != null ? dto.getNotBillable() : entity.getNotBillable())")
+    @Mapping(
+            target = "clientType",
+            expression =
+                    "java(dto.getClientType() != null ? dto.getClientType() : entity.getClientType())")
     void updateEntityFromDto(ClientUpdateRequestDTO dto, @MappingTarget Client entity);
 
     // ── Response mapping ──
@@ -46,7 +56,11 @@ public interface ClientMapper {
     @AfterMapping
     default void computeAge(Client entity, @MappingTarget ClientDetailsDTO dto) {
         if (entity != null && entity.getBirthDate() != null) {
-            dto.setAge(Period.between(entity.getBirthDate(), java.time.LocalDate.now(ZoneId.systemDefault())).getYears());
+            dto.setAge(
+                    Period.between(
+                                    entity.getBirthDate(),
+                                    java.time.LocalDate.now(ZoneId.systemDefault()))
+                            .getYears());
         }
     }
 }

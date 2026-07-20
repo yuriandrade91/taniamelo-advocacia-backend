@@ -11,17 +11,14 @@ import com.lawfirm.law.firm.model.ClientAddress;
 import com.lawfirm.law.firm.repository.ClientAddressRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.UUID;
-
 /**
- * CRUD de endereços do cliente (1:N - residencial/comercial/correspondência).
- * Fonte única de endereço do cliente (o endereço embutido em `clients` foi
- * removido do modelo). Garante, no banco e na aplicação, exatamente um
- * endereço "principal" por cliente enquanto houver algum cadastrado.
+ * CRUD de endereços do cliente (1:N - residencial/comercial/correspondência). Fonte única de
+ * endereço do cliente (o endereço embutido em `clients` foi removido do modelo). Garante, no banco
+ * e na aplicação, exatamente um endereço "principal" por cliente enquanto houver algum cadastrado.
  */
 @Service
 public class ClientAddressService {
@@ -29,7 +26,8 @@ public class ClientAddressService {
     private final ClientAddressRepository repository;
     private final ClientRepository clientRepository;
 
-    public ClientAddressService(ClientAddressRepository repository, ClientRepository clientRepository) {
+    public ClientAddressService(
+            ClientAddressRepository repository, ClientRepository clientRepository) {
         this.repository = repository;
         this.clientRepository = clientRepository;
     }
@@ -56,12 +54,16 @@ public class ClientAddressService {
         return toDTO(repository.save(entity));
     }
 
-    public org.springframework.data.domain.Page<ClientAddressResponseDTO> list(UUID clientId, int pageNumber, int pageSize) {
+    public org.springframework.data.domain.Page<ClientAddressResponseDTO> list(
+            UUID clientId, int pageNumber, int pageSize) {
         findClientOrThrow(clientId);
-        var pageable = org.springframework.data.domain.PageRequest.of(Math.max(0, pageNumber - 1),
-                pageSize <= 0 ? 10 : pageSize,
-                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Order.desc("isPrimary"),
-                        org.springframework.data.domain.Sort.Order.asc("createdAt")));
+        var pageable =
+                org.springframework.data.domain.PageRequest.of(
+                        Math.max(0, pageNumber - 1),
+                        pageSize <= 0 ? 10 : pageSize,
+                        org.springframework.data.domain.Sort.by(
+                                org.springframework.data.domain.Sort.Order.desc("isPrimary"),
+                                org.springframework.data.domain.Sort.Order.asc("createdAt")));
         return repository.findByClient_Id(clientId, pageable).map(this::toDTO);
     }
 
@@ -70,7 +72,8 @@ public class ClientAddressService {
     }
 
     @Transactional
-    public ClientAddressResponseDTO update(UUID clientId, UUID addressId, ClientAddressRequestDTO dto) {
+    public ClientAddressResponseDTO update(
+            UUID clientId, UUID addressId, ClientAddressRequestDTO dto) {
         ClientAddress entity = findAddressOrThrow(clientId, addressId);
         applyFields(entity, dto);
         entity.setUpdatedBy(CurrentUser.id());
@@ -99,11 +102,12 @@ public class ClientAddressService {
             // o cliente sem um endereço principal enquanto tiver algum cadastrado.
             repository.findByClient_IdOrderByIsPrimaryDescCreatedAtAsc(clientId).stream()
                     .findFirst()
-                    .ifPresent(remaining -> {
-                        remaining.setIsPrimary(true);
-                        remaining.setUpdatedBy(CurrentUser.id());
-                        repository.save(remaining);
-                    });
+                    .ifPresent(
+                            remaining -> {
+                                remaining.setIsPrimary(true);
+                                remaining.setUpdatedBy(CurrentUser.id());
+                                repository.save(remaining);
+                            });
         }
     }
 
@@ -120,23 +124,31 @@ public class ClientAddressService {
         entity.setZipCode(dto.getZipCode());
     }
 
-    /** Desmarca a principal atual (se houver), com flush imediato para respeitar o índice único parcial. */
+    /**
+     * Desmarca a principal atual (se houver), com flush imediato para respeitar o índice único
+     * parcial.
+     */
     private void unsetCurrentPrimary(UUID clientId) {
-        repository.findByClient_IdAndIsPrimaryTrue(clientId).ifPresent(previous -> {
-            previous.setIsPrimary(false);
-            previous.setUpdatedBy(CurrentUser.id());
-            repository.saveAndFlush(previous);
-        });
+        repository
+                .findByClient_IdAndIsPrimaryTrue(clientId)
+                .ifPresent(
+                        previous -> {
+                            previous.setIsPrimary(false);
+                            previous.setUpdatedBy(CurrentUser.id());
+                            repository.saveAndFlush(previous);
+                        });
     }
 
     private Client findClientOrThrow(UUID clientId) {
-        return clientRepository.findById(clientId)
+        return clientRepository
+                .findById(clientId)
                 .orElseThrow(() -> NotFoundException.of("Cliente", clientId));
     }
 
     private ClientAddress findAddressOrThrow(UUID clientId, UUID addressId) {
         findClientOrThrow(clientId);
-        return repository.findByIdAndClient_Id(addressId, clientId)
+        return repository
+                .findByIdAndClient_Id(addressId, clientId)
                 .orElseThrow(() -> NotFoundException.of("Endereço", addressId));
     }
 
@@ -147,7 +159,9 @@ public class ClientAddressService {
         try {
             return AddressType.fromLabel(raw);
         } catch (IllegalArgumentException ex) {
-            throw new ValidationException("addressType", ValidationErrorCode.INVALID_ENUM_VALUE,
+            throw new ValidationException(
+                    "addressType",
+                    ValidationErrorCode.INVALID_ENUM_VALUE,
                     "Tipo de endereço inválido: " + raw);
         }
     }
@@ -155,7 +169,8 @@ public class ClientAddressService {
     private ClientAddressResponseDTO toDTO(ClientAddress entity) {
         ClientAddressResponseDTO dto = new ClientAddressResponseDTO();
         dto.setId(entity.getId());
-        dto.setAddressType(entity.getAddressType() != null ? entity.getAddressType().getLabel() : null);
+        dto.setAddressType(
+                entity.getAddressType() != null ? entity.getAddressType().getLabel() : null);
         dto.setStreet(entity.getStreet());
         dto.setAddressNumber(entity.getAddressNumber());
         dto.setComplement(entity.getComplement());

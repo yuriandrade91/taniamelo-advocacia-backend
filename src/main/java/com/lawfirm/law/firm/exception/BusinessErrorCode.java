@@ -11,10 +11,16 @@ public enum BusinessErrorCode {
         this.message = message;
     }
 
-    public String getCode() { return name(); }
+    public String getCode() {
+        return name();
+    }
 
-    public String getMessage() { return message; }
+    public String getMessage() {
+        return message;
+    }
 
     @Override
-    public String toString() { return name() + ": " + message; }
+    public String toString() {
+        return name() + ": " + message;
+    }
 }

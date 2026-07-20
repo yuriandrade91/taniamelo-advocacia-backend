@@ -8,14 +8,13 @@ import com.lawfirm.law.firm.model.ClientInterview;
 import com.lawfirm.law.firm.repository.ClientInterviewRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
+import java.time.Instant;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Instant;
-import java.util.UUID;
 
 /** Entrevistas/atendimentos do cliente (data, duração, conteúdo rich text). */
 @Service
@@ -24,7 +23,8 @@ public class ClientInterviewService {
     private final ClientInterviewRepository repository;
     private final ClientRepository clientRepository;
 
-    public ClientInterviewService(ClientInterviewRepository repository, ClientRepository clientRepository) {
+    public ClientInterviewService(
+            ClientInterviewRepository repository, ClientRepository clientRepository) {
         this.repository = repository;
         this.clientRepository = clientRepository;
     }
@@ -45,8 +45,11 @@ public class ClientInterviewService {
 
     public Page<ClientInterviewResponseDTO> list(UUID clientId, int pageNumber, int pageSize) {
         findClientOrThrow(clientId);
-        var pageable = PageRequest.of(Math.max(0, pageNumber - 1), pageSize <= 0 ? 10 : pageSize,
-                Sort.by(Sort.Direction.DESC, "occurredAt"));
+        var pageable =
+                PageRequest.of(
+                        Math.max(0, pageNumber - 1),
+                        pageSize <= 0 ? 10 : pageSize,
+                        Sort.by(Sort.Direction.DESC, "occurredAt"));
         return repository.findByClient_IdAndDeletedAtIsNull(clientId, pageable).map(this::toDTO);
     }
 
@@ -55,7 +58,8 @@ public class ClientInterviewService {
     }
 
     @Transactional
-    public ClientInterviewResponseDTO update(UUID clientId, UUID interviewId, ClientInterviewRequestDTO dto) {
+    public ClientInterviewResponseDTO update(
+            UUID clientId, UUID interviewId, ClientInterviewRequestDTO dto) {
         ClientInterview entity = findInterviewOrThrow(clientId, interviewId);
         entity.setContent(dto.getContent());
         if (dto.getOccurredAt() != null) {
@@ -79,13 +83,15 @@ public class ClientInterviewService {
     // ── Private helpers ──
 
     private Client findClientOrThrow(UUID clientId) {
-        return clientRepository.findById(clientId)
+        return clientRepository
+                .findById(clientId)
                 .orElseThrow(() -> NotFoundException.of("Cliente", clientId));
     }
 
     private ClientInterview findInterviewOrThrow(UUID clientId, UUID interviewId) {
         findClientOrThrow(clientId);
-        return repository.findByIdAndClient_IdAndDeletedAtIsNull(interviewId, clientId)
+        return repository
+                .findByIdAndClient_IdAndDeletedAtIsNull(interviewId, clientId)
                 .orElseThrow(() -> NotFoundException.of("Entrevista", interviewId));
     }
 

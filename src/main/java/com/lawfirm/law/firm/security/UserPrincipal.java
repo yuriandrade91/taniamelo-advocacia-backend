@@ -1,17 +1,14 @@
 package com.lawfirm.law.firm.security;
 
 import com.lawfirm.law.firm.model.User;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
-
-/**
- * Adapts our {@link User} entity to Spring Security's {@link UserDetails} contract.
- */
+/** Adapts our {@link User} entity to Spring Security's {@link UserDetails} contract. */
 public class UserPrincipal implements UserDetails {
 
     private final UUID id;
@@ -28,26 +25,42 @@ public class UserPrincipal implements UserDetails {
         this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
     }
 
-    public UUID getId() { return id; }
+    public UUID getId() {
+        return id;
+    }
 
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() { return authorities; }
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return authorities;
+    }
 
     @Override
-    public String getPassword() { return passwordHash; }
+    public String getPassword() {
+        return passwordHash;
+    }
 
     @Override
-    public String getUsername() { return email; }
+    public String getUsername() {
+        return email;
+    }
 
     @Override
-    public boolean isAccountNonExpired() { return true; }
+    public boolean isAccountNonExpired() {
+        return true;
+    }
 
     @Override
-    public boolean isAccountNonLocked() { return true; }
+    public boolean isAccountNonLocked() {
+        return true;
+    }
 
     @Override
-    public boolean isCredentialsNonExpired() { return true; }
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
 
     @Override
-    public boolean isEnabled() { return active; }
+    public boolean isEnabled() {
+        return active;
+    }
 }

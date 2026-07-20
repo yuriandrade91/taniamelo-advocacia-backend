@@ -1,7 +1,6 @@
 package com.lawfirm.law.firm.model;
 
 import jakarta.persistence.*;
-
 import java.time.Instant;
 import java.util.UUID;
 import org.hibernate.annotations.UuidGenerator;
@@ -74,48 +73,123 @@ public class ClientAddress {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public Client getClient() { return client; }
-    public void setClient(Client client) { this.client = client; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public AddressType getAddressType() { return addressType; }
-    public void setAddressType(AddressType addressType) { this.addressType = addressType; }
+    public Client getClient() {
+        return client;
+    }
 
-    public String getStreet() { return street; }
-    public void setStreet(String street) { this.street = street; }
+    public void setClient(Client client) {
+        this.client = client;
+    }
 
-    public String getAddressNumber() { return addressNumber; }
-    public void setAddressNumber(String addressNumber) { this.addressNumber = addressNumber; }
+    public AddressType getAddressType() {
+        return addressType;
+    }
 
-    public String getComplement() { return complement; }
-    public void setComplement(String complement) { this.complement = complement; }
+    public void setAddressType(AddressType addressType) {
+        this.addressType = addressType;
+    }
 
-    public String getNeighborhood() { return neighborhood; }
-    public void setNeighborhood(String neighborhood) { this.neighborhood = neighborhood; }
+    public String getStreet() {
+        return street;
+    }
 
-    public String getCity() { return city; }
-    public void setCity(String city) { this.city = city; }
+    public void setStreet(String street) {
+        this.street = street;
+    }
 
-    public String getState() { return state; }
-    public void setState(String state) { this.state = state; }
+    public String getAddressNumber() {
+        return addressNumber;
+    }
 
-    public String getZipCode() { return zipCode; }
-    public void setZipCode(String zipCode) { this.zipCode = zipCode; }
+    public void setAddressNumber(String addressNumber) {
+        this.addressNumber = addressNumber;
+    }
 
-    public Boolean getIsPrimary() { return isPrimary; }
-    public void setIsPrimary(Boolean isPrimary) { this.isPrimary = isPrimary; }
+    public String getComplement() {
+        return complement;
+    }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public void setComplement(String complement) {
+        this.complement = complement;
+    }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public String getNeighborhood() {
+        return neighborhood;
+    }
 
-    public UUID getCreatedBy() { return createdBy; }
-    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public void setNeighborhood(String neighborhood) {
+        this.neighborhood = neighborhood;
+    }
 
-    public UUID getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getZipCode() {
+        return zipCode;
+    }
+
+    public void setZipCode(String zipCode) {
+        this.zipCode = zipCode;
+    }
+
+    public Boolean getIsPrimary() {
+        return isPrimary;
+    }
+
+    public void setIsPrimary(Boolean isPrimary) {
+        this.isPrimary = isPrimary;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public UUID getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(UUID createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public UUID getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(UUID updatedBy) {
+        this.updatedBy = updatedBy;
+    }
 }

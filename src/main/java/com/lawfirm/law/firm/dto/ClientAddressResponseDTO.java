@@ -22,45 +22,115 @@ public class ClientAddressResponseDTO {
     private UUID updatedBy;
     private Instant updatedAt;
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public String getAddressType() { return addressType; }
-    public void setAddressType(String addressType) { this.addressType = addressType; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public String getStreet() { return street; }
-    public void setStreet(String street) { this.street = street; }
+    public String getAddressType() {
+        return addressType;
+    }
 
-    public String getAddressNumber() { return addressNumber; }
-    public void setAddressNumber(String addressNumber) { this.addressNumber = addressNumber; }
+    public void setAddressType(String addressType) {
+        this.addressType = addressType;
+    }
 
-    public String getComplement() { return complement; }
-    public void setComplement(String complement) { this.complement = complement; }
+    public String getStreet() {
+        return street;
+    }
 
-    public String getNeighborhood() { return neighborhood; }
-    public void setNeighborhood(String neighborhood) { this.neighborhood = neighborhood; }
+    public void setStreet(String street) {
+        this.street = street;
+    }
 
-    public String getCity() { return city; }
-    public void setCity(String city) { this.city = city; }
+    public String getAddressNumber() {
+        return addressNumber;
+    }
 
-    public String getState() { return state; }
-    public void setState(String state) { this.state = state; }
+    public void setAddressNumber(String addressNumber) {
+        this.addressNumber = addressNumber;
+    }
 
-    public String getZipCode() { return zipCode; }
-    public void setZipCode(String zipCode) { this.zipCode = zipCode; }
+    public String getComplement() {
+        return complement;
+    }
 
-    public Boolean getIsPrimary() { return isPrimary; }
-    public void setIsPrimary(Boolean isPrimary) { this.isPrimary = isPrimary; }
+    public void setComplement(String complement) {
+        this.complement = complement;
+    }
 
-    public UUID getCreatedBy() { return createdBy; }
-    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public String getNeighborhood() {
+        return neighborhood;
+    }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public void setNeighborhood(String neighborhood) {
+        this.neighborhood = neighborhood;
+    }
 
-    public UUID getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
+    public String getCity() {
+        return city;
+    }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getZipCode() {
+        return zipCode;
+    }
+
+    public void setZipCode(String zipCode) {
+        this.zipCode = zipCode;
+    }
+
+    public Boolean getIsPrimary() {
+        return isPrimary;
+    }
+
+    public void setIsPrimary(Boolean isPrimary) {
+        this.isPrimary = isPrimary;
+    }
+
+    public UUID getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(UUID createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public UUID getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(UUID updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

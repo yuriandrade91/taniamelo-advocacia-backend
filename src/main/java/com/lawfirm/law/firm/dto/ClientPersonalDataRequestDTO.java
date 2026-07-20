@@ -9,20 +9,16 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 
 /**
- * Aba "Dados pessoais": identidade e contato. Dados profissionais têm
- * endpoint próprio (/professional-data); endereços idem (/addresses).
+ * Aba "Dados pessoais": identidade e contato. Dados profissionais têm endpoint próprio
+ * (/professional-data); endereços idem (/addresses).
  */
 public class ClientPersonalDataRequestDTO {
 
-    @NotBlank
-    private String fullName;
+    @NotBlank private String fullName;
 
-    @NotNull
-    private LocalDate birthDate;
+    @NotNull private LocalDate birthDate;
 
-    @NotBlank
-    @ValidCPF
-    private String cpf;
+    @NotBlank @ValidCPF private String cpf;
 
     private String rg;
 
@@ -30,18 +26,15 @@ public class ClientPersonalDataRequestDTO {
 
     private LocalDate rgIssueDate;
 
-    @NotBlank
-    private String motherName;
+    @NotBlank private String motherName;
 
-    @NotNull
-    private Gender gender;
+    @NotNull private Gender gender;
 
     private MaritalStatus maritalStatus;
 
     private String nationality;
 
-    @NotBlank
-    private String mobilePhone;
+    @NotBlank private String mobilePhone;
 
     private Boolean isWhatsapp;
 
@@ -49,57 +42,135 @@ public class ClientPersonalDataRequestDTO {
 
     private String referenceResponsible;
 
-    @Email
-    private String email;
+    @Email private String email;
 
     private Boolean hasDisability;
 
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
+    public String getFullName() {
+        return fullName;
+    }
 
-    public LocalDate getBirthDate() { return birthDate; }
-    public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
 
-    public String getCpf() { return cpf; }
-    public void setCpf(String cpf) { this.cpf = cpf; }
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
 
-    public String getRg() { return rg; }
-    public void setRg(String rg) { this.rg = rg; }
+    public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+    }
 
-    public String getRgIssuer() { return rgIssuer; }
-    public void setRgIssuer(String rgIssuer) { this.rgIssuer = rgIssuer; }
+    public String getCpf() {
+        return cpf;
+    }
 
-    public LocalDate getRgIssueDate() { return rgIssueDate; }
-    public void setRgIssueDate(LocalDate rgIssueDate) { this.rgIssueDate = rgIssueDate; }
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
 
-    public String getMotherName() { return motherName; }
-    public void setMotherName(String motherName) { this.motherName = motherName; }
+    public String getRg() {
+        return rg;
+    }
 
-    public Gender getGender() { return gender; }
-    public void setGender(Gender gender) { this.gender = gender; }
+    public void setRg(String rg) {
+        this.rg = rg;
+    }
 
-    public MaritalStatus getMaritalStatus() { return maritalStatus; }
-    public void setMaritalStatus(MaritalStatus maritalStatus) { this.maritalStatus = maritalStatus; }
+    public String getRgIssuer() {
+        return rgIssuer;
+    }
 
-    public String getNationality() { return nationality; }
-    public void setNationality(String nationality) { this.nationality = nationality; }
+    public void setRgIssuer(String rgIssuer) {
+        this.rgIssuer = rgIssuer;
+    }
 
-    public String getMobilePhone() { return mobilePhone; }
-    public void setMobilePhone(String mobilePhone) { this.mobilePhone = mobilePhone; }
+    public LocalDate getRgIssueDate() {
+        return rgIssueDate;
+    }
 
-    public Boolean getIsWhatsapp() { return isWhatsapp; }
-    public void setIsWhatsapp(Boolean isWhatsapp) { this.isWhatsapp = isWhatsapp; }
+    public void setRgIssueDate(LocalDate rgIssueDate) {
+        this.rgIssueDate = rgIssueDate;
+    }
 
-    public String getReferencePhone() { return referencePhone; }
-    public void setReferencePhone(String referencePhone) { this.referencePhone = referencePhone; }
+    public String getMotherName() {
+        return motherName;
+    }
 
-    public String getReferenceResponsible() { return referenceResponsible; }
-    public void setReferenceResponsible(String referenceResponsible) { this.referenceResponsible = referenceResponsible; }
+    public void setMotherName(String motherName) {
+        this.motherName = motherName;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public Gender getGender() {
+        return gender;
+    }
 
-    public Boolean getHasDisability() { return hasDisability; }
-    public void setHasDisability(Boolean hasDisability) { this.hasDisability = hasDisability; }
+    public void setGender(Gender gender) {
+        this.gender = gender;
+    }
 
+    public MaritalStatus getMaritalStatus() {
+        return maritalStatus;
+    }
+
+    public void setMaritalStatus(MaritalStatus maritalStatus) {
+        this.maritalStatus = maritalStatus;
+    }
+
+    public String getNationality() {
+        return nationality;
+    }
+
+    public void setNationality(String nationality) {
+        this.nationality = nationality;
+    }
+
+    public String getMobilePhone() {
+        return mobilePhone;
+    }
+
+    public void setMobilePhone(String mobilePhone) {
+        this.mobilePhone = mobilePhone;
+    }
+
+    public Boolean getIsWhatsapp() {
+        return isWhatsapp;
+    }
+
+    public void setIsWhatsapp(Boolean isWhatsapp) {
+        this.isWhatsapp = isWhatsapp;
+    }
+
+    public String getReferencePhone() {
+        return referencePhone;
+    }
+
+    public void setReferencePhone(String referencePhone) {
+        this.referencePhone = referencePhone;
+    }
+
+    public String getReferenceResponsible() {
+        return referenceResponsible;
+    }
+
+    public void setReferenceResponsible(String referenceResponsible) {
+        this.referenceResponsible = referenceResponsible;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public Boolean getHasDisability() {
+        return hasDisability;
+    }
+
+    public void setHasDisability(Boolean hasDisability) {
+        this.hasDisability = hasDisability;
+    }
 }

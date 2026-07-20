@@ -10,10 +10,14 @@ public enum ClientType {
 
     private final String label;
 
-    ClientType(String label) { this.label = label; }
+    ClientType(String label) {
+        this.label = label;
+    }
 
     @JsonValue
-    public String getLabel() { return label; }
+    public String getLabel() {
+        return label;
+    }
 
     @JsonCreator
     public static ClientType fromLabel(String label) {
@@ -21,5 +25,7 @@ public enum ClientType {
     }
 
     @Override
-    public String toString() { return label; }
+    public String toString() {
+        return label;
+    }
 }

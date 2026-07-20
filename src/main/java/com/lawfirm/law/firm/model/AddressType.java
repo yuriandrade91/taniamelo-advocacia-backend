@@ -12,10 +12,14 @@ public enum AddressType {
 
     private final String label;
 
-    AddressType(String label) { this.label = label; }
+    AddressType(String label) {
+        this.label = label;
+    }
 
     @JsonValue
-    public String getLabel() { return label; }
+    public String getLabel() {
+        return label;
+    }
 
     @JsonCreator
     public static AddressType fromLabel(String label) {
@@ -23,5 +27,7 @@ public enum AddressType {
     }
 
     @Override
-    public String toString() { return label; }
+    public String toString() {
+        return label;
+    }
 }

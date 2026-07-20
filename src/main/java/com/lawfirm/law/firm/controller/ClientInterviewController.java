@@ -9,13 +9,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.UUID;
 
-@Tag(name = "Entrevistas",
+@Tag(
+        name = "Entrevista do cliente",
         description = "Entrevistas/atendimentos do cliente: data, duração e conteúdo rich text")
 @RestController
 @RequestMapping("/api/v1/clients/{clientId}/interviews")
@@ -35,13 +36,17 @@ public class ClientInterviewController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.successObject(created));
     }
 
-    @Operation(summary = "Listar entrevistas",
-            description = "Entrevistas ativas do cliente, mais recente primeiro, paginadas no envelope padrão.")
+    @Operation(
+            summary = "Listar entrevistas",
+            description =
+                    "Entrevistas ativas do cliente, mais recente primeiro, paginadas no envelope padrão.")
     @GetMapping
     public ResponseEntity<ApiResponse<ClientInterviewResponseDTO>> list(
             @PathVariable UUID clientId,
-            @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1") int pageNumber,
-            @Parameter(description = "Tamanho da página") @RequestParam(defaultValue = "10") int pageSize) {
+            @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1")
+                    int pageNumber,
+            @Parameter(description = "Tamanho da página") @RequestParam(defaultValue = "10")
+                    int pageSize) {
         Page<ClientInterviewResponseDTO> page = service.list(clientId, pageNumber, pageSize);
         return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
     }
@@ -53,18 +58,24 @@ public class ClientInterviewController {
         return ResponseEntity.ok(ApiResponse.successObject(service.get(clientId, interviewId)));
     }
 
-    @Operation(summary = "Atualizar entrevista",
+    @Operation(
+            summary = "Atualizar entrevista",
             description = "Substitui o conteúdo; data e duração só mudam se enviadas.")
     @PutMapping("/{interviewId}")
     public ResponseEntity<ApiResponse<ClientInterviewResponseDTO>> update(
-            @PathVariable UUID clientId, @PathVariable UUID interviewId,
+            @PathVariable UUID clientId,
+            @PathVariable UUID interviewId,
             @Valid @RequestBody ClientInterviewRequestDTO dto) {
-        return ResponseEntity.ok(ApiResponse.successObject(service.update(clientId, interviewId, dto)));
+        return ResponseEntity.ok(
+                ApiResponse.successObject(service.update(clientId, interviewId, dto)));
     }
 
-    @Operation(summary = "Excluir entrevista", description = "Soft delete - preservada para eventual auditoria.")
+    @Operation(
+            summary = "Excluir entrevista",
+            description = "Soft delete - preservada para eventual auditoria.")
     @DeleteMapping("/{interviewId}")
-    public ResponseEntity<Void> delete(@PathVariable UUID clientId, @PathVariable UUID interviewId) {
+    public ResponseEntity<Void> delete(
+            @PathVariable UUID clientId, @PathVariable UUID interviewId) {
         service.delete(clientId, interviewId);
         return ResponseEntity.noContent().build();
     }

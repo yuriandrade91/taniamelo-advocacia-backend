@@ -1,25 +1,22 @@
 package com.lawfirm.law.firm.model;
 
 import jakarta.persistence.*;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.hibernate.annotations.UuidGenerator;
 
 /**
- * Arquivo do cliente - collection única para as abas "Documentos" e
- * "Simulações" da tela do cliente, discriminadas por {@link FileKind}.
+ * Arquivo do cliente - collection única para as abas "Documentos" e "Simulações" da tela do
+ * cliente, discriminadas por {@link FileKind}.
  *
- * Campos comuns: metadados do arquivo físico (nunca o binário - o arquivo em
- * si vive no storage via FileStorageService, aqui fica só o storage_key).
- * Campos específicos por tipo são nullable e só preenchidos para o kind
- * correspondente:
- *  - DOCUMENT: documentType (um dos 11 tipos)
- *  - SIMULATION: simulationDate, version, vinculos, isPrincipal
+ * <p>Campos comuns: metadados do arquivo físico (nunca o binário - o arquivo em si vive no storage
+ * via FileStorageService, aqui fica só o storage_key). Campos específicos por tipo são nullable e
+ * só preenchidos para o kind correspondente: - DOCUMENT: documentType (um dos 11 tipos) -
+ * SIMULATION: simulationDate, version, vinculos, isPrincipal
  *
- * Soft delete (deleted_at): documentos e simulações podem ser evidência em
- * processos - nada é apagado fisicamente pela API.
+ * <p>Soft delete (deleted_at): documentos e simulações podem ser evidência em processos - nada é
+ * apagado fisicamente pela API.
  */
 @Entity
 @Table(name = "client_files")
@@ -103,57 +100,147 @@ public class ClientFile {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public Client getClient() { return client; }
-    public void setClient(Client client) { this.client = client; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public FileKind getKind() { return kind; }
-    public void setKind(FileKind kind) { this.kind = kind; }
+    public Client getClient() {
+        return client;
+    }
 
-    public String getOriginalFilename() { return originalFilename; }
-    public void setOriginalFilename(String originalFilename) { this.originalFilename = originalFilename; }
+    public void setClient(Client client) {
+        this.client = client;
+    }
 
-    public String getStorageKey() { return storageKey; }
-    public void setStorageKey(String storageKey) { this.storageKey = storageKey; }
+    public FileKind getKind() {
+        return kind;
+    }
 
-    public String getMimeType() { return mimeType; }
-    public void setMimeType(String mimeType) { this.mimeType = mimeType; }
+    public void setKind(FileKind kind) {
+        this.kind = kind;
+    }
 
-    public Long getFileSizeBytes() { return fileSizeBytes; }
-    public void setFileSizeBytes(Long fileSizeBytes) { this.fileSizeBytes = fileSizeBytes; }
+    public String getOriginalFilename() {
+        return originalFilename;
+    }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public void setOriginalFilename(String originalFilename) {
+        this.originalFilename = originalFilename;
+    }
 
-    public DocumentType getDocumentType() { return documentType; }
-    public void setDocumentType(DocumentType documentType) { this.documentType = documentType; }
+    public String getStorageKey() {
+        return storageKey;
+    }
 
-    public LocalDate getSimulationDate() { return simulationDate; }
-    public void setSimulationDate(LocalDate simulationDate) { this.simulationDate = simulationDate; }
+    public void setStorageKey(String storageKey) {
+        this.storageKey = storageKey;
+    }
 
-    public String getVersion() { return version; }
-    public void setVersion(String version) { this.version = version; }
+    public String getMimeType() {
+        return mimeType;
+    }
 
-    public Integer getVinculos() { return vinculos; }
-    public void setVinculos(Integer vinculos) { this.vinculos = vinculos; }
+    public void setMimeType(String mimeType) {
+        this.mimeType = mimeType;
+    }
 
-    public Boolean getIsPrincipal() { return isPrincipal; }
-    public void setIsPrincipal(Boolean isPrincipal) { this.isPrincipal = isPrincipal; }
+    public Long getFileSizeBytes() {
+        return fileSizeBytes;
+    }
 
-    public UUID getUploadedBy() { return uploadedBy; }
-    public void setUploadedBy(UUID uploadedBy) { this.uploadedBy = uploadedBy; }
+    public void setFileSizeBytes(Long fileSizeBytes) {
+        this.fileSizeBytes = fileSizeBytes;
+    }
 
-    public Instant getUploadedAt() { return uploadedAt; }
-    public void setUploadedAt(Instant uploadedAt) { this.uploadedAt = uploadedAt; }
+    public String getNotes() {
+        return notes;
+    }
 
-    public UUID getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public DocumentType getDocumentType() {
+        return documentType;
+    }
 
-    public Instant getDeletedAt() { return deletedAt; }
-    public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
+    public void setDocumentType(DocumentType documentType) {
+        this.documentType = documentType;
+    }
+
+    public LocalDate getSimulationDate() {
+        return simulationDate;
+    }
+
+    public void setSimulationDate(LocalDate simulationDate) {
+        this.simulationDate = simulationDate;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
+    public Integer getVinculos() {
+        return vinculos;
+    }
+
+    public void setVinculos(Integer vinculos) {
+        this.vinculos = vinculos;
+    }
+
+    public Boolean getIsPrincipal() {
+        return isPrincipal;
+    }
+
+    public void setIsPrincipal(Boolean isPrincipal) {
+        this.isPrincipal = isPrincipal;
+    }
+
+    public UUID getUploadedBy() {
+        return uploadedBy;
+    }
+
+    public void setUploadedBy(UUID uploadedBy) {
+        this.uploadedBy = uploadedBy;
+    }
+
+    public Instant getUploadedAt() {
+        return uploadedAt;
+    }
+
+    public void setUploadedAt(Instant uploadedAt) {
+        this.uploadedAt = uploadedAt;
+    }
+
+    public UUID getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(UUID updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
+    }
 }

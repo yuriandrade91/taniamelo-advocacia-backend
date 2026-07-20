@@ -8,8 +8,15 @@ public class ClientPatchResponseDTO {
 
     public ClientPatchResponseDTO() {}
 
-    public ClientPatchResponseDTO(String message) { this.message = message; }
+    public ClientPatchResponseDTO(String message) {
+        this.message = message;
+    }
 
-    public String getMessage() { return message; }
-    public void setMessage(String message) { this.message = message; }
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
 }

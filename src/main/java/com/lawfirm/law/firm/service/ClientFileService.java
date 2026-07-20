@@ -21,6 +21,11 @@ import com.lawfirm.law.firm.storage.FileDownload;
 import com.lawfirm.law.firm.storage.FileStorageService;
 import com.lawfirm.law.firm.storage.LoadedFile;
 import com.lawfirm.law.firm.storage.StoredFile;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,20 +34,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
 /**
- * Collection única de arquivos do cliente (client_files), servindo as abas
- * "Documentos" (11 tipos) e "Simulações" (versão, vínculos, principal).
+ * Collection única de arquivos do cliente (client_files), servindo as abas "Documentos" (11 tipos)
+ * e "Simulações" (versão, vínculos, principal).
  *
- * Regras de "principal" (só para simulações):
- *  - a simulação mais recente enviada vira a principal automaticamente;
- *  - o usuário pode trocar a principal via markSimulationPrincipal;
- *  - ao excluir a principal, a mais recente restante é promovida.
+ * <p>Regras de "principal" (só para simulações): - a simulação mais recente enviada vira a
+ * principal automaticamente; - o usuário pode trocar a principal via markSimulationPrincipal; - ao
+ * excluir a principal, a mais recente restante é promovida.
  */
 @Service
 public class ClientFileService {
@@ -51,8 +49,10 @@ public class ClientFileService {
     private final ClientRepository clientRepository;
     private final FileStorageService fileStorageService;
 
-    public ClientFileService(ClientFileRepository repository, ClientRepository clientRepository,
-                             FileStorageService fileStorageService) {
+    public ClientFileService(
+            ClientFileRepository repository,
+            ClientRepository clientRepository,
+            FileStorageService fileStorageService) {
         this.repository = repository;
         this.clientRepository = clientRepository;
         this.fileStorageService = fileStorageService;
@@ -61,8 +61,10 @@ public class ClientFileService {
     // ── Documentos ──
 
     @Transactional
-    public List<ClientFileDocumentResponseDTO> uploadDocuments(UUID clientId, List<MultipartFile> files,
-                                                               List<ClientFileDocumentUploadMetadataDTO> metadata) {
+    public List<ClientFileDocumentResponseDTO> uploadDocuments(
+            UUID clientId,
+            List<MultipartFile> files,
+            List<ClientFileDocumentUploadMetadataDTO> metadata) {
         Client client = findClientOrThrow(clientId);
         validateBatch(files, metadata == null ? -1 : metadata.size());
 
@@ -72,9 +74,13 @@ public class ClientFileService {
             ClientFileDocumentUploadMetadataDTO meta = metadata.get(i);
 
             DocumentType type = parseDocumentType(meta.getDocumentType(), true);
-            validateMimeType(file, AllowedMimeTypes.DOCUMENTS, "Tipo de arquivo não permitido (aceitos: PDF, PNG, JPEG)");
+            validateMimeType(
+                    file,
+                    AllowedMimeTypes.DOCUMENTS,
+                    "Tipo de arquivo não permitido (aceitos: PDF, PNG, JPEG)");
 
-            ClientFile entity = newFile(client, FileKind.DOCUMENT, file, "clients/" + clientId + "/documents");
+            ClientFile entity =
+                    newFile(client, FileKind.DOCUMENT, file, "clients/" + clientId + "/documents");
             entity.setDocumentType(type);
             entity.setNotes(meta.getNotes());
 
@@ -83,14 +89,17 @@ public class ClientFileService {
         return result;
     }
 
-    public Page<ClientFileDocumentResponseDTO> listDocuments(UUID clientId, String documentType,
-                                                             int pageNumber, int pageSize) {
+    public Page<ClientFileDocumentResponseDTO> listDocuments(
+            UUID clientId, String documentType, int pageNumber, int pageSize) {
         findClientOrThrow(clientId);
         Pageable pageable = pageable(pageNumber, pageSize);
         DocumentType type = parseDocumentType(documentType, false);
-        Page<ClientFile> page = (type == null)
-                ? repository.findByClient_IdAndKindAndDeletedAtIsNull(clientId, FileKind.DOCUMENT, pageable)
-                : repository.findByClient_IdAndKindAndDocumentTypeAndDeletedAtIsNull(clientId, FileKind.DOCUMENT, type, pageable);
+        Page<ClientFile> page =
+                (type == null)
+                        ? repository.findByClient_IdAndKindAndDeletedAtIsNull(
+                                clientId, FileKind.DOCUMENT, pageable)
+                        : repository.findByClient_IdAndKindAndDocumentTypeAndDeletedAtIsNull(
+                                clientId, FileKind.DOCUMENT, type, pageable);
         return page.map(this::toDocumentDTO);
     }
 
@@ -103,8 +112,8 @@ public class ClientFileService {
     }
 
     @Transactional
-    public ClientFileDocumentResponseDTO updateDocument(UUID clientId, UUID fileId,
-                                                        ClientFileDocumentUpdateRequestDTO dto) {
+    public ClientFileDocumentResponseDTO updateDocument(
+            UUID clientId, UUID fileId, ClientFileDocumentUpdateRequestDTO dto) {
         ClientFile file = findFileOrThrow(clientId, fileId, FileKind.DOCUMENT);
         if (dto.getDocumentType() != null) {
             file.setDocumentType(parseDocumentType(dto.getDocumentType(), true));
@@ -124,8 +133,10 @@ public class ClientFileService {
     // ── Simulações ──
 
     @Transactional
-    public List<ClientFileSimulationResponseDTO> uploadSimulations(UUID clientId, List<MultipartFile> files,
-                                                                   List<ClientFileSimulationUploadMetadataDTO> metadata) {
+    public List<ClientFileSimulationResponseDTO> uploadSimulations(
+            UUID clientId,
+            List<MultipartFile> files,
+            List<ClientFileSimulationUploadMetadataDTO> metadata) {
         Client client = findClientOrThrow(clientId);
         validateBatch(files, metadata == null ? -1 : metadata.size());
 
@@ -136,7 +147,12 @@ public class ClientFileService {
 
             validateMimeType(file, AllowedMimeTypes.SIMULATIONS, "Simulação só aceita PDF");
 
-            ClientFile entity = newFile(client, FileKind.SIMULATION, file, "clients/" + clientId + "/simulations");
+            ClientFile entity =
+                    newFile(
+                            client,
+                            FileKind.SIMULATION,
+                            file,
+                            "clients/" + clientId + "/simulations");
             entity.setSimulationDate(meta.getSimulationDate());
             entity.setVersion(meta.getVersion());
             entity.setVinculos(meta.getVinculos());
@@ -151,10 +167,13 @@ public class ClientFileService {
         return result;
     }
 
-    public Page<ClientFileSimulationResponseDTO> listSimulations(UUID clientId, int pageNumber, int pageSize) {
+    public Page<ClientFileSimulationResponseDTO> listSimulations(
+            UUID clientId, int pageNumber, int pageSize) {
         findClientOrThrow(clientId);
-        return repository.findByClient_IdAndKindAndDeletedAtIsNull(clientId, FileKind.SIMULATION,
-                pageable(pageNumber, pageSize)).map(this::toSimulationDTO);
+        return repository
+                .findByClient_IdAndKindAndDeletedAtIsNull(
+                        clientId, FileKind.SIMULATION, pageable(pageNumber, pageSize))
+                .map(this::toSimulationDTO);
     }
 
     public ClientFileSimulationResponseDTO getSimulation(UUID clientId, UUID fileId) {
@@ -166,8 +185,8 @@ public class ClientFileService {
     }
 
     @Transactional
-    public ClientFileSimulationResponseDTO updateSimulation(UUID clientId, UUID fileId,
-                                                            ClientFileSimulationUpdateRequestDTO dto) {
+    public ClientFileSimulationResponseDTO updateSimulation(
+            UUID clientId, UUID fileId, ClientFileSimulationUpdateRequestDTO dto) {
         ClientFile file = findFileOrThrow(clientId, fileId, FileKind.SIMULATION);
         if (dto.getSimulationDate() != null) {
             file.setSimulationDate(dto.getSimulationDate());
@@ -186,9 +205,8 @@ public class ClientFileService {
     }
 
     /**
-     * Marca esta simulação como principal, desmarcando a anterior na mesma
-     * transação (flush explícito antes, para o índice único parcial nunca ver
-     * duas linhas marcadas ao mesmo tempo).
+     * Marca esta simulação como principal, desmarcando a anterior na mesma transação (flush
+     * explícito antes, para o índice único parcial nunca ver duas linhas marcadas ao mesmo tempo).
      */
     @Transactional
     public ClientFileSimulationResponseDTO markSimulationPrincipal(UUID clientId, UUID fileId) {
@@ -210,12 +228,15 @@ public class ClientFileService {
         softDelete(file);
 
         if (wasPrincipal) {
-            repository.findFirstByClient_IdAndKindAndDeletedAtIsNullOrderByUploadedAtDesc(clientId, FileKind.SIMULATION)
-                    .ifPresent(remaining -> {
-                        remaining.setIsPrincipal(true);
-                        remaining.setUpdatedBy(CurrentUser.id());
-                        repository.save(remaining);
-                    });
+            repository
+                    .findFirstByClient_IdAndKindAndDeletedAtIsNullOrderByUploadedAtDesc(
+                            clientId, FileKind.SIMULATION)
+                    .ifPresent(
+                            remaining -> {
+                                remaining.setIsPrincipal(true);
+                                remaining.setUpdatedBy(CurrentUser.id());
+                                repository.save(remaining);
+                            });
         }
     }
 
@@ -235,17 +256,24 @@ public class ClientFileService {
     }
 
     private void unsetCurrentPrincipal(UUID clientId) {
-        repository.findFirstByClient_IdAndKindAndIsPrincipalTrueAndDeletedAtIsNull(clientId, FileKind.SIMULATION)
-                .ifPresent(previous -> {
-                    previous.setIsPrincipal(false);
-                    previous.setUpdatedBy(CurrentUser.id());
-                    repository.saveAndFlush(previous);
-                });
+        repository
+                .findFirstByClient_IdAndKindAndIsPrincipalTrueAndDeletedAtIsNull(
+                        clientId, FileKind.SIMULATION)
+                .ifPresent(
+                        previous -> {
+                            previous.setIsPrincipal(false);
+                            previous.setUpdatedBy(CurrentUser.id());
+                            repository.saveAndFlush(previous);
+                        });
     }
 
     private FileDownload download(ClientFile file) {
         LoadedFile loaded = fileStorageService.load(file.getStorageKey());
-        return new FileDownload(loaded.resource(), loaded.mimeType(), file.getOriginalFilename(), file.getFileSizeBytes());
+        return new FileDownload(
+                loaded.resource(),
+                loaded.mimeType(),
+                file.getOriginalFilename(),
+                file.getFileSizeBytes());
     }
 
     private void softDelete(ClientFile file) {
@@ -261,22 +289,31 @@ public class ClientFileService {
     }
 
     private Client findClientOrThrow(UUID clientId) {
-        return clientRepository.findById(clientId)
+        return clientRepository
+                .findById(clientId)
                 .orElseThrow(() -> NotFoundException.of("Cliente", clientId));
     }
 
     private ClientFile findFileOrThrow(UUID clientId, UUID fileId, FileKind kind) {
         findClientOrThrow(clientId);
-        return repository.findByIdAndClient_IdAndKindAndDeletedAtIsNull(fileId, clientId, kind)
-                .orElseThrow(() -> NotFoundException.of(kind == FileKind.DOCUMENT ? "Documento" : "Simulação", fileId));
+        return repository
+                .findByIdAndClient_IdAndKindAndDeletedAtIsNull(fileId, clientId, kind)
+                .orElseThrow(
+                        () ->
+                                NotFoundException.of(
+                                        kind == FileKind.DOCUMENT ? "Documento" : "Simulação",
+                                        fileId));
     }
 
     private void validateBatch(List<MultipartFile> files, int metadataSize) {
         if (files == null || files.isEmpty()) {
-            throw new ValidationException("files", ValidationErrorCode.REQUIRED_FIELD, "Envie ao menos um arquivo.");
+            throw new ValidationException(
+                    "files", ValidationErrorCode.REQUIRED_FIELD, "Envie ao menos um arquivo.");
         }
         if (metadataSize != files.size()) {
-            throw new ValidationException("metadata", ValidationErrorCode.REQUIRED_FIELD,
+            throw new ValidationException(
+                    "metadata",
+                    ValidationErrorCode.REQUIRED_FIELD,
                     "A lista de metadados deve ter o mesmo tamanho da lista de arquivos.");
         }
     }
@@ -284,7 +321,9 @@ public class ClientFileService {
     private DocumentType parseDocumentType(String raw, boolean required) {
         if (raw == null || raw.isBlank()) {
             if (required) {
-                throw new ValidationException("documentType", ValidationErrorCode.REQUIRED_FIELD,
+                throw new ValidationException(
+                        "documentType",
+                        ValidationErrorCode.REQUIRED_FIELD,
                         "Informe o tipo do documento.");
             }
             return null;
@@ -292,7 +331,9 @@ public class ClientFileService {
         try {
             return DocumentType.fromLabel(raw);
         } catch (IllegalArgumentException ex) {
-            throw new ValidationException("documentType", ValidationErrorCode.INVALID_ENUM_VALUE,
+            throw new ValidationException(
+                    "documentType",
+                    ValidationErrorCode.INVALID_ENUM_VALUE,
                     "Tipo de documento inválido: " + raw);
         }
     }
@@ -300,15 +341,16 @@ public class ClientFileService {
     private void validateMimeType(MultipartFile file, Set<String> allowed, String message) {
         String contentType = file.getContentType();
         if (contentType == null || !allowed.contains(contentType.toLowerCase())) {
-            throw new ValidationException("files", ValidationErrorCode.INVALID_ENUM_VALUE,
-                    message + ": " + contentType);
+            throw new ValidationException(
+                    "files", ValidationErrorCode.INVALID_ENUM_VALUE, message + ": " + contentType);
         }
     }
 
     private ClientFileDocumentResponseDTO toDocumentDTO(ClientFile entity) {
         ClientFileDocumentResponseDTO dto = new ClientFileDocumentResponseDTO();
         dto.setId(entity.getId());
-        dto.setDocumentType(entity.getDocumentType() != null ? entity.getDocumentType().getLabel() : null);
+        dto.setDocumentType(
+                entity.getDocumentType() != null ? entity.getDocumentType().getLabel() : null);
         dto.setOriginalFilename(entity.getOriginalFilename());
         dto.setMimeType(entity.getMimeType());
         dto.setFileSizeBytes(entity.getFileSizeBytes());
@@ -317,7 +359,12 @@ public class ClientFileService {
         dto.setUploadedAt(entity.getUploadedAt());
         dto.setUpdatedBy(entity.getUpdatedBy());
         dto.setUpdatedAt(entity.getUpdatedAt());
-        dto.setDownloadUrl("/api/v1/clients/" + entity.getClient().getId() + "/files/documents/" + entity.getId() + "/download");
+        dto.setDownloadUrl(
+                "/api/v1/clients/"
+                        + entity.getClient().getId()
+                        + "/files/documents/"
+                        + entity.getId()
+                        + "/download");
         return dto;
     }
 
@@ -336,7 +383,12 @@ public class ClientFileService {
         dto.setUploadedAt(entity.getUploadedAt());
         dto.setUpdatedBy(entity.getUpdatedBy());
         dto.setUpdatedAt(entity.getUpdatedAt());
-        dto.setDownloadUrl("/api/v1/clients/" + entity.getClient().getId() + "/files/simulations/" + entity.getId() + "/download");
+        dto.setDownloadUrl(
+                "/api/v1/clients/"
+                        + entity.getClient().getId()
+                        + "/files/simulations/"
+                        + entity.getId()
+                        + "/download");
         return dto;
     }
 }

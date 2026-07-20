@@ -1,18 +1,16 @@
 package com.lawfirm.law.firm.security;
 
+import java.util.UUID;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.util.UUID;
-
 /**
- * Acesso estático ao usuário autenticado da requisição corrente. Centraliza o
- * helper que antes era copiado em cada service.
+ * Acesso estático ao usuário autenticado da requisição corrente. Centraliza o helper que antes era
+ * copiado em cada service.
  */
 public final class CurrentUser {
 
-    private CurrentUser() {
-    }
+    private CurrentUser() {}
 
     /** Id do usuário autenticado, ou null (chamadas de sistema/testes). */
     public static UUID id() {

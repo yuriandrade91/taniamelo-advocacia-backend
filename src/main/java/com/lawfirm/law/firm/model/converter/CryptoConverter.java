@@ -2,25 +2,24 @@ package com.lawfirm.law.firm.model.converter;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * JPA converter that transparently encrypts/decrypts a String column at rest using AES-256-GCM.
  *
- * The encryption key is read from the {@code APP_ENCRYPTION_KEY} environment variable
- * (base64-encoded, 32 bytes / 256 bits). A random IV is generated per value and stored
- * alongside the ciphertext (IV + ciphertext, base64-encoded) so no separate column is needed.
+ * <p>The encryption key is read from the {@code APP_ENCRYPTION_KEY} environment variable
+ * (base64-encoded, 32 bytes / 256 bits). A random IV is generated per value and stored alongside
+ * the ciphertext (IV + ciphertext, base64-encoded) so no separate column is needed.
  *
- * This is applied explicitly (not autoApply) only to fields that hold sensitive data
- * (e.g. Client#inssPassword) to avoid silently encrypting unrelated columns.
+ * <p>This is applied explicitly (not autoApply) only to fields that hold sensitive data (e.g.
+ * Client#inssPassword) to avoid silently encrypting unrelated columns.
  */
 @Converter
 public class CryptoConverter implements AttributeConverter<String, String> {
@@ -41,7 +40,10 @@ public class CryptoConverter implements AttributeConverter<String, String> {
             SECURE_RANDOM.nextBytes(iv);
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey(), new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
+            cipher.init(
+                    Cipher.ENCRYPT_MODE,
+                    secretKey(),
+                    new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
             byte[] cipherText = cipher.doFinal(attribute.getBytes(StandardCharsets.UTF_8));
 
             byte[] combined = new byte[iv.length + cipherText.length];
@@ -65,12 +67,18 @@ public class CryptoConverter implements AttributeConverter<String, String> {
             System.arraycopy(combined, iv.length, cipherText, 0, cipherText.length);
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
-            cipher.init(Cipher.DECRYPT_MODE, secretKey(), new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
+            cipher.init(
+                    Cipher.DECRYPT_MODE,
+                    secretKey(),
+                    new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
             byte[] plainText = cipher.doFinal(cipherText);
             return new String(plainText, StandardCharsets.UTF_8);
         } catch (Exception ex) {
-            // Data stored before encryption was introduced, or with a different key, would land here.
-            log.warn("Could not decrypt value - returning raw stored value as fallback: {}", ex.getMessage());
+            // Data stored before encryption was introduced, or with a different key, would land
+            // here.
+            log.warn(
+                    "Could not decrypt value - returning raw stored value as fallback: {}",
+                    ex.getMessage());
             return dbData;
         }
     }
@@ -80,8 +88,9 @@ public class CryptoConverter implements AttributeConverter<String, String> {
         if (base64Key == null || base64Key.isBlank()) {
             // Dev-only fallback so local runs don't break without extra setup.
             // MUST be overridden via APP_ENCRYPTION_KEY in every real environment.
-            log.warn("APP_ENCRYPTION_KEY not set - using an insecure development-only key. " +
-                    "Set APP_ENCRYPTION_KEY (base64, 32 bytes) before deploying.");
+            log.warn(
+                    "APP_ENCRYPTION_KEY not set - using an insecure development-only key. "
+                            + "Set APP_ENCRYPTION_KEY (base64, 32 bytes) before deploying.");
             base64Key = "ZGV2LW9ubHktaW5zZWN1cmUtMzItYnl0ZS1rZXkhIQ==";
         }
         byte[] keyBytes = Base64.getDecoder().decode(base64Key);

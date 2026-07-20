@@ -1,5 +1,10 @@
 package com.lawfirm.law.firm.storage;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -7,19 +12,12 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.UUID;
-
 /**
- * Implementação em disco local do {@link FileStorageService}. Grava sob um
- * diretório base configurável ({@code app.storage.local.base-path}), que em
- * docker-compose é montado como volume nomeado para não perder os arquivos a
- * cada rebuild da imagem. O {@code storageKey} devolvido é o caminho relativo
- * ao diretório base (nunca o caminho absoluto do host) - é isso que fica
- * gravado no banco.
+ * Implementação em disco local do {@link FileStorageService}. Grava sob um diretório base
+ * configurável ({@code app.storage.local.base-path}), que em docker-compose é montado como volume
+ * nomeado para não perder os arquivos a cada rebuild da imagem. O {@code storageKey} devolvido é o
+ * caminho relativo ao diretório base (nunca o caminho absoluto do host) - é isso que fica gravado
+ * no banco.
  */
 @Service
 public class LocalDiskFileStorageService implements FileStorageService {
@@ -28,12 +26,14 @@ public class LocalDiskFileStorageService implements FileStorageService {
 
     private final Path basePath;
 
-    public LocalDiskFileStorageService(@Value("${app.storage.local.base-path:./storage}") String basePathConfig) {
+    public LocalDiskFileStorageService(
+            @Value("${app.storage.local.base-path:./storage}") String basePathConfig) {
         this.basePath = Path.of(basePathConfig).toAbsolutePath().normalize();
         try {
             Files.createDirectories(this.basePath);
         } catch (IOException e) {
-            throw new FileStorageException("Não foi possível criar o diretório de storage: " + this.basePath, e);
+            throw new FileStorageException(
+                    "Não foi possível criar o diretório de storage: " + this.basePath, e);
         }
         log.info("LocalDiskFileStorageService usando base-path={}", this.basePath);
     }
@@ -56,7 +56,8 @@ public class LocalDiskFileStorageService implements FileStorageService {
             throw new FileStorageException("Falha ao gravar arquivo no storage: " + storageKey, e);
         }
 
-        String mimeType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+        String mimeType =
+                file.getContentType() != null ? file.getContentType() : "application/octet-stream";
         return new StoredFile(storageKey, mimeType, file.getSize());
     }
 
@@ -81,7 +82,10 @@ public class LocalDiskFileStorageService implements FileStorageService {
 
     // ── Helpers ──
 
-    /** Resolve a chave dentro do diretório base, recusando qualquer tentativa de path traversal (`..`). */
+    /**
+     * Resolve a chave dentro do diretório base, recusando qualquer tentativa de path traversal
+     * (`..`).
+     */
     private Path resolveWithinBase(String storageKey) {
         Path resolved = basePath.resolve(storageKey).normalize();
         if (!resolved.startsWith(basePath)) {

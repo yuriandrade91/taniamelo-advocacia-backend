@@ -7,7 +7,18 @@ import com.lawfirm.law.firm.model.Situation;
 import java.time.Instant;
 import java.util.UUID;
 
-@JsonPropertyOrder({"id", "fullName", "cpf", "mobilePhone", "benefit", "situation", "clientType", "beneficiaryNumber", "createdAt", "updatedAt"})
+@JsonPropertyOrder({
+    "id",
+    "fullName",
+    "cpf",
+    "mobilePhone",
+    "benefit",
+    "situation",
+    "clientType",
+    "beneficiaryNumber",
+    "createdAt",
+    "updatedAt"
+})
 public class ClientListResponseDTO {
     private UUID id;
     private String fullName;
@@ -20,33 +31,83 @@ public class ClientListResponseDTO {
     private String beneficiaryNumber;
     private Instant updatedAt;
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public String getCpf() { return cpf; }
-    public void setCpf(String cpf) { this.cpf = cpf; }
+    public String getFullName() {
+        return fullName;
+    }
 
-    public String getMobilePhone() { return mobilePhone; }
-    public void setMobilePhone(String mobilePhone) { this.mobilePhone = mobilePhone; }
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
 
-    public BenefitType getBenefit() { return benefit; }
-    public void setBenefit(BenefitType benefit) { this.benefit = benefit; }
+    public String getCpf() {
+        return cpf;
+    }
 
-    public Situation getSituation() { return situation; }
-    public void setSituation(Situation situation) { this.situation = situation; }
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
 
-    public ClientType getClientType() { return clientType; }
-    public void setClientType(ClientType clientType) { this.clientType = clientType; }
+    public String getMobilePhone() {
+        return mobilePhone;
+    }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public void setMobilePhone(String mobilePhone) {
+        this.mobilePhone = mobilePhone;
+    }
 
-    public String getBeneficiaryNumber() { return beneficiaryNumber; }
-    public void setBeneficiaryNumber(String beneficiaryNumber) { this.beneficiaryNumber = beneficiaryNumber; }
+    public BenefitType getBenefit() {
+        return benefit;
+    }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public void setBenefit(BenefitType benefit) {
+        this.benefit = benefit;
+    }
+
+    public Situation getSituation() {
+        return situation;
+    }
+
+    public void setSituation(Situation situation) {
+        this.situation = situation;
+    }
+
+    public ClientType getClientType() {
+        return clientType;
+    }
+
+    public void setClientType(ClientType clientType) {
+        this.clientType = clientType;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getBeneficiaryNumber() {
+        return beneficiaryNumber;
+    }
+
+    public void setBeneficiaryNumber(String beneficiaryNumber) {
+        this.beneficiaryNumber = beneficiaryNumber;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

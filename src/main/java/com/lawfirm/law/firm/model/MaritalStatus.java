@@ -13,10 +13,14 @@ public enum MaritalStatus {
 
     private final String label;
 
-    MaritalStatus(String label) { this.label = label; }
+    MaritalStatus(String label) {
+        this.label = label;
+    }
 
     @JsonValue
-    public String getLabel() { return label; }
+    public String getLabel() {
+        return label;
+    }
 
     @JsonCreator
     public static MaritalStatus fromLabel(String label) {
@@ -24,5 +28,7 @@ public enum MaritalStatus {
     }
 
     @Override
-    public String toString() { return label; }
+    public String toString() {
+        return label;
+    }
 }

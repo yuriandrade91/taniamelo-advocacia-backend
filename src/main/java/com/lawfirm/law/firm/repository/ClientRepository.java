@@ -1,11 +1,12 @@
 package com.lawfirm.law.firm.repository;
 
 import com.lawfirm.law.firm.model.Client;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import java.util.UUID;
 
-public interface ClientRepository extends JpaRepository<Client, UUID>, JpaSpecificationExecutor<Client> {
+public interface ClientRepository
+        extends JpaRepository<Client, UUID>, JpaSpecificationExecutor<Client> {
 
     boolean existsByCpf(String cpf);
 

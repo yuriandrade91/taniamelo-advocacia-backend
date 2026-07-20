@@ -24,13 +24,6 @@ import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSpecification;
 import com.lawfirm.law.firm.security.CurrentUser;
 import com.lawfirm.law.firm.util.ContributionTimeParser;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
@@ -38,8 +31,14 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Predicate;
 import java.util.UUID;
+import java.util.function.Predicate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ClientServiceImpl implements ClientService {
@@ -48,8 +47,10 @@ public class ClientServiceImpl implements ClientService {
     private final ClientMapper mapper;
     private final ClientSituationHistoryRepository historyRepository;
 
-    public ClientServiceImpl(ClientRepository repository, ClientMapper mapper,
-                             ClientSituationHistoryRepository historyRepository) {
+    public ClientServiceImpl(
+            ClientRepository repository,
+            ClientMapper mapper,
+            ClientSituationHistoryRepository historyRepository) {
         this.repository = repository;
         this.mapper = mapper;
         this.historyRepository = historyRepository;
@@ -60,7 +61,8 @@ public class ClientServiceImpl implements ClientService {
     public ClientDetailsDTO create(ClientCreateRequestDTO dto) {
         validateUniqueness(dto);
         Client entity = mapper.toEntity(dto);
-        entity.setContributionInMonths(ContributionTimeParser.toMonths(entity.getContributionTime()));
+        entity.setContributionInMonths(
+                ContributionTimeParser.toMonths(entity.getContributionTime()));
         entity.setCreatedBy(CurrentUser.id());
         Client saved = repository.save(entity);
         recordHistory(null, saved);
@@ -68,20 +70,29 @@ public class ClientServiceImpl implements ClientService {
     }
 
     @Override
-    public Page<ClientListResponseDTO> listSummary(int pageNumber, int pageSize, String searchTerm,
-                                                   List<BenefitType> benefitTypes, List<Situation> situations,
-                                                   Instant createdFrom, Instant createdTo) {
-        Specification<Client> spec = ClientSpecification.combine(List.of(
-                ClientSpecification.searchTerm(searchTerm),
-                ClientSpecification.benefitIn(benefitTypes),
-                ClientSpecification.situationIn(situations),
-                ClientSpecification.createdBetween(createdFrom, createdTo)
-        ));
+    public Page<ClientListResponseDTO> listSummary(
+            int pageNumber,
+            int pageSize,
+            String searchTerm,
+            List<BenefitType> benefitTypes,
+            List<Situation> situations,
+            Instant createdFrom,
+            Instant createdTo) {
+        Specification<Client> spec =
+                ClientSpecification.combine(
+                        List.of(
+                                ClientSpecification.searchTerm(searchTerm),
+                                ClientSpecification.benefitIn(benefitTypes),
+                                ClientSpecification.situationIn(situations),
+                                ClientSpecification.createdBetween(createdFrom, createdTo)));
 
         // updatedAt é sempre populado (prePersist/preUpdate), então ordenar por ele
         // dá "atividade mais recente primeiro" sem query manual.
-        var pageable = PageRequest.of(Math.max(0, pageNumber - 1), pageSize <= 0 ? 10 : pageSize,
-                Sort.by(Sort.Direction.DESC, "updatedAt"));
+        var pageable =
+                PageRequest.of(
+                        Math.max(0, pageNumber - 1),
+                        pageSize <= 0 ? 10 : pageSize,
+                        Sort.by(Sort.Direction.DESC, "updatedAt"));
         return repository.findAll(spec, pageable).map(mapper::toListDTO);
     }
 
@@ -97,7 +108,8 @@ public class ClientServiceImpl implements ClientService {
         Situation previous = existing.getSituation();
 
         mapper.updateEntityFromDto(dto, existing);
-        existing.setContributionInMonths(ContributionTimeParser.toMonths(existing.getContributionTime()));
+        existing.setContributionInMonths(
+                ContributionTimeParser.toMonths(existing.getContributionTime()));
         existing.setUpdatedBy(CurrentUser.id());
 
         Client saved = repository.save(existing);
@@ -128,7 +140,8 @@ public class ClientServiceImpl implements ClientService {
             }
         }
 
-        if (patch.getNotBillable() != null && !Objects.equals(existing.getNotBillable(), patch.getNotBillable())) {
+        if (patch.getNotBillable() != null
+                && !Objects.equals(existing.getNotBillable(), patch.getNotBillable())) {
             existing.setNotBillable(patch.getNotBillable());
             existing.setUpdatedBy(CurrentUser.id());
             repository.save(existing);
@@ -148,10 +161,14 @@ public class ClientServiceImpl implements ClientService {
     }
 
     @Override
-    public Page<ClientSituationHistoryDTO> historyByClientId(UUID clientId, int pageNumber, int pageSize) {
+    public Page<ClientSituationHistoryDTO> historyByClientId(
+            UUID clientId, int pageNumber, int pageSize) {
         findOrThrow(clientId);
-        var pageable = PageRequest.of(Math.max(0, pageNumber - 1), pageSize <= 0 ? 10 : pageSize,
-                Sort.by("changedAt").descending());
+        var pageable =
+                PageRequest.of(
+                        Math.max(0, pageNumber - 1),
+                        pageSize <= 0 ? 10 : pageSize,
+                        Sort.by("changedAt").descending());
         return historyRepository.findByClient_Id(clientId, pageable).map(mapper::toHistoryDTO);
     }
 
@@ -164,7 +181,8 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     @Transactional
-    public ClientPersonalDataResponseDTO updatePersonalData(UUID id, ClientPersonalDataRequestDTO dto) {
+    public ClientPersonalDataResponseDTO updatePersonalData(
+            UUID id, ClientPersonalDataRequestDTO dto) {
         Client existing = findOrThrow(id);
 
         existing.setFullName(dto.getFullName());
@@ -203,7 +221,8 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     @Transactional
-    public ClientProfessionalDataResponseDTO updateProfessionalData(UUID id, ClientProfessionalDataRequestDTO dto) {
+    public ClientProfessionalDataResponseDTO updateProfessionalData(
+            UUID id, ClientProfessionalDataRequestDTO dto) {
         Client existing = findOrThrow(id);
 
         existing.setProfession(dto.getProfession());
@@ -212,7 +231,8 @@ public class ClientServiceImpl implements ClientService {
         existing.setCtpsSeries(dto.getCtpsSeries());
         existing.setBeneficiaryNumber(dto.getBeneficiaryNumber());
         existing.setContributionTime(dto.getContributionTime());
-        existing.setContributionInMonths(ContributionTimeParser.toMonths(dto.getContributionTime()));
+        existing.setContributionInMonths(
+                ContributionTimeParser.toMonths(dto.getContributionTime()));
         existing.setInssPassword(dto.getInssPassword());
         existing.setUpdatedBy(CurrentUser.id());
 
@@ -222,8 +242,7 @@ public class ClientServiceImpl implements ClientService {
     // ── Private helpers ──
 
     private Client findOrThrow(UUID id) {
-        return repository.findById(id)
-                .orElseThrow(() -> NotFoundException.of("Cliente", id));
+        return repository.findById(id).orElseThrow(() -> NotFoundException.of("Cliente", id));
     }
 
     private static Situation parseSituation(String raw) {
@@ -234,7 +253,9 @@ public class ClientServiceImpl implements ClientService {
             }
             return s;
         } catch (IllegalArgumentException ex) {
-            throw new ValidationException("situation", ValidationErrorCode.INVALID_SITUATION,
+            throw new ValidationException(
+                    "situation",
+                    ValidationErrorCode.INVALID_SITUATION,
                     "Situação inválida: " + raw);
         }
     }
@@ -251,19 +272,26 @@ public class ClientServiceImpl implements ClientService {
 
     private void validateUniqueness(ClientWritableFields dto) {
         checkDuplicate(dto.getCpf(), repository::existsByCpf, "cpf", "CPF já cadastrado");
-        checkDuplicate(dto.getNitPis(), repository::existsByNitPis, "nitPis", "NIT/PIS já cadastrado");
-        checkDuplicate(dto.getBeneficiaryNumber(), repository::existsByBeneficiaryNumberIgnoreCase,
-                "beneficiaryNumber", "Número do benefício já cadastrado");
+        checkDuplicate(
+                dto.getNitPis(), repository::existsByNitPis, "nitPis", "NIT/PIS já cadastrado");
+        checkDuplicate(
+                dto.getBeneficiaryNumber(),
+                repository::existsByBeneficiaryNumberIgnoreCase,
+                "beneficiaryNumber",
+                "Número do benefício já cadastrado");
     }
 
-    private void checkDuplicate(String value, Predicate<String> existsFn, String field, String message) {
+    private void checkDuplicate(
+            String value, Predicate<String> existsFn, String field, String message) {
         if (value != null && !value.isBlank() && existsFn.test(value.trim())) {
             throw new ValidationException(field, ValidationErrorCode.DUPLICATE_VALUE, message);
         }
     }
 
     private static Integer ageOf(LocalDate birthDate) {
-        return birthDate == null ? null : Period.between(birthDate, LocalDate.now(ZoneOffset.UTC)).getYears();
+        return birthDate == null
+                ? null
+                : Period.between(birthDate, LocalDate.now(ZoneOffset.UTC)).getYears();
     }
 
     private ClientPersonalDataResponseDTO toPersonalDataDTO(Client entity) {

@@ -5,8 +5,8 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import com.lawfirm.law.firm.util.EnumLabelSupport;
 
 /**
- * Status persistido de uma parcela. "Atrasado" NÃO é um status: é derivado em
- * runtime (Pendente + due_date no passado) - ver ClientPaymentService.
+ * Status persistido de uma parcela. "Atrasado" NÃO é um status: é derivado em runtime (Pendente +
+ * due_date no passado) - ver ClientPaymentService.
  */
 public enum PaymentStatus {
     PENDENTE("Pendente"),
@@ -15,10 +15,14 @@ public enum PaymentStatus {
 
     private final String label;
 
-    PaymentStatus(String label) { this.label = label; }
+    PaymentStatus(String label) {
+        this.label = label;
+    }
 
     @JsonValue
-    public String getLabel() { return label; }
+    public String getLabel() {
+        return label;
+    }
 
     @JsonCreator
     public static PaymentStatus fromLabel(String label) {
@@ -26,5 +30,7 @@ public enum PaymentStatus {
     }
 
     @Override
-    public String toString() { return label; }
+    public String toString() {
+        return label;
+    }
 }

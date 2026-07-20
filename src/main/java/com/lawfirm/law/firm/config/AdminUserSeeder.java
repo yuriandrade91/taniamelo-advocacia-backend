@@ -11,9 +11,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * Garante que sempre exista pelo menos um usuário ADMIN para acessar a API.
- * Credenciais vêm de variáveis de ambiente (APP_ADMIN_EMAIL / APP_ADMIN_PASSWORD);
- * em dev, caem em um default óbvio que deve ser trocado no primeiro login.
+ * Garante que sempre exista pelo menos um usuário ADMIN para acessar a API. Credenciais vêm de
+ * variáveis de ambiente (APP_ADMIN_EMAIL / APP_ADMIN_PASSWORD); em dev, caem em um default óbvio
+ * que deve ser trocado no primeiro login.
  */
 @Component
 public class AdminUserSeeder implements CommandLineRunner {
@@ -25,10 +25,11 @@ public class AdminUserSeeder implements CommandLineRunner {
     private final String adminEmail;
     private final String adminPassword;
 
-    public AdminUserSeeder(UserRepository userRepository,
-                            PasswordEncoder passwordEncoder,
-                            @Value("${app.admin.email:admin@taniamelo.adv.br}") String adminEmail,
-                            @Value("${app.admin.password:changeme123}") String adminPassword) {
+    public AdminUserSeeder(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            @Value("${app.admin.email:admin@taniamelo.adv.br}") String adminEmail,
+            @Value("${app.admin.password:changeme123}") String adminPassword) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.adminEmail = adminEmail;
@@ -48,8 +49,9 @@ public class AdminUserSeeder implements CommandLineRunner {
         admin.setActive(true);
         userRepository.save(admin);
 
-        log.warn("Nenhum usuário encontrado - usuário ADMIN inicial criado ({}). " +
-                "Troque a senha assim que possível e defina APP_ADMIN_EMAIL/APP_ADMIN_PASSWORD em produção.",
+        log.warn(
+                "Nenhum usuário encontrado - usuário ADMIN inicial criado ({}). "
+                        + "Troque a senha assim que possível e defina APP_ADMIN_EMAIL/APP_ADMIN_PASSWORD em produção.",
                 adminEmail);
     }
 }

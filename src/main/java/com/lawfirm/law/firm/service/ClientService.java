@@ -12,20 +12,24 @@ import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Situation;
-import org.springframework.data.domain.Page;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
 
 public interface ClientService {
 
     ClientDetailsDTO create(ClientCreateRequestDTO dto);
 
-    Page<ClientListResponseDTO> listSummary(int pageNumber, int pageSize, String searchTerm,
-                                            List<BenefitType> benefitTypes, List<Situation> situations,
-                                            Instant createdFrom, Instant createdTo);
+    Page<ClientListResponseDTO> listSummary(
+            int pageNumber,
+            int pageSize,
+            String searchTerm,
+            List<BenefitType> benefitTypes,
+            List<Situation> situations,
+            Instant createdFrom,
+            Instant createdTo);
 
     Optional<ClientDetailsDTO> findById(UUID id);
 
@@ -44,5 +48,6 @@ public interface ClientService {
 
     ClientProfessionalDataResponseDTO getProfessionalData(UUID id);
 
-    ClientProfessionalDataResponseDTO updateProfessionalData(UUID id, ClientProfessionalDataRequestDTO dto);
+    ClientProfessionalDataResponseDTO updateProfessionalData(
+            UUID id, ClientProfessionalDataRequestDTO dto);
 }

@@ -12,10 +12,14 @@ public enum Gender {
 
     private final String label;
 
-    Gender(String label) { this.label = label; }
+    Gender(String label) {
+        this.label = label;
+    }
 
     @JsonValue
-    public String getLabel() { return label; }
+    public String getLabel() {
+        return label;
+    }
 
     @JsonCreator
     public static Gender fromLabel(String label) {
@@ -23,5 +27,7 @@ public enum Gender {
     }
 
     @Override
-    public String toString() { return label; }
+    public String toString() {
+        return label;
+    }
 }

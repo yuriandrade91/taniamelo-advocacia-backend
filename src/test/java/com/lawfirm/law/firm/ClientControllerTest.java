@@ -1,5 +1,9 @@
 package com.lawfirm.law.firm;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
@@ -7,6 +11,7 @@ import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
 import com.lawfirm.law.firm.model.Situation;
+import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,17 +21,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.time.LocalDate;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 public class ClientControllerTest {
 
-    @Autowired
-    private WebApplicationContext wac;
+    @Autowired private WebApplicationContext wac;
 
     private MockMvc mockMvc;
 
@@ -53,13 +51,13 @@ public class ClientControllerTest {
     public void createClientThenReturnIt() throws Exception {
         ClientCreateRequestDTO dto = new ClientCreateRequestDTO();
         dto.setFullName("Test User");
-        dto.setBirthDate(LocalDate.of(1990,1,1));
+        dto.setBirthDate(LocalDate.of(1990, 1, 1));
         dto.setCpf("000.000.000-00");
         dto.setRg("MG-12.345.678");
         dto.setEmail("admin@taniamelo.adv.br");
         dto.setMobilePhone("+5511999999999");
         dto.setReferencePhone("+5511988888888");
-    dto.setBeneficiaryNumber("BN123");
+        dto.setBeneficiaryNumber("BN123");
         dto.setNitPis("NIT123");
         dto.setCtps("CTPS123");
         dto.setCtpsSeries("S1");
@@ -73,9 +71,10 @@ public class ClientControllerTest {
 
         String body = objectMapper.writeValueAsString(dto);
 
-        mockMvc.perform(post("/api/v1/clients")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+        mockMvc.perform(
+                        post("/api/v1/clients")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Location"))
                 .andExpect(jsonPath("$.success").value(true))

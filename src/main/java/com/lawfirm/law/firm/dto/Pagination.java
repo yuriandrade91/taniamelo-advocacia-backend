@@ -12,8 +12,7 @@ public class Pagination {
     private boolean hasNextPage;
     private boolean hasPreviousPage;
 
-    public Pagination() {
-    }
+    public Pagination() {}
 
     public Pagination(int pageNumber, int pageSize, long totalRecords) {
         this.pageNumber = pageNumber;
@@ -29,21 +28,51 @@ public class Pagination {
         return new Pagination(page.getNumber() + 1, page.getSize(), page.getTotalElements());
     }
 
-    public int getPageNumber() { return pageNumber; }
-    public void setPageNumber(int pageNumber) { this.pageNumber = pageNumber; }
+    public int getPageNumber() {
+        return pageNumber;
+    }
 
-    public int getPageSize() { return pageSize; }
-    public void setPageSize(int pageSize) { this.pageSize = pageSize; }
+    public void setPageNumber(int pageNumber) {
+        this.pageNumber = pageNumber;
+    }
 
-    public long getTotalRecords() { return totalRecords; }
-    public void setTotalRecords(long totalRecords) { this.totalRecords = totalRecords; }
+    public int getPageSize() {
+        return pageSize;
+    }
 
-    public int getTotalPages() { return totalPages; }
-    public void setTotalPages(int totalPages) { this.totalPages = totalPages; }
+    public void setPageSize(int pageSize) {
+        this.pageSize = pageSize;
+    }
 
-    public boolean isHasNextPage() { return hasNextPage; }
-    public void setHasNextPage(boolean hasNextPage) { this.hasNextPage = hasNextPage; }
+    public long getTotalRecords() {
+        return totalRecords;
+    }
 
-    public boolean isHasPreviousPage() { return hasPreviousPage; }
-    public void setHasPreviousPage(boolean hasPreviousPage) { this.hasPreviousPage = hasPreviousPage; }
+    public void setTotalRecords(long totalRecords) {
+        this.totalRecords = totalRecords;
+    }
+
+    public int getTotalPages() {
+        return totalPages;
+    }
+
+    public void setTotalPages(int totalPages) {
+        this.totalPages = totalPages;
+    }
+
+    public boolean isHasNextPage() {
+        return hasNextPage;
+    }
+
+    public void setHasNextPage(boolean hasNextPage) {
+        this.hasNextPage = hasNextPage;
+    }
+
+    public boolean isHasPreviousPage() {
+        return hasPreviousPage;
+    }
+
+    public void setHasPreviousPage(boolean hasPreviousPage) {
+        this.hasPreviousPage = hasPreviousPage;
+    }
 }

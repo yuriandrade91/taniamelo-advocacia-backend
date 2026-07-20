@@ -23,45 +23,115 @@ public class ClientFileSimulationResponseDTO {
     private Instant updatedAt;
     private String downloadUrl;
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public String getOriginalFilename() { return originalFilename; }
-    public void setOriginalFilename(String originalFilename) { this.originalFilename = originalFilename; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public String getMimeType() { return mimeType; }
-    public void setMimeType(String mimeType) { this.mimeType = mimeType; }
+    public String getOriginalFilename() {
+        return originalFilename;
+    }
 
-    public Long getFileSizeBytes() { return fileSizeBytes; }
-    public void setFileSizeBytes(Long fileSizeBytes) { this.fileSizeBytes = fileSizeBytes; }
+    public void setOriginalFilename(String originalFilename) {
+        this.originalFilename = originalFilename;
+    }
 
-    public LocalDate getSimulationDate() { return simulationDate; }
-    public void setSimulationDate(LocalDate simulationDate) { this.simulationDate = simulationDate; }
+    public String getMimeType() {
+        return mimeType;
+    }
 
-    public String getVersion() { return version; }
-    public void setVersion(String version) { this.version = version; }
+    public void setMimeType(String mimeType) {
+        this.mimeType = mimeType;
+    }
 
-    public Integer getVinculos() { return vinculos; }
-    public void setVinculos(Integer vinculos) { this.vinculos = vinculos; }
+    public Long getFileSizeBytes() {
+        return fileSizeBytes;
+    }
 
-    public Boolean getIsPrincipal() { return isPrincipal; }
-    public void setIsPrincipal(Boolean isPrincipal) { this.isPrincipal = isPrincipal; }
+    public void setFileSizeBytes(Long fileSizeBytes) {
+        this.fileSizeBytes = fileSizeBytes;
+    }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public LocalDate getSimulationDate() {
+        return simulationDate;
+    }
 
-    public UUID getUploadedBy() { return uploadedBy; }
-    public void setUploadedBy(UUID uploadedBy) { this.uploadedBy = uploadedBy; }
+    public void setSimulationDate(LocalDate simulationDate) {
+        this.simulationDate = simulationDate;
+    }
 
-    public Instant getUploadedAt() { return uploadedAt; }
-    public void setUploadedAt(Instant uploadedAt) { this.uploadedAt = uploadedAt; }
+    public String getVersion() {
+        return version;
+    }
 
-    public UUID getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
+    public void setVersion(String version) {
+        this.version = version;
+    }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public Integer getVinculos() {
+        return vinculos;
+    }
 
-    public String getDownloadUrl() { return downloadUrl; }
-    public void setDownloadUrl(String downloadUrl) { this.downloadUrl = downloadUrl; }
+    public void setVinculos(Integer vinculos) {
+        this.vinculos = vinculos;
+    }
+
+    public Boolean getIsPrincipal() {
+        return isPrincipal;
+    }
+
+    public void setIsPrincipal(Boolean isPrincipal) {
+        this.isPrincipal = isPrincipal;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public UUID getUploadedBy() {
+        return uploadedBy;
+    }
+
+    public void setUploadedBy(UUID uploadedBy) {
+        this.uploadedBy = uploadedBy;
+    }
+
+    public Instant getUploadedAt() {
+        return uploadedAt;
+    }
+
+    public void setUploadedAt(Instant uploadedAt) {
+        this.uploadedAt = uploadedAt;
+    }
+
+    public UUID getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(UUID updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getDownloadUrl() {
+        return downloadUrl;
+    }
+
+    public void setDownloadUrl(String downloadUrl) {
+        this.downloadUrl = downloadUrl;
+    }
 }

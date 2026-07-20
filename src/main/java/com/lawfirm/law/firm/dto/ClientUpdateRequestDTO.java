@@ -13,38 +13,28 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Payload de atualização completa (PUT /clients/{id}). Mesmas regras do
- * create: PUT é substituição total dos campos editáveis - para atualização
- * parcial use PATCH /clients/{id}.
+ * Payload de atualização completa (PUT /clients/{id}). Mesmas regras do create: PUT é substituição
+ * total dos campos editáveis - para atualização parcial use PATCH /clients/{id}.
  */
 public class ClientUpdateRequestDTO implements ClientWritableFields {
 
-    @NotBlank
-    private String fullName;
+    @NotBlank private String fullName;
 
-    @NotNull
-    private LocalDate birthDate;
+    @NotNull private LocalDate birthDate;
 
-    @NotBlank
-    @ValidCPF
-    private String cpf;
+    @NotBlank @ValidCPF private String cpf;
 
-    @NotBlank
-    private String motherName;
+    @NotBlank private String motherName;
 
-    @NotBlank
-    private String mobilePhone;
+    @NotBlank private String mobilePhone;
 
-    @NotBlank
-    private String inssPassword;
+    @NotBlank private String inssPassword;
 
-    @NotNull
-    private Gender gender;
+    @NotNull private Gender gender;
 
     private String rg;
 
-    @Email
-    private String email;
+    @Email private String email;
 
     private String referencePhone;
 
@@ -52,11 +42,9 @@ public class ClientUpdateRequestDTO implements ClientWritableFields {
 
     private MaritalStatus maritalStatus;
 
-    @NotNull
-    private BenefitType benefit;
+    @NotNull private BenefitType benefit;
 
-    @NotNull
-    private Situation situation;
+    @NotNull private Situation situation;
 
     private String beneficiaryNumber;
 
@@ -89,119 +77,263 @@ public class ClientUpdateRequestDTO implements ClientWritableFields {
     private ClientType clientType;
 
     @Override
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
 
     @Override
-    public LocalDate getBirthDate() { return birthDate; }
-    public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
+
+    public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+    }
 
     @Override
-    public String getCpf() { return cpf; }
-    public void setCpf(String cpf) { this.cpf = cpf; }
+    public String getCpf() {
+        return cpf;
+    }
+
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
 
     @Override
-    public String getMotherName() { return motherName; }
-    public void setMotherName(String motherName) { this.motherName = motherName; }
+    public String getMotherName() {
+        return motherName;
+    }
+
+    public void setMotherName(String motherName) {
+        this.motherName = motherName;
+    }
 
     @Override
-    public String getMobilePhone() { return mobilePhone; }
-    public void setMobilePhone(String mobilePhone) { this.mobilePhone = mobilePhone; }
+    public String getMobilePhone() {
+        return mobilePhone;
+    }
+
+    public void setMobilePhone(String mobilePhone) {
+        this.mobilePhone = mobilePhone;
+    }
 
     @Override
-    public String getInssPassword() { return inssPassword; }
-    public void setInssPassword(String inssPassword) { this.inssPassword = inssPassword; }
+    public String getInssPassword() {
+        return inssPassword;
+    }
+
+    public void setInssPassword(String inssPassword) {
+        this.inssPassword = inssPassword;
+    }
 
     @Override
-    public Gender getGender() { return gender; }
-    public void setGender(Gender gender) { this.gender = gender; }
+    public Gender getGender() {
+        return gender;
+    }
+
+    public void setGender(Gender gender) {
+        this.gender = gender;
+    }
 
     @Override
-    public String getRg() { return rg; }
-    public void setRg(String rg) { this.rg = rg; }
+    public String getRg() {
+        return rg;
+    }
+
+    public void setRg(String rg) {
+        this.rg = rg;
+    }
 
     @Override
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
     @Override
-    public String getReferencePhone() { return referencePhone; }
-    public void setReferencePhone(String referencePhone) { this.referencePhone = referencePhone; }
+    public String getReferencePhone() {
+        return referencePhone;
+    }
+
+    public void setReferencePhone(String referencePhone) {
+        this.referencePhone = referencePhone;
+    }
 
     @Override
-    public String getReferenceResponsible() { return referenceResponsible; }
-    public void setReferenceResponsible(String referenceResponsible) { this.referenceResponsible = referenceResponsible; }
+    public String getReferenceResponsible() {
+        return referenceResponsible;
+    }
+
+    public void setReferenceResponsible(String referenceResponsible) {
+        this.referenceResponsible = referenceResponsible;
+    }
 
     @Override
-    public MaritalStatus getMaritalStatus() { return maritalStatus; }
-    public void setMaritalStatus(MaritalStatus maritalStatus) { this.maritalStatus = maritalStatus; }
+    public MaritalStatus getMaritalStatus() {
+        return maritalStatus;
+    }
+
+    public void setMaritalStatus(MaritalStatus maritalStatus) {
+        this.maritalStatus = maritalStatus;
+    }
 
     @Override
-    public BenefitType getBenefit() { return benefit; }
-    public void setBenefit(BenefitType benefit) { this.benefit = benefit; }
+    public BenefitType getBenefit() {
+        return benefit;
+    }
+
+    public void setBenefit(BenefitType benefit) {
+        this.benefit = benefit;
+    }
 
     @Override
-    public Situation getSituation() { return situation; }
-    public void setSituation(Situation situation) { this.situation = situation; }
+    public Situation getSituation() {
+        return situation;
+    }
+
+    public void setSituation(Situation situation) {
+        this.situation = situation;
+    }
 
     @Override
-    public String getBeneficiaryNumber() { return beneficiaryNumber; }
-    public void setBeneficiaryNumber(String beneficiaryNumber) { this.beneficiaryNumber = beneficiaryNumber; }
+    public String getBeneficiaryNumber() {
+        return beneficiaryNumber;
+    }
+
+    public void setBeneficiaryNumber(String beneficiaryNumber) {
+        this.beneficiaryNumber = beneficiaryNumber;
+    }
 
     @Override
-    public String getNitPis() { return nitPis; }
-    public void setNitPis(String nitPis) { this.nitPis = nitPis; }
+    public String getNitPis() {
+        return nitPis;
+    }
+
+    public void setNitPis(String nitPis) {
+        this.nitPis = nitPis;
+    }
 
     @Override
-    public String getProfession() { return profession; }
-    public void setProfession(String profession) { this.profession = profession; }
+    public String getProfession() {
+        return profession;
+    }
+
+    public void setProfession(String profession) {
+        this.profession = profession;
+    }
 
     @Override
-    public String getCtps() { return ctps; }
-    public void setCtps(String ctps) { this.ctps = ctps; }
+    public String getCtps() {
+        return ctps;
+    }
+
+    public void setCtps(String ctps) {
+        this.ctps = ctps;
+    }
 
     @Override
-    public String getCtpsSeries() { return ctpsSeries; }
-    public void setCtpsSeries(String ctpsSeries) { this.ctpsSeries = ctpsSeries; }
+    public String getCtpsSeries() {
+        return ctpsSeries;
+    }
+
+    public void setCtpsSeries(String ctpsSeries) {
+        this.ctpsSeries = ctpsSeries;
+    }
 
     @Override
-    public String getContributionTime() { return contributionTime; }
-    public void setContributionTime(String contributionTime) { this.contributionTime = contributionTime; }
+    public String getContributionTime() {
+        return contributionTime;
+    }
+
+    public void setContributionTime(String contributionTime) {
+        this.contributionTime = contributionTime;
+    }
 
     @Override
-    public Boolean getNotBillable() { return notBillable; }
-    public void setNotBillable(Boolean notBillable) { this.notBillable = notBillable; }
+    public Boolean getNotBillable() {
+        return notBillable;
+    }
+
+    public void setNotBillable(Boolean notBillable) {
+        this.notBillable = notBillable;
+    }
 
     @Override
-    public String getRgIssuer() { return rgIssuer; }
-    public void setRgIssuer(String rgIssuer) { this.rgIssuer = rgIssuer; }
+    public String getRgIssuer() {
+        return rgIssuer;
+    }
+
+    public void setRgIssuer(String rgIssuer) {
+        this.rgIssuer = rgIssuer;
+    }
 
     @Override
-    public LocalDate getRgIssueDate() { return rgIssueDate; }
-    public void setRgIssueDate(LocalDate rgIssueDate) { this.rgIssueDate = rgIssueDate; }
+    public LocalDate getRgIssueDate() {
+        return rgIssueDate;
+    }
+
+    public void setRgIssueDate(LocalDate rgIssueDate) {
+        this.rgIssueDate = rgIssueDate;
+    }
 
     @Override
-    public String getNationality() { return nationality; }
-    public void setNationality(String nationality) { this.nationality = nationality; }
+    public String getNationality() {
+        return nationality;
+    }
+
+    public void setNationality(String nationality) {
+        this.nationality = nationality;
+    }
 
     @Override
-    public Boolean getIsWhatsapp() { return isWhatsapp; }
-    public void setIsWhatsapp(Boolean isWhatsapp) { this.isWhatsapp = isWhatsapp; }
+    public Boolean getIsWhatsapp() {
+        return isWhatsapp;
+    }
+
+    public void setIsWhatsapp(Boolean isWhatsapp) {
+        this.isWhatsapp = isWhatsapp;
+    }
 
     @Override
-    public Boolean getHasDisability() { return hasDisability; }
-    public void setHasDisability(Boolean hasDisability) { this.hasDisability = hasDisability; }
+    public Boolean getHasDisability() {
+        return hasDisability;
+    }
+
+    public void setHasDisability(Boolean hasDisability) {
+        this.hasDisability = hasDisability;
+    }
 
     @Override
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
 
     @Override
-    public UUID getResponsibleUserId() { return responsibleUserId; }
-    public void setResponsibleUserId(UUID responsibleUserId) { this.responsibleUserId = responsibleUserId; }
+    public UUID getResponsibleUserId() {
+        return responsibleUserId;
+    }
+
+    public void setResponsibleUserId(UUID responsibleUserId) {
+        this.responsibleUserId = responsibleUserId;
+    }
 
     @Override
-    public ClientType getClientType() { return clientType; }
-    public void setClientType(ClientType clientType) { this.clientType = clientType; }
+    public ClientType getClientType() {
+        return clientType;
+    }
 
+    public void setClientType(ClientType clientType) {
+        this.clientType = clientType;
+    }
 }

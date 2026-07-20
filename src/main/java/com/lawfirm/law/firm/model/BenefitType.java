@@ -18,10 +18,14 @@ public enum BenefitType {
 
     private final String label;
 
-    BenefitType(String label) { this.label = label; }
+    BenefitType(String label) {
+        this.label = label;
+    }
 
     @JsonValue
-    public String getLabel() { return label; }
+    public String getLabel() {
+        return label;
+    }
 
     @JsonCreator
     public static BenefitType fromLabel(String label) {
@@ -29,5 +33,7 @@ public enum BenefitType {
     }
 
     @Override
-    public String toString() { return label; }
+    public String toString() {
+        return label;
+    }
 }

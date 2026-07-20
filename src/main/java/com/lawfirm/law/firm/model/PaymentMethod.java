@@ -14,10 +14,14 @@ public enum PaymentMethod {
 
     private final String label;
 
-    PaymentMethod(String label) { this.label = label; }
+    PaymentMethod(String label) {
+        this.label = label;
+    }
 
     @JsonValue
-    public String getLabel() { return label; }
+    public String getLabel() {
+        return label;
+    }
 
     @JsonCreator
     public static PaymentMethod fromLabel(String label) {
@@ -25,5 +29,7 @@ public enum PaymentMethod {
     }
 
     @Override
-    public String toString() { return label; }
+    public String toString() {
+        return label;
+    }
 }

@@ -15,10 +15,14 @@ public enum Situation {
 
     private final String label;
 
-    Situation(String label) { this.label = label; }
+    Situation(String label) {
+        this.label = label;
+    }
 
     @JsonValue
-    public String getLabel() { return label; }
+    public String getLabel() {
+        return label;
+    }
 
     @JsonCreator
     public static Situation fromLabel(String label) {
@@ -26,5 +30,7 @@ public enum Situation {
     }
 
     @Override
-    public String toString() { return label; }
+    public String toString() {
+        return label;
+    }
 }

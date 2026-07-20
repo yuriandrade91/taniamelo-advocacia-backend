@@ -9,9 +9,10 @@ public class LoginResponseDTO {
     private String email;
     private String role;
 
-    public LoginResponseDTO() { }
+    public LoginResponseDTO() {}
 
-    public LoginResponseDTO(String token, long expiresInSeconds, String fullName, String email, String role) {
+    public LoginResponseDTO(
+            String token, long expiresInSeconds, String fullName, String email, String role) {
         this.token = token;
         this.expiresInSeconds = expiresInSeconds;
         this.fullName = fullName;
@@ -19,21 +20,51 @@ public class LoginResponseDTO {
         this.role = role;
     }
 
-    public String getToken() { return token; }
-    public void setToken(String token) { this.token = token; }
+    public String getToken() {
+        return token;
+    }
 
-    public String getTokenType() { return tokenType; }
-    public void setTokenType(String tokenType) { this.tokenType = tokenType; }
+    public void setToken(String token) {
+        this.token = token;
+    }
 
-    public long getExpiresInSeconds() { return expiresInSeconds; }
-    public void setExpiresInSeconds(long expiresInSeconds) { this.expiresInSeconds = expiresInSeconds; }
+    public String getTokenType() {
+        return tokenType;
+    }
 
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
+    public void setTokenType(String tokenType) {
+        this.tokenType = tokenType;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public long getExpiresInSeconds() {
+        return expiresInSeconds;
+    }
 
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
+    public void setExpiresInSeconds(long expiresInSeconds) {
+        this.expiresInSeconds = expiresInSeconds;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
 }

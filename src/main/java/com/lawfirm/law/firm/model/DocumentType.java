@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import com.lawfirm.law.firm.util.EnumLabelSupport;
 
 /**
- * Os 11 tipos de documento aceitos na aba "Documentos" da collection de
- * arquivos do cliente. Decisão de modelagem: enum no código (padrão adotado em
- * todo o projeto para listas fixas), não tabela de domínio no banco - a lista
- * só muda com deploy e não há tela administrativa para editá-la.
+ * Os 11 tipos de documento aceitos na aba "Documentos" da collection de arquivos do cliente.
+ * Decisão de modelagem: enum no código (padrão adotado em todo o projeto para listas fixas), não
+ * tabela de domínio no banco - a lista só muda com deploy e não há tela administrativa para
+ * editá-la.
  */
 public enum DocumentType {
     IDENTIFICACAO_SEGURADO("Documentos de identificação do segurado"),
@@ -25,10 +25,14 @@ public enum DocumentType {
 
     private final String label;
 
-    DocumentType(String label) { this.label = label; }
+    DocumentType(String label) {
+        this.label = label;
+    }
 
     @JsonValue
-    public String getLabel() { return label; }
+    public String getLabel() {
+        return label;
+    }
 
     @JsonCreator
     public static DocumentType fromLabel(String label) {
@@ -36,5 +40,7 @@ public enum DocumentType {
     }
 
     @Override
-    public String toString() { return label; }
+    public String toString() {
+        return label;
+    }
 }

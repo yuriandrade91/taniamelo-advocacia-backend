@@ -29,37 +29,91 @@ public class ClientProfessionalDataResponseDTO {
 
     private Instant updatedAt;
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public String getProfession() { return profession; }
-    public void setProfession(String profession) { this.profession = profession; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public String getNitPis() { return nitPis; }
-    public void setNitPis(String nitPis) { this.nitPis = nitPis; }
+    public String getProfession() {
+        return profession;
+    }
 
-    public String getCtps() { return ctps; }
-    public void setCtps(String ctps) { this.ctps = ctps; }
+    public void setProfession(String profession) {
+        this.profession = profession;
+    }
 
-    public String getCtpsSeries() { return ctpsSeries; }
-    public void setCtpsSeries(String ctpsSeries) { this.ctpsSeries = ctpsSeries; }
+    public String getNitPis() {
+        return nitPis;
+    }
 
-    public String getContributionTime() { return contributionTime; }
-    public void setContributionTime(String contributionTime) { this.contributionTime = contributionTime; }
+    public void setNitPis(String nitPis) {
+        this.nitPis = nitPis;
+    }
 
-    public Integer getContributionInMonths() { return contributionInMonths; }
-    public void setContributionInMonths(Integer contributionInMonths) { this.contributionInMonths = contributionInMonths; }
+    public String getCtps() {
+        return ctps;
+    }
 
-    public String getBeneficiaryNumber() { return beneficiaryNumber; }
-    public void setBeneficiaryNumber(String beneficiaryNumber) { this.beneficiaryNumber = beneficiaryNumber; }
+    public void setCtps(String ctps) {
+        this.ctps = ctps;
+    }
 
-    public String getInssPassword() { return inssPassword; }
-    public void setInssPassword(String inssPassword) { this.inssPassword = inssPassword; }
+    public String getCtpsSeries() {
+        return ctpsSeries;
+    }
 
-    public UUID getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
+    public void setCtpsSeries(String ctpsSeries) {
+        this.ctpsSeries = ctpsSeries;
+    }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public String getContributionTime() {
+        return contributionTime;
+    }
 
+    public void setContributionTime(String contributionTime) {
+        this.contributionTime = contributionTime;
+    }
+
+    public Integer getContributionInMonths() {
+        return contributionInMonths;
+    }
+
+    public void setContributionInMonths(Integer contributionInMonths) {
+        this.contributionInMonths = contributionInMonths;
+    }
+
+    public String getBeneficiaryNumber() {
+        return beneficiaryNumber;
+    }
+
+    public void setBeneficiaryNumber(String beneficiaryNumber) {
+        this.beneficiaryNumber = beneficiaryNumber;
+    }
+
+    public String getInssPassword() {
+        return inssPassword;
+    }
+
+    public void setInssPassword(String inssPassword) {
+        this.inssPassword = inssPassword;
+    }
+
+    public UUID getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(UUID updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

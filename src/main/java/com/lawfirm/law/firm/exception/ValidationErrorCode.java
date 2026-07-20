@@ -1,8 +1,6 @@
 package com.lawfirm.law.firm.exception;
 
-/**
- * Códigos de erro de validação com mensagens humanizadas (PT-BR).
- */
+/** Códigos de erro de validação com mensagens humanizadas (PT-BR). */
 public enum ValidationErrorCode {
     INVALID_CPF("CPF inválido"),
     INVALID_EMAIL("E-mail em formato inválido"),
@@ -19,9 +17,16 @@ public enum ValidationErrorCode {
         this.message = message;
     }
 
-    public String getCode() { return name(); }
-    public String getMessage() { return message; }
+    public String getCode() {
+        return name();
+    }
+
+    public String getMessage() {
+        return message;
+    }
 
     @Override
-    public String toString() { return name() + ": " + message; }
+    public String toString() {
+        return name() + ": " + message;
+    }
 }

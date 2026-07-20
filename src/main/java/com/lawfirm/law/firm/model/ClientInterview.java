@@ -1,18 +1,17 @@
 package com.lawfirm.law.firm.model;
 
 import jakarta.persistence.*;
-
 import java.time.Instant;
 import java.util.UUID;
 import org.hibernate.annotations.UuidGenerator;
 
 /**
- * Entrevista/atendimento registrado com o cliente. Campos: data (occurredAt),
- * duração em minutos e conteúdo vindo de um componente rich text (HTML/JSON do
- * editor, armazenado como TEXT sem transformação).
+ * Entrevista/atendimento registrado com o cliente. Campos: data (occurredAt), duração em minutos e
+ * conteúdo vindo de um componente rich text (HTML/JSON do editor, armazenado como TEXT sem
+ * transformação).
  *
- * Soft delete: o conteúdo de uma entrevista pode ser evidência relevante
- * depois (ex.: divergência sobre o que foi combinado com o cliente).
+ * <p>Soft delete: o conteúdo de uma entrevista pode ser evidência relevante depois (ex.:
+ * divergência sobre o que foi combinado com o cliente).
  */
 @Entity
 @Table(name = "client_interviews")
@@ -64,33 +63,83 @@ public class ClientInterview {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public Client getClient() { return client; }
-    public void setClient(Client client) { this.client = client; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public Instant getOccurredAt() { return occurredAt; }
-    public void setOccurredAt(Instant occurredAt) { this.occurredAt = occurredAt; }
+    public Client getClient() {
+        return client;
+    }
 
-    public Integer getDurationMinutes() { return durationMinutes; }
-    public void setDurationMinutes(Integer durationMinutes) { this.durationMinutes = durationMinutes; }
+    public void setClient(Client client) {
+        this.client = client;
+    }
 
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
+    public Instant getOccurredAt() {
+        return occurredAt;
+    }
 
-    public UUID getCreatedBy() { return createdBy; }
-    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public void setOccurredAt(Instant occurredAt) {
+        this.occurredAt = occurredAt;
+    }
 
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Integer getDurationMinutes() {
+        return durationMinutes;
+    }
 
-    public UUID getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
+    public void setDurationMinutes(Integer durationMinutes) {
+        this.durationMinutes = durationMinutes;
+    }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public String getContent() {
+        return content;
+    }
 
-    public Instant getDeletedAt() { return deletedAt; }
-    public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public UUID getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(UUID createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public UUID getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(UUID updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
+    }
 }

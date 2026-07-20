@@ -1,8 +1,8 @@
 package com.lawfirm.law.firm.exception;
 
 /**
- * Recurso inexistente (HTTP 404). Erro de negócio "esperado" - tratado pela
- * central de erros (GlobalExceptionHandler), nunca logado como erro de sistema.
+ * Recurso inexistente (HTTP 404). Erro de negócio "esperado" - tratado pela central de erros
+ * (GlobalExceptionHandler), nunca logado como erro de sistema.
  */
 public class NotFoundException extends RuntimeException {
 

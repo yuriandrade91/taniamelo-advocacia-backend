@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 @Converter(autoApply = true)
 public class BenefitTypeConverter implements AttributeConverter<BenefitType, String> {
     private static final Logger log = LoggerFactory.getLogger(BenefitTypeConverter.class);
+
     @Override
     public String convertToDatabaseColumn(BenefitType attribute) {
         return attribute == null ? null : attribute.getLabel();

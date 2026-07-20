@@ -45,15 +45,35 @@ public class ApiResponse<T> {
         return r;
     }
 
-    public boolean isSuccess() { return success; }
-    public void setSuccess(boolean success) { this.success = success; }
+    public boolean isSuccess() {
+        return success;
+    }
 
-    public Object getData() { return data; }
-    public void setData(Object data) { this.data = data; }
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
 
-    public Pagination getPagination() { return pagination; }
-    public void setPagination(Pagination pagination) { this.pagination = pagination; }
+    public Object getData() {
+        return data;
+    }
 
-    public List<ApiError> getErrors() { return errors; }
-    public void setErrors(List<ApiError> errors) { this.errors = errors; }
+    public void setData(Object data) {
+        this.data = data;
+    }
+
+    public Pagination getPagination() {
+        return pagination;
+    }
+
+    public void setPagination(Pagination pagination) {
+        this.pagination = pagination;
+    }
+
+    public List<ApiError> getErrors() {
+        return errors;
+    }
+
+    public void setErrors(List<ApiError> errors) {
+        this.errors = errors;
+    }
 }
