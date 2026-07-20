@@ -1,10 +1,29 @@
 package com.lawfirm.law.firm.controller;
 
-import com.lawfirm.law.firm.dto.*;
+import com.lawfirm.law.firm.dto.ApiResponse;
+import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
+import com.lawfirm.law.firm.dto.ClientDetailsDTO;
+import com.lawfirm.law.firm.dto.ClientListResponseDTO;
+import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
+import com.lawfirm.law.firm.dto.ClientPatchResponseDTO;
+import com.lawfirm.law.firm.dto.ClientPersonalDataRequestDTO;
+import com.lawfirm.law.firm.dto.ClientPersonalDataResponseDTO;
+import com.lawfirm.law.firm.dto.ClientProfessionalDataRequestDTO;
+import com.lawfirm.law.firm.dto.ClientProfessionalDataResponseDTO;
+import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
+import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
+import com.lawfirm.law.firm.dto.NotBillableRequestDTO;
+import com.lawfirm.law.firm.dto.Pagination;
 import com.lawfirm.law.firm.exception.NotFoundException;
+import com.lawfirm.law.firm.exception.ValidationErrorCode;
+import com.lawfirm.law.firm.exception.ValidationException;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Situation;
+import com.lawfirm.law.firm.service.ClientPatchOutcome;
 import com.lawfirm.law.firm.service.ClientService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -15,158 +34,189 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
 
+@Tag(name = "Clientes", description = "Cadastro e acompanhamento de clientes do escritório previdenciário")
 @RestController
 @RequestMapping("/api/v1/clients")
 public class ClientController {
 
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM-dd-yyyy");
-
     private final ClientService clientService;
-    private final ClientMapper mapper;
 
-    public ClientController(ClientService clientService, ClientMapper mapper) {
+    public ClientController(ClientService clientService) {
         this.clientService = clientService;
-        this.mapper = mapper;
     }
 
+    @Operation(summary = "Cadastrar cliente",
+            description = "Cria um novo cliente. Identificadores únicos (CPF, NIT/PIS, número do benefício) são "
+                    + "validados contra duplicidade antes de gravar. Endereços, arquivos, entrevistas e pagamentos "
+                    + "são cadastrados nos sub-recursos de /clients/{id} após a criação.")
     @PostMapping
     public ResponseEntity<ApiResponse<ClientDetailsDTO>> create(
-            @Valid @RequestBody ClientCreateRequestDTO createDto,
-            UriComponentsBuilder uriBuilder) {
-        ClientDetailsDTO created = clientService.create(mapper.fromCreate(createDto));
+            @Valid @RequestBody ClientCreateRequestDTO createDto, UriComponentsBuilder uriBuilder) {
+        ClientDetailsDTO created = clientService.create(createDto);
         URI location = uriBuilder.path("/api/v1/clients/{id}").buildAndExpand(created.getId()).toUri();
         return ResponseEntity.created(location).body(ApiResponse.successObject(created));
     }
 
+    @Operation(summary = "Listar clientes",
+            description = "Lista paginada no envelope padrão, ordenada pela atividade mais recente (updatedAt desc). "
+                    + "Filtros opcionais: texto livre (nome/CPF, sem acento), tipos de benefício, situações e "
+                    + "intervalo de criação (datas ISO-8601: yyyy-MM-dd ou timestamp completo).")
     @GetMapping
-    public ResponseEntity<ApiResponse<ClientListResponseDTO>> listAll(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(name = "pageNumber", required = false) Integer pageNumberParam,
-            @RequestParam(name = "pageSize", required = false) Integer pageSizeParam,
+    public ResponseEntity<ApiResponse<ClientListResponseDTO>> list(
+            @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1") int pageNumber,
+            @Parameter(description = "Tamanho da página") @RequestParam(defaultValue = "10") int pageSize,
+            @Parameter(description = "Busca livre por nome completo ou CPF")
             @RequestParam(required = false) String searchTerm,
-            @RequestParam(name = "benefitType", required = false) List<BenefitType> benefitType,
-            @RequestParam(name = "situation", required = false) List<Situation> situation,
-            @RequestParam(name = "situation[]", required = false) List<Situation> situationArray,
-            @RequestParam(name = "createdFrom", required = false) String createdFromStr,
-            @RequestParam(name = "createdTo", required = false) String createdToStr) {
+            @Parameter(description = "Filtra por um ou mais tipos de benefício (nome ou label)")
+            @RequestParam(required = false) List<BenefitType> benefitType,
+            @Parameter(description = "Filtra por uma ou mais situações (nome ou label)")
+            @RequestParam(required = false) List<Situation> situation,
+            @Parameter(description = "Criado a partir de (ISO-8601: yyyy-MM-dd ou timestamp)")
+            @RequestParam(required = false) String createdFrom,
+            @Parameter(description = "Criado até (ISO-8601: yyyy-MM-dd ou timestamp)")
+            @RequestParam(required = false) String createdTo) {
 
-        int requestedPageNumber = (pageNumberParam != null) ? pageNumberParam : Math.max(1, page);
-        int requestedPageSize = (pageSizeParam != null) ? pageSizeParam : (size <= 0 ? 10 : size);
-        int pageIndex = requestedPageNumber - 1;
+        Page<ClientListResponseDTO> page = clientService.listSummary(
+                pageNumber, pageSize, searchTerm, benefitType, situation,
+                parseInstant("createdFrom", createdFrom, true),
+                parseInstant("createdTo", createdTo, false));
 
-        // Support both `situation` and `situation[]` parameter naming (some clients send brackets)
-        if ((situation == null || situation.isEmpty()) && situationArray != null && !situationArray.isEmpty()) {
-            situation = situationArray;
-        } else if (situation != null && situationArray != null && !situationArray.isEmpty()) {
-            // merge unique values
-            for (Situation s : situationArray) {
-                if (!situation.contains(s)) situation.add(s);
-            }
-        }
-
-        Instant createdFrom = parseInstant(createdFromStr, true);
-        Instant createdTo = parseInstant(createdToStr, false);
-
-        Page<ClientListResponseDTO> result = clientService.listSummary(
-                pageIndex, requestedPageSize, searchTerm, benefitType, situation, createdFrom, createdTo);
-
-        Pagination p = new Pagination(requestedPageNumber, requestedPageSize, result.getTotalElements());
-
-        return ResponseEntity.ok(ApiResponse.successList(result.getContent(), p));
+        return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
     }
 
+    @Operation(summary = "Buscar cliente por id",
+            description = "Dados completos do cliente, incluindo a senha do INSS (descriptografada para o usuário autenticado).")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ClientDetailsDTO>> getById(@PathVariable UUID id) {
         ClientDetailsDTO dto = clientService.findById(id)
-                .orElseThrow(() -> new NotFoundException("Client not found with id: " + id));
+                .orElseThrow(() -> NotFoundException.of("Cliente", id));
         return ResponseEntity.ok(ApiResponse.successObject(dto));
     }
 
-    @GetMapping("/{id}/history")
-    public ResponseEntity<ApiResponse<com.lawfirm.law.firm.dto.ClientSituationHistoryDTO>> historyById(
-            @PathVariable UUID id,
-            @RequestParam(name = "pageNumber", defaultValue = "1") int pageNumber,
-            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize) {
-    // ensure client exists
-    clientService.findById(id).orElseThrow(() -> new NotFoundException("Client not found with id: " + id));
-        int pageIndex = Math.max(0, pageNumber - 1);
-    // return only the paged history content (data is array of history items)
-    var page = clientService.historyByClientId(id, pageIndex, pageSize);
-    Pagination p = new Pagination(pageNumber, pageSize, page.getTotalElements());
-    return ResponseEntity.ok(ApiResponse.successList(page.getContent(), p));
-    }
-
+    @Operation(summary = "Atualizar cliente (substituição completa)",
+            description = "PUT = substituição total dos campos editáveis - envie o objeto completo. "
+                    + "Para atualização parcial (situação/arrecadação) use PATCH /clients/{id}.")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ClientDetailsDTO>> update(
-            @PathVariable UUID id, @Valid @RequestBody ClientDetailsDTO client) {
-        return ResponseEntity.ok(ApiResponse.successObject(clientService.update(id, client)));
+            @PathVariable UUID id, @Valid @RequestBody ClientUpdateRequestDTO body) {
+        return ResponseEntity.ok(ApiResponse.successObject(clientService.update(id, body)));
     }
 
+    @Operation(summary = "Atualização parcial (situação e/ou arrecadação)",
+            description = "PATCH parcial: envie só o que quer mudar (situation e/ou notBillable). "
+                    + "Mudança de situação gera automaticamente um registro no histórico.")
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> patch(
             @PathVariable UUID id, @RequestBody ClientPatchRequestDTO patch) {
-        // load current state to decide which values actually change
-        com.lawfirm.law.firm.dto.ClientDetailsDTO previous = clientService.findById(id)
-                .orElseThrow(() -> new NotFoundException("Client not found with id: " + id));
+        ClientPatchOutcome outcome = clientService.patch(id, patch);
 
-        boolean changedSituation = false;
-        if (patch.getSituation() != null) {
-            try {
-                com.lawfirm.law.firm.model.Situation incoming = com.lawfirm.law.firm.model.Situation.fromLabel(patch.getSituation());
-                changedSituation = !java.util.Objects.equals(previous.getSituation(), incoming);
-            } catch (IllegalArgumentException ex) {
-                // invalid situation; delegate to service.patch to produce consistent validation error
-                clientService.patch(id, patch);
-            }
+        String message;
+        if (outcome.situationChanged() && outcome.notBillableChanged()) {
+            message = "Situação e arrecadação atualizadas com sucesso!";
+        } else if (outcome.situationChanged()) {
+            message = "Situação atualizada com sucesso!";
+        } else if (outcome.notBillableChanged()) {
+            message = "Arrecadação atualizada com sucesso!";
+        } else {
+            message = "Nenhuma alteração realizada!";
         }
-
-        boolean changedNonBillable = false;
-        if (patch.getNonBillable() != null) {
-            changedNonBillable = !java.util.Objects.equals(previous.getNonBillable(), patch.getNonBillable());
-        }
-
-        // perform update (will record history if situation changed)
-        clientService.patch(id, patch);
-
-        java.util.List<String> msgs = new java.util.ArrayList<>();
-        if (changedSituation) msgs.add("situação atualizada com sucesso!");
-        if (changedNonBillable) msgs.add("arrecadação atualizada com sucesso");
-        if (msgs.isEmpty()) msgs.add("nenhuma alteração realizada");
-
-        ClientPatchResponseDTO resp = new ClientPatchResponseDTO(String.join(" e ", msgs));
-        return ResponseEntity.ok(ApiResponse.successObject(resp));
+        return ResponseEntity.ok(ApiResponse.successObject(new ClientPatchResponseDTO(message)));
     }
 
+    @Operation(summary = "Atualizar arrecadação (não cobrável)",
+            description = "PATCH de propósito único para alternar a flag 'não cobrável', sem tocar em situação "
+                    + "nem gerar histórico.")
+    @PatchMapping("/{id}/not-billable")
+    public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> patchNotBillable(
+            @PathVariable UUID id, @Valid @RequestBody NotBillableRequestDTO body) {
+        ClientPatchRequestDTO patch = new ClientPatchRequestDTO();
+        patch.setNotBillable(body.getNotBillable());
+        clientService.patch(id, patch);
+
+        String message = Boolean.TRUE.equals(body.getNotBillable())
+                ? "Cliente marcado como não cobrável."
+                : "Cliente marcado como cobrável.";
+        return ResponseEntity.ok(ApiResponse.successObject(new ClientPatchResponseDTO(message)));
+    }
+
+    @Operation(summary = "Histórico de mudanças de situação",
+            description = "Lista paginada no envelope padrão, mais recente primeiro, com o usuário que fez cada mudança.")
+    @GetMapping("/{id}/situation-history")
+    public ResponseEntity<ApiResponse<ClientSituationHistoryDTO>> history(
+            @PathVariable UUID id,
+            @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1") int pageNumber,
+            @Parameter(description = "Tamanho da página") @RequestParam(defaultValue = "10") int pageSize) {
+        Page<ClientSituationHistoryDTO> page = clientService.historyByClientId(id, pageNumber, pageSize);
+        return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
+    }
+
+    @Operation(summary = "Dados pessoais do cliente",
+            description = "Aba 'Dados pessoais': identidade e contato. Dados profissionais e endereços têm endpoints próprios.")
+    @GetMapping("/{id}/personal-data")
+    public ResponseEntity<ApiResponse<ClientPersonalDataResponseDTO>> getPersonalData(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.successObject(clientService.getPersonalData(id)));
+    }
+
+    @Operation(summary = "Atualizar dados pessoais",
+            description = "Substituição completa só do subconjunto de dados pessoais - não altera dados "
+                    + "profissionais, endereços, benefício, situação ou arrecadação.")
+    @PutMapping("/{id}/personal-data")
+    public ResponseEntity<ApiResponse<ClientPersonalDataResponseDTO>> updatePersonalData(
+            @PathVariable UUID id, @Valid @RequestBody ClientPersonalDataRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.successObject(clientService.updatePersonalData(id, dto)));
+    }
+
+    @Operation(summary = "Dados profissionais do cliente",
+            description = "Aba 'Dados profissionais': profissão, NIT/PIS, CTPS, tempo de contribuição (com total em "
+                    + "meses derivado no servidor), número do benefício e senha do INSS.")
+    @GetMapping("/{id}/professional-data")
+    public ResponseEntity<ApiResponse<ClientProfessionalDataResponseDTO>> getProfessionalData(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.successObject(clientService.getProfessionalData(id)));
+    }
+
+    @Operation(summary = "Atualizar dados profissionais",
+            description = "Substituição completa só do subconjunto de dados profissionais.")
+    @PutMapping("/{id}/professional-data")
+    public ResponseEntity<ApiResponse<ClientProfessionalDataResponseDTO>> updateProfessionalData(
+            @PathVariable UUID id, @Valid @RequestBody ClientProfessionalDataRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.successObject(clientService.updateProfessionalData(id, dto)));
+    }
+
+    @Operation(summary = "Excluir cliente",
+            description = "Remove o cliente e, em cascata, seus sub-recursos (histórico, endereços, arquivos, "
+                    + "entrevistas, pagamentos).")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> delete(@PathVariable UUID id) {
         clientService.delete(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.successObject(new ClientPatchResponseDTO("Cliente excluído com sucesso.")));
     }
 
     // ── Private helpers ──
 
     /**
-     * Parses a date string as ISO-8601 instant or MM-dd-yyyy fallback.
-     * Returns null if the string is blank or unparseable.
+     * Aceita ISO-8601: data (yyyy-MM-dd) ou timestamp completo. Valor inválido
+     * gera 400 explícito - nunca é ignorado silenciosamente.
      */
-    private static Instant parseInstant(String value, boolean startOfDay) {
+    private static Instant parseInstant(String field, String value, boolean startOfDay) {
         if (value == null || value.isBlank()) return null;
         String s = value.trim();
         try {
             return Instant.parse(s);
-        } catch (DateTimeParseException ignored) { }
+        } catch (DateTimeParseException ignored) {
+            // tenta como data simples abaixo
+        }
         try {
-            LocalDate date = LocalDate.parse(s, DATE_FMT);
+            LocalDate date = LocalDate.parse(s);
             return startOfDay
                     ? date.atStartOfDay(ZoneOffset.UTC).toInstant()
-                    : date.atTime(23, 59, 59).atZone(ZoneOffset.UTC).toInstant();
-        } catch (DateTimeParseException ignored) { }
-        return null;
+                    : date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
+        } catch (DateTimeParseException ignored) {
+            throw new ValidationException(field, ValidationErrorCode.INVALID_DATE,
+                    "Data inválida (use ISO-8601, ex.: 2026-07-18 ou 2026-07-18T00:00:00Z): " + value);
+        }
     }
 }

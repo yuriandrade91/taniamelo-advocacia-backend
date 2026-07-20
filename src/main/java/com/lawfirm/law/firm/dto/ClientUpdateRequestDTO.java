@@ -13,10 +13,11 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Payload de criação de cliente (POST /clients). Endereços são um recurso
- * próprio (POST /clients/{id}/addresses) - não fazem parte deste payload.
+ * Payload de atualização completa (PUT /clients/{id}). Mesmas regras do
+ * create: PUT é substituição total dos campos editáveis - para atualização
+ * parcial use PATCH /clients/{id}.
  */
-public class ClientCreateRequestDTO implements ClientWritableFields {
+public class ClientUpdateRequestDTO implements ClientWritableFields {
 
     @NotBlank
     private String fullName;

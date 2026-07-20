@@ -1,8 +1,15 @@
 package com.lawfirm.law.firm.service;
 
+import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
+import com.lawfirm.law.firm.dto.ClientPersonalDataRequestDTO;
+import com.lawfirm.law.firm.dto.ClientPersonalDataResponseDTO;
+import com.lawfirm.law.firm.dto.ClientProfessionalDataRequestDTO;
+import com.lawfirm.law.firm.dto.ClientProfessionalDataResponseDTO;
+import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
+import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Situation;
 import org.springframework.data.domain.Page;
@@ -13,14 +20,29 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ClientService {
-    ClientDetailsDTO create(ClientDetailsDTO client);
-    Page<ClientListResponseDTO> listSummary(int page, int size, String searchTerm,
+
+    ClientDetailsDTO create(ClientCreateRequestDTO dto);
+
+    Page<ClientListResponseDTO> listSummary(int pageNumber, int pageSize, String searchTerm,
                                             List<BenefitType> benefitTypes, List<Situation> situations,
                                             Instant createdFrom, Instant createdTo);
+
     Optional<ClientDetailsDTO> findById(UUID id);
-    ClientDetailsDTO update(UUID id, ClientDetailsDTO client);
-    ClientDetailsDTO patch(UUID id, ClientPatchRequestDTO patch);
+
+    ClientDetailsDTO update(UUID id, ClientUpdateRequestDTO dto);
+
+    /** Atualização parcial (situação/arrecadação). Retorna o que efetivamente mudou. */
+    ClientPatchOutcome patch(UUID id, ClientPatchRequestDTO patch);
+
     void delete(UUID id);
-    java.util.List<com.lawfirm.law.firm.dto.ClientSituationHistoryDTO> historyByClientId(UUID clientId);
-    org.springframework.data.domain.Page<com.lawfirm.law.firm.dto.ClientSituationHistoryDTO> historyByClientId(UUID clientId, int page, int size);
+
+    Page<ClientSituationHistoryDTO> historyByClientId(UUID clientId, int pageNumber, int pageSize);
+
+    ClientPersonalDataResponseDTO getPersonalData(UUID id);
+
+    ClientPersonalDataResponseDTO updatePersonalData(UUID id, ClientPersonalDataRequestDTO dto);
+
+    ClientProfessionalDataResponseDTO getProfessionalData(UUID id);
+
+    ClientProfessionalDataResponseDTO updateProfessionalData(UUID id, ClientProfessionalDataRequestDTO dto);
 }

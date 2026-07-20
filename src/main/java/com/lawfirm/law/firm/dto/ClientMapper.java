@@ -12,19 +12,35 @@ import java.time.ZoneId;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface ClientMapper {
+
+    // ── Create: request DTO -> new entity ──
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "nonBillable", expression = "java(dto.getNonBillable() != null ? dto.getNonBillable() : false)")
-    Client toEntity(ClientDetailsDTO dto);
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
+    @Mapping(target = "contributionInMonths", ignore = true)
+    @Mapping(target = "notBillable", expression = "java(dto.getNotBillable() != null ? dto.getNotBillable() : false)")
+    @Mapping(target = "clientType", expression = "java(dto.getClientType() != null ? dto.getClientType() : com.lawfirm.law.firm.model.ClientType.POTENCIAL)")
+    Client toEntity(ClientCreateRequestDTO dto);
+
+    // ── Update: request DTO -> existing entity (in place) ──
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "updatedBy", ignore = true)
+    @Mapping(target = "contributionInMonths", ignore = true)
+    @Mapping(target = "notBillable", expression = "java(dto.getNotBillable() != null ? dto.getNotBillable() : entity.getNotBillable())")
+    @Mapping(target = "clientType", expression = "java(dto.getClientType() != null ? dto.getClientType() : entity.getClientType())")
+    void updateEntityFromDto(ClientUpdateRequestDTO dto, @MappingTarget Client entity);
+
+    // ── Response mapping ──
     ClientDetailsDTO toDTO(Client entity);
 
     // map entity -> list item DTO for grid/listing
     ClientListResponseDTO toListDTO(Client entity);
 
-    // map create DTO to DTO (used in controller)
-    ClientDetailsDTO fromCreate(ClientCreateRequestDTO createDto);
-
     // history mapping
-    @org.mapstruct.Mapping(target = "currentSituation", source = "newSituation")
+    @Mapping(target = "currentSituation", source = "newSituation")
+    @Mapping(target = "changedByUserId", source = "changedBy")
     ClientSituationHistoryDTO toHistoryDTO(com.lawfirm.law.firm.model.ClientSituationHistory h);
 
     @AfterMapping

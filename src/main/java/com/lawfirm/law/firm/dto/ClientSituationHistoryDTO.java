@@ -1,13 +1,15 @@
 package com.lawfirm.law.firm.dto;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.time.Instant;
 import java.util.UUID;
 
+@JsonPropertyOrder({"id"})
 public class ClientSituationHistoryDTO {
     private UUID id;
     private String currentSituation;
     private Instant changedAt;
-    private Integer changedBy;
+    private UUID changedByUserId;
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -15,6 +17,6 @@ public class ClientSituationHistoryDTO {
     public void setCurrentSituation(String currentSituation) { this.currentSituation = currentSituation; }
     public Instant getChangedAt() { return changedAt; }
     public void setChangedAt(Instant changedAt) { this.changedAt = changedAt; }
-    public Integer getChangedBy() { return changedBy; }
-    public void setChangedBy(Integer changedBy) { this.changedBy = changedBy; }
+    public UUID getChangedByUserId() { return changedByUserId; }
+    public void setChangedByUserId(UUID changedByUserId) { this.changedByUserId = changedByUserId; }
 }

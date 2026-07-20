@@ -2,7 +2,7 @@ package com.lawfirm.law.firm;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.lawfirm.law.firm.dto.ClientDetailsDTO;
+import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
@@ -51,20 +51,19 @@ public class ClientControllerTest {
 
     @Test
     public void createClientThenReturnIt() throws Exception {
-        ClientDetailsDTO dto = new ClientDetailsDTO();
+        ClientCreateRequestDTO dto = new ClientCreateRequestDTO();
         dto.setFullName("Test User");
         dto.setBirthDate(LocalDate.of(1990,1,1));
         dto.setCpf("000.000.000-00");
         dto.setRg("MG-12.345.678");
-        dto.setEmail("test.user@example.com");
+        dto.setEmail("admin@taniamelo.adv.br");
         dto.setMobilePhone("+5511999999999");
         dto.setReferencePhone("+5511988888888");
     dto.setBeneficiaryNumber("BN123");
         dto.setNitPis("NIT123");
         dto.setCtps("CTPS123");
         dto.setCtpsSeries("S1");
-        dto.setCreatedBy(1);
-        dto.setGender(Gender.Masculino);
+        dto.setGender(Gender.MASCULINO);
         dto.setMaritalStatus(MaritalStatus.SOLTEIRO);
         dto.setBenefit(BenefitType.APOSENTADORIA_POR_IDADE);
         dto.setSituation(Situation.FORMULARIO_PREENCHIDO);
@@ -82,10 +81,10 @@ public class ClientControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").exists())
                 .andExpect(jsonPath("$.data.fullName").value("Test User"))
-                .andExpect(jsonPath("$.data.email").value("test.user@example.com"))
+                .andExpect(jsonPath("$.data.email").value("admin@taniamelo.adv.br"))
                 .andExpect(jsonPath("$.data.gender").value("Masculino"))
                 .andExpect(jsonPath("$.data.maritalStatus").value("Solteiro(a)"))
                 .andExpect(jsonPath("$.data.benefit").value("Aposentadoria por idade"))
-                .andExpect(jsonPath("$.data.situation").value("formulário preenchido"));
+                .andExpect(jsonPath("$.data.situation").value("Formulário preenchido"));
     }
 }

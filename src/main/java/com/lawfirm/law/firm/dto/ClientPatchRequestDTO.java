@@ -1,26 +1,18 @@
 package com.lawfirm.law.firm.dto;
 
+/**
+ * Atualização parcial do cliente (PATCH /clients/{id}): situação e/ou
+ * arrecadação. situation aceita o nome do enum ou o label PT-BR (validado no
+ * service para produzir erro amigável).
+ */
 public class ClientPatchRequestDTO {
-    // accept raw string from frontend (enum name or label); service will convert to Situation
+
     private String situation;
-    private Boolean nonBillable;
+    private Boolean notBillable;
 
-    public ClientPatchRequestDTO() {
-    }
+    public String getSituation() { return situation; }
+    public void setSituation(String situation) { this.situation = situation; }
 
-    public String getSituation() {
-        return situation;
-    }
-
-    public void setSituation(String situation) {
-        this.situation = situation;
-    }
-
-    public Boolean getNonBillable() {
-        return nonBillable;
-    }
-
-    public void setNonBillable(Boolean nonBillable) {
-        this.nonBillable = nonBillable;
-    }
+    public Boolean getNotBillable() { return notBillable; }
+    public void setNotBillable(Boolean notBillable) { this.notBillable = notBillable; }
 }

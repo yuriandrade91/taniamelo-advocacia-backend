@@ -2,8 +2,7 @@ package com.lawfirm.law.firm.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-
-import java.text.Normalizer;
+import com.lawfirm.law.firm.util.EnumLabelSupport;
 
 public enum MaritalStatus {
     SOLTEIRO("Solteiro(a)"),
@@ -21,27 +20,7 @@ public enum MaritalStatus {
 
     @JsonCreator
     public static MaritalStatus fromLabel(String label) {
-        if (label == null) throw new IllegalArgumentException("Unknown marital status: null");
-
-        for (MaritalStatus s : values()) {
-            if (s.label.equalsIgnoreCase(label)) return s;
-        }
-
-        String cleanLabel = normalize(label);
-        for (MaritalStatus s : values()) {
-            if (normalize(s.label).equals(cleanLabel)) return s;
-        }
-
-        throw new IllegalArgumentException("Unknown marital status: " + label);
-    }
-
-    private static String normalize(String s) {
-        if (s == null) return "";
-        String noParen = s.replaceAll("\\(.*?\\)", "");
-        return Normalizer.normalize(noParen, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .replaceAll("[^A-Za-z]", "")
-                .toLowerCase();
+        return EnumLabelSupport.fromLabel(MaritalStatus.class, MaritalStatus::getLabel, label);
     }
 
     @Override

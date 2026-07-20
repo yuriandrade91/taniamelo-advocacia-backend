@@ -3,13 +3,15 @@ package com.lawfirm.law.firm.model;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.UuidGenerator;
 
 @Entity
 @Table(name = "client_situation_history")
 public class ClientSituationHistory {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
+    @UuidGenerator(style = UuidGenerator.Style.RANDOM)
     @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID id;
 
@@ -27,7 +29,7 @@ public class ClientSituationHistory {
     private Instant changedAt;
 
     @Column(name = "changed_by")
-    private Integer changedBy;
+    private UUID changedBy;
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -44,6 +46,6 @@ public class ClientSituationHistory {
     public Instant getChangedAt() { return changedAt; }
     public void setChangedAt(Instant changedAt) { this.changedAt = changedAt; }
 
-    public Integer getChangedBy() { return changedBy; }
-    public void setChangedBy(Integer changedBy) { this.changedBy = changedBy; }
+    public UUID getChangedBy() { return changedBy; }
+    public void setChangedBy(UUID changedBy) { this.changedBy = changedBy; }
 }

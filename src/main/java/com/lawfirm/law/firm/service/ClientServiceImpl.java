@@ -1,113 +1,88 @@
 package com.lawfirm.law.firm.service;
 
+import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientMapper;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
+import com.lawfirm.law.firm.dto.ClientPersonalDataRequestDTO;
+import com.lawfirm.law.firm.dto.ClientPersonalDataResponseDTO;
+import com.lawfirm.law.firm.dto.ClientProfessionalDataRequestDTO;
+import com.lawfirm.law.firm.dto.ClientProfessionalDataResponseDTO;
+import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
+import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
+import com.lawfirm.law.firm.dto.ClientWritableFields;
 import com.lawfirm.law.firm.exception.NotFoundException;
 import com.lawfirm.law.firm.exception.ValidationErrorCode;
 import com.lawfirm.law.firm.exception.ValidationException;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Client;
+import com.lawfirm.law.firm.model.ClientSituationHistory;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.repository.ClientRepository;
+import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSpecification;
+import com.lawfirm.law.firm.security.CurrentUser;
+import com.lawfirm.law.firm.util.ContributionTimeParser;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.Period;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.UUID;
- 
 
 @Service
 public class ClientServiceImpl implements ClientService {
 
     private final ClientRepository repository;
     private final ClientMapper mapper;
-    private final com.lawfirm.law.firm.repository.ClientSituationHistoryRepository historyRepository;
-    private final EntityManager em;
+    private final ClientSituationHistoryRepository historyRepository;
 
     public ClientServiceImpl(ClientRepository repository, ClientMapper mapper,
-                             com.lawfirm.law.firm.repository.ClientSituationHistoryRepository historyRepository,
-                             EntityManager em) {
+                             ClientSituationHistoryRepository historyRepository) {
         this.repository = repository;
         this.mapper = mapper;
         this.historyRepository = historyRepository;
-        this.em = em;
     }
 
     @Override
-    public ClientDetailsDTO create(ClientDetailsDTO dto) {
+    @Transactional
+    public ClientDetailsDTO create(ClientCreateRequestDTO dto) {
         validateUniqueness(dto);
         Client entity = mapper.toEntity(dto);
+        entity.setContributionInMonths(ContributionTimeParser.toMonths(entity.getContributionTime()));
+        entity.setCreatedBy(CurrentUser.id());
         Client saved = repository.save(entity);
-    // record initial situation entry
-    recordHistory(null, saved);
+        recordHistory(null, saved);
         return mapper.toDTO(saved);
     }
 
     @Override
-    public Page<ClientListResponseDTO> listSummary(int page, int size, String searchTerm,
+    public Page<ClientListResponseDTO> listSummary(int pageNumber, int pageSize, String searchTerm,
                                                    List<BenefitType> benefitTypes, List<Situation> situations,
                                                    Instant createdFrom, Instant createdTo) {
-    int pageIndex = Math.max(0, page);
-    int pageSize = size <= 0 ? 10 : size;
+        Specification<Client> spec = ClientSpecification.combine(List.of(
+                ClientSpecification.searchTerm(searchTerm),
+                ClientSpecification.benefitIn(benefitTypes),
+                ClientSpecification.situationIn(situations),
+                ClientSpecification.createdBetween(createdFrom, createdTo)
+        ));
 
-    Specification<Client> spec = ClientSpecification.combine(List.of(
-        ClientSpecification.searchTerm(searchTerm),
-        ClientSpecification.benefitIn(benefitTypes),
-        ClientSpecification.situationIn(situations),
-        ClientSpecification.createdBetween(createdFrom, createdTo)
-    ));
-
-    // Build criteria query to order by GREATEST(updatedAt, createdAt) desc
-    CriteriaBuilder cb = em.getCriteriaBuilder();
-    CriteriaQuery<Client> cq = cb.createQuery(Client.class);
-    Root<Client> root = cq.from(Client.class);
-
-    Predicate predicate = null;
-    if (spec != null) {
-        predicate = spec.toPredicate(root, cq, cb);
-    }
-    if (predicate != null) cq.where(predicate);
-
-    // Order by the most recent timestamp between updatedAt and createdAt.
-    // Use a CASE expression instead of SQL GREATEST to ensure a concrete Java type (Instant)
-    Expression<java.time.Instant> mostRecent = cb.coalesce(
-        root.get("updatedAt").as(java.time.Instant.class),
-        root.get("createdAt").as(java.time.Instant.class)
-    );
-    cq.orderBy(cb.desc(mostRecent));
-
-    TypedQuery<Client> query = em.createQuery(cq);
-    query.setFirstResult(pageIndex * pageSize);
-    query.setMaxResults(pageSize);
-    var results = query.getResultList();
-
-    // count
-    CriteriaQuery<Long> countQ = cb.createQuery(Long.class);
-    Root<Client> countRoot = countQ.from(Client.class);
-    countQ.select(cb.count(countRoot));
-    if (spec != null) {
-        Predicate countPred = spec.toPredicate(countRoot, countQ, cb);
-        if (countPred != null) countQ.where(countPred);
-    }
-    Long total = em.createQuery(countQ).getSingleResult();
-
-    java.util.List<ClientListResponseDTO> dtos = results.stream().map(mapper::toListDTO).toList();
-    return new org.springframework.data.domain.PageImpl<>(dtos, PageRequest.of(pageIndex, pageSize), total);
+        // updatedAt é sempre populado (prePersist/preUpdate), então ordenar por ele
+        // dá "atividade mais recente primeiro" sem query manual.
+        var pageable = PageRequest.of(Math.max(0, pageNumber - 1), pageSize <= 0 ? 10 : pageSize,
+                Sort.by(Sort.Direction.DESC, "updatedAt"));
+        return repository.findAll(spec, pageable).map(mapper::toListDTO);
     }
 
     @Override
@@ -116,144 +91,219 @@ public class ClientServiceImpl implements ClientService {
     }
 
     @Override
-    public ClientDetailsDTO patch(UUID id, ClientPatchRequestDTO patch) {
-    Client existing = findOrThrow(id);
-        if (patch.getSituation() != null) {
-            // convert incoming string to Situation (accept enum name, label or normalized)
-            com.lawfirm.law.firm.model.Situation incoming = null;
-            String raw = patch.getSituation();
-            if (raw != null) {
-                String candidate = raw.trim().toUpperCase().replaceAll("\\s+", "_").replaceAll("[^A-Z0-9_]", "");
-                // try name match
-                for (com.lawfirm.law.firm.model.Situation s : com.lawfirm.law.firm.model.Situation.values()) {
-                    if (s.name().equals(candidate) || s.name().equalsIgnoreCase(candidate)) { incoming = s; break; }
-                }
-                // try case-insensitive name
-                if (incoming == null) {
-                    for (com.lawfirm.law.firm.model.Situation s : com.lawfirm.law.firm.model.Situation.values()) {
-                        if (s.name().equalsIgnoreCase(raw.trim())) { incoming = s; break; }
-                    }
-                }
-                // try label match
-                if (incoming == null) {
-                    for (com.lawfirm.law.firm.model.Situation s : com.lawfirm.law.firm.model.Situation.values()) {
-                        if (s.getLabel().equalsIgnoreCase(raw.trim())) { incoming = s; break; }
-                    }
-                }
-                // try normalized
-                if (incoming == null) {
-                    String norm = com.lawfirm.law.firm.model.Situation.normalizeForComparison(raw);
-                    for (com.lawfirm.law.firm.model.Situation s : com.lawfirm.law.firm.model.Situation.values()) {
-                        if (com.lawfirm.law.firm.model.Situation.normalizeForComparison(s.name()).equals(norm)
-                                || com.lawfirm.law.firm.model.Situation.normalizeForComparison(s.getLabel()).equals(norm)) {
-                            incoming = s; break;
-                        }
-                    }
-                }
-            }
-            if (incoming == null) {
-                throw new com.lawfirm.law.firm.exception.ValidationException(null, com.lawfirm.law.firm.exception.ValidationErrorCode.INVALID_SITUATION, "Unknown situation: " + patch.getSituation());
-            }
-            Situation previous = existing.getSituation();
-            existing.setSituation(incoming);
-            Client saved = repository.save(existing);
-            if (!Objects.equals(previous, saved.getSituation())) {
-                recordHistory(previous, saved);
-            }
-            return mapper.toDTO(saved);
-        }
-        if (patch.getNonBillable() != null) existing.setNonBillable(patch.getNonBillable());
-        return mapper.toDTO(repository.save(existing));
-    }
-
-    @Override
-    public ClientDetailsDTO update(UUID id, ClientDetailsDTO dto) {
+    @Transactional
+    public ClientDetailsDTO update(UUID id, ClientUpdateRequestDTO dto) {
         Client existing = findOrThrow(id);
-    Situation previous = existing.getSituation();
-        existing.setFullName(dto.getFullName());
-        existing.setBirthDate(dto.getBirthDate());
-        existing.setMaritalStatus(dto.getMaritalStatus());
-        existing.setCpf(dto.getCpf());
-        existing.setRg(dto.getRg());
-        existing.setMotherName(dto.getMotherName());
-        existing.setEmail(dto.getEmail());
-        existing.setMobilePhone(dto.getMobilePhone());
-        existing.setReferencePhone(dto.getReferencePhone());
-        existing.setReferenceResponsible(dto.getReferenceResponsible());
-        existing.setBenefit(dto.getBenefit());
-        existing.setSituation(dto.getSituation());
-    existing.setBeneficiaryNumber(dto.getBeneficiaryNumber());
-        existing.setNitPis(dto.getNitPis());
-        existing.setProfession(dto.getProfession());
-        existing.setCtps(dto.getCtps());
-        existing.setCtpsSeries(dto.getCtpsSeries());
-        existing.setInssPassword(dto.getInssPassword());
-        existing.setContributionTime(dto.getContributionTime());
-        existing.setGender(dto.getGender());
-        if (dto.getNonBillable() != null) existing.setNonBillable(dto.getNonBillable());
+        Situation previous = existing.getSituation();
+
+        mapper.updateEntityFromDto(dto, existing);
+        existing.setContributionInMonths(ContributionTimeParser.toMonths(existing.getContributionTime()));
+        existing.setUpdatedBy(CurrentUser.id());
 
         Client saved = repository.save(existing);
-    // if situation changed, record
-    if (!Objects.equals(previous, saved.getSituation())) {
+        if (!Objects.equals(previous, saved.getSituation())) {
             recordHistory(previous, saved);
         }
         return mapper.toDTO(saved);
     }
 
     @Override
-    public java.util.List<com.lawfirm.law.firm.dto.ClientSituationHistoryDTO> historyByClientId(UUID clientId) {
-    return historyRepository.findByClient_IdOrderByChangedAtDesc(clientId).stream()
-        .map(mapper::toHistoryDTO)
-        .toList();
+    @Transactional
+    public ClientPatchOutcome patch(UUID id, ClientPatchRequestDTO patch) {
+        Client existing = findOrThrow(id);
+
+        boolean situationChanged = false;
+        boolean notBillableChanged = false;
+
+        if (patch.getSituation() != null) {
+            Situation incoming = parseSituation(patch.getSituation());
+            Situation previous = existing.getSituation();
+            if (!Objects.equals(previous, incoming)) {
+                existing.setSituation(incoming);
+                situationChanged = true;
+                existing.setUpdatedBy(CurrentUser.id());
+                Client saved = repository.save(existing);
+                recordHistory(previous, saved);
+                existing = saved;
+            }
+        }
+
+        if (patch.getNotBillable() != null && !Objects.equals(existing.getNotBillable(), patch.getNotBillable())) {
+            existing.setNotBillable(patch.getNotBillable());
+            existing.setUpdatedBy(CurrentUser.id());
+            repository.save(existing);
+            notBillableChanged = true;
+        }
+
+        return new ClientPatchOutcome(situationChanged, notBillableChanged);
     }
 
     @Override
-    public org.springframework.data.domain.Page<com.lawfirm.law.firm.dto.ClientSituationHistoryDTO> historyByClientId(UUID clientId, int page, int size) {
-        var pageable = org.springframework.data.domain.PageRequest.of(Math.max(0, page), size <= 0 ? 10 : size,
-                org.springframework.data.domain.Sort.by("changedAt").descending());
-        var result = historyRepository.findByClient_Id(clientId, pageable);
-        return result.map(mapper::toHistoryDTO);
-    }
-
-    @org.springframework.transaction.annotation.Transactional
-    private void recordHistory(Situation previous, Client saved) {
-        com.lawfirm.law.firm.model.ClientSituationHistory h = new com.lawfirm.law.firm.model.ClientSituationHistory();
-        h.setClient(saved);
-    h.setPreviousSituation(previous == null ? null : previous.getLabel());
-    h.setNewSituation(saved.getSituation() == null ? null : saved.getSituation().getLabel());
-        h.setChangedAt(java.time.Instant.now());
-        // changedBy not available in current context; leave null
-        historyRepository.save(h);
-    }
-
-    @Override
+    @Transactional
     public void delete(UUID id) {
         if (!repository.existsById(id)) {
-            throw new NotFoundException("Client not found with id: " + id);
+            throw NotFoundException.of("Cliente", id);
         }
         repository.deleteById(id);
+    }
+
+    @Override
+    public Page<ClientSituationHistoryDTO> historyByClientId(UUID clientId, int pageNumber, int pageSize) {
+        findOrThrow(clientId);
+        var pageable = PageRequest.of(Math.max(0, pageNumber - 1), pageSize <= 0 ? 10 : pageSize,
+                Sort.by("changedAt").descending());
+        return historyRepository.findByClient_Id(clientId, pageable).map(mapper::toHistoryDTO);
+    }
+
+    // ── Dados pessoais (aba "Dados pessoais") ──
+
+    @Override
+    public ClientPersonalDataResponseDTO getPersonalData(UUID id) {
+        return toPersonalDataDTO(findOrThrow(id));
+    }
+
+    @Override
+    @Transactional
+    public ClientPersonalDataResponseDTO updatePersonalData(UUID id, ClientPersonalDataRequestDTO dto) {
+        Client existing = findOrThrow(id);
+
+        existing.setFullName(dto.getFullName());
+        existing.setBirthDate(dto.getBirthDate());
+        existing.setCpf(dto.getCpf());
+        existing.setRg(dto.getRg());
+        existing.setRgIssuer(dto.getRgIssuer());
+        existing.setRgIssueDate(dto.getRgIssueDate());
+        existing.setMotherName(dto.getMotherName());
+        existing.setGender(dto.getGender());
+        existing.setMaritalStatus(dto.getMaritalStatus());
+        if (dto.getNationality() != null) {
+            existing.setNationality(dto.getNationality());
+        }
+        existing.setMobilePhone(dto.getMobilePhone());
+        if (dto.getIsWhatsapp() != null) {
+            existing.setIsWhatsapp(dto.getIsWhatsapp());
+        }
+        existing.setReferencePhone(dto.getReferencePhone());
+        existing.setReferenceResponsible(dto.getReferenceResponsible());
+        existing.setEmail(dto.getEmail());
+        if (dto.getHasDisability() != null) {
+            existing.setHasDisability(dto.getHasDisability());
+        }
+        existing.setUpdatedBy(CurrentUser.id());
+
+        return toPersonalDataDTO(repository.save(existing));
+    }
+
+    // ── Dados profissionais (aba "Dados profissionais") ──
+
+    @Override
+    public ClientProfessionalDataResponseDTO getProfessionalData(UUID id) {
+        return toProfessionalDataDTO(findOrThrow(id));
+    }
+
+    @Override
+    @Transactional
+    public ClientProfessionalDataResponseDTO updateProfessionalData(UUID id, ClientProfessionalDataRequestDTO dto) {
+        Client existing = findOrThrow(id);
+
+        existing.setProfession(dto.getProfession());
+        existing.setNitPis(dto.getNitPis());
+        existing.setCtps(dto.getCtps());
+        existing.setCtpsSeries(dto.getCtpsSeries());
+        existing.setBeneficiaryNumber(dto.getBeneficiaryNumber());
+        existing.setContributionTime(dto.getContributionTime());
+        existing.setContributionInMonths(ContributionTimeParser.toMonths(dto.getContributionTime()));
+        existing.setInssPassword(dto.getInssPassword());
+        existing.setUpdatedBy(CurrentUser.id());
+
+        return toProfessionalDataDTO(repository.save(existing));
     }
 
     // ── Private helpers ──
 
     private Client findOrThrow(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Client not found with id: " + id));
+                .orElseThrow(() -> NotFoundException.of("Cliente", id));
     }
 
-    private void validateUniqueness(ClientDetailsDTO dto) {
-    checkDuplicate(dto.getBeneficiaryNumber(), repository::existsByBeneficiaryNumberIgnoreCase,
-    "beneficiaryNumber", "Número do benefício já cadastrado");
+    private static Situation parseSituation(String raw) {
+        try {
+            Situation s = Situation.fromLabel(raw);
+            if (s == null) {
+                throw new ValidationException("situation", ValidationErrorCode.INVALID_SITUATION);
+            }
+            return s;
+        } catch (IllegalArgumentException ex) {
+            throw new ValidationException("situation", ValidationErrorCode.INVALID_SITUATION,
+                    "Situação inválida: " + raw);
+        }
+    }
+
+    private void recordHistory(Situation previous, Client saved) {
+        ClientSituationHistory h = new ClientSituationHistory();
+        h.setClient(saved);
+        h.setPreviousSituation(previous == null ? null : previous.getLabel());
+        h.setNewSituation(saved.getSituation() == null ? null : saved.getSituation().getLabel());
+        h.setChangedAt(Instant.now());
+        h.setChangedBy(CurrentUser.id());
+        historyRepository.save(h);
+    }
+
+    private void validateUniqueness(ClientWritableFields dto) {
         checkDuplicate(dto.getCpf(), repository::existsByCpf, "cpf", "CPF já cadastrado");
-        checkDuplicate(dto.getRg(), repository::existsByRg, "rg", "RG já cadastrado");
         checkDuplicate(dto.getNitPis(), repository::existsByNitPis, "nitPis", "NIT/PIS já cadastrado");
-        checkDuplicate(dto.getCtps(), repository::existsByCtps, "ctps", "CTPS já cadastrado");
+        checkDuplicate(dto.getBeneficiaryNumber(), repository::existsByBeneficiaryNumberIgnoreCase,
+                "beneficiaryNumber", "Número do benefício já cadastrado");
     }
 
-    private void checkDuplicate(String value, java.util.function.Predicate<String> existsFn,
-                                String field, String message) {
+    private void checkDuplicate(String value, Predicate<String> existsFn, String field, String message) {
         if (value != null && !value.isBlank() && existsFn.test(value.trim())) {
             throw new ValidationException(field, ValidationErrorCode.DUPLICATE_VALUE, message);
         }
+    }
+
+    private static Integer ageOf(LocalDate birthDate) {
+        return birthDate == null ? null : Period.between(birthDate, LocalDate.now(ZoneOffset.UTC)).getYears();
+    }
+
+    private ClientPersonalDataResponseDTO toPersonalDataDTO(Client entity) {
+        ClientPersonalDataResponseDTO dto = new ClientPersonalDataResponseDTO();
+        dto.setId(entity.getId());
+        dto.setFullName(entity.getFullName());
+        dto.setBirthDate(entity.getBirthDate());
+        dto.setAge(ageOf(entity.getBirthDate()));
+        dto.setCpf(entity.getCpf());
+        dto.setRg(entity.getRg());
+        dto.setRgIssuer(entity.getRgIssuer());
+        dto.setRgIssueDate(entity.getRgIssueDate());
+        dto.setMotherName(entity.getMotherName());
+        dto.setGender(entity.getGender());
+        dto.setMaritalStatus(entity.getMaritalStatus());
+        dto.setNationality(entity.getNationality());
+        dto.setMobilePhone(entity.getMobilePhone());
+        dto.setIsWhatsapp(entity.getIsWhatsapp());
+        dto.setReferencePhone(entity.getReferencePhone());
+        dto.setReferenceResponsible(entity.getReferenceResponsible());
+        dto.setEmail(entity.getEmail());
+        dto.setHasDisability(entity.getHasDisability());
+        dto.setUpdatedBy(entity.getUpdatedBy());
+        dto.setUpdatedAt(entity.getUpdatedAt());
+        return dto;
+    }
+
+    private ClientProfessionalDataResponseDTO toProfessionalDataDTO(Client entity) {
+        ClientProfessionalDataResponseDTO dto = new ClientProfessionalDataResponseDTO();
+        dto.setId(entity.getId());
+        dto.setProfession(entity.getProfession());
+        dto.setNitPis(entity.getNitPis());
+        dto.setCtps(entity.getCtps());
+        dto.setCtpsSeries(entity.getCtpsSeries());
+        dto.setContributionTime(entity.getContributionTime());
+        dto.setContributionInMonths(entity.getContributionInMonths());
+        dto.setBeneficiaryNumber(entity.getBeneficiaryNumber());
+        dto.setInssPassword(entity.getInssPassword());
+        dto.setUpdatedBy(entity.getUpdatedBy());
+        dto.setUpdatedAt(entity.getUpdatedAt());
+        return dto;
     }
 }
