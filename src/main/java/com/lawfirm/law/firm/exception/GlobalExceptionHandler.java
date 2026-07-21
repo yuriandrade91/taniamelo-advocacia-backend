@@ -25,6 +25,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import tools.jackson.core.JacksonException;
 
 /**
  * Central única de tratamento de erros. Divisão em três famílias:
@@ -160,8 +161,18 @@ public class GlobalExceptionHandler {
                 ex.getMostSpecificCause() != null
                         ? ex.getMostSpecificCause().getMessage()
                         : ex.getMessage();
-        return respond(
-                HttpStatus.BAD_REQUEST, List.of(new ApiError(null, msg, "INVALID_REQUEST_BODY")));
+
+        // Enum fields deserialized via a @JsonCreator that throws (every domain enum - ClientType,
+        // Situation, BenefitType, Gender, etc.) surface here as a Jackson 3 JacksonException
+        // (Jackson
+        // 3 dropped the old com.fasterxml.jackson JsonMappingException type) whose path tells us
+        // which JSON field actually failed, instead of a bare, field-less 400.
+        String field = null;
+        if (ex.getCause() instanceof JacksonException jacksonEx && !jacksonEx.getPath().isEmpty()) {
+            field = jacksonEx.getPath().get(jacksonEx.getPath().size() - 1).getPropertyName();
+        }
+        String code = field != null ? "INVALID_ENUM_VALUE" : "INVALID_REQUEST_BODY";
+        return respond(HttpStatus.BAD_REQUEST, List.of(new ApiError(field, msg, code)));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

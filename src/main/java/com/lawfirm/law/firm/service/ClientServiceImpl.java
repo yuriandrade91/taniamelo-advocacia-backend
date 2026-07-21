@@ -18,6 +18,7 @@ import com.lawfirm.law.firm.exception.ValidationException;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Client;
 import com.lawfirm.law.firm.model.ClientSituationHistory;
+import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
@@ -126,6 +127,7 @@ public class ClientServiceImpl implements ClientService {
 
         boolean situationChanged = false;
         boolean benefitChanged = false;
+        boolean clientTypeChanged = false;
         boolean notBillableChanged = false;
 
         if (patch.getSituation() != null) {
@@ -151,6 +153,16 @@ public class ClientServiceImpl implements ClientService {
             }
         }
 
+        if (patch.getClientType() != null) {
+            ClientType incoming = parseClientType(patch.getClientType());
+            if (!Objects.equals(existing.getClientType(), incoming)) {
+                existing.setClientType(incoming);
+                existing.setUpdatedBy(CurrentUser.id());
+                existing = repository.save(existing);
+                clientTypeChanged = true;
+            }
+        }
+
         if (patch.getNotBillable() != null
                 && !Objects.equals(existing.getNotBillable(), patch.getNotBillable())) {
             existing.setNotBillable(patch.getNotBillable());
@@ -159,7 +171,8 @@ public class ClientServiceImpl implements ClientService {
             notBillableChanged = true;
         }
 
-        return new ClientPatchOutcome(situationChanged, benefitChanged, notBillableChanged);
+        return new ClientPatchOutcome(
+                situationChanged, benefitChanged, clientTypeChanged, notBillableChanged);
     }
 
     @Override
@@ -281,6 +294,22 @@ public class ClientServiceImpl implements ClientService {
         } catch (IllegalArgumentException ex) {
             throw new ValidationException(
                     "benefit", ValidationErrorCode.INVALID_BENEFIT, "Benefício inválido: " + raw);
+        }
+    }
+
+    private static ClientType parseClientType(String raw) {
+        try {
+            ClientType t = ClientType.fromLabel(raw);
+            if (t == null) {
+                throw new ValidationException(
+                        "clientType", ValidationErrorCode.INVALID_CLIENT_TYPE);
+            }
+            return t;
+        } catch (IllegalArgumentException ex) {
+            throw new ValidationException(
+                    "clientType",
+                    ValidationErrorCode.INVALID_CLIENT_TYPE,
+                    "Tipo de cliente inválido: " + raw);
         }
     }
 

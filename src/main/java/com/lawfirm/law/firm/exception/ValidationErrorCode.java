@@ -10,6 +10,7 @@ public enum ValidationErrorCode {
     INVALID_ENUM_VALUE("Valor de enum inválido"),
     INVALID_SITUATION("Situação inválida"),
     INVALID_BENEFIT("Benefício inválido"),
+    INVALID_CLIENT_TYPE("Tipo de cliente inválido"),
     DUPLICATE_VALUE("Valor duplicado para campo único");
 
     private final String message;

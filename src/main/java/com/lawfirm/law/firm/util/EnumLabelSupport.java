@@ -1,7 +1,9 @@
 package com.lawfirm.law.firm.util;
 
 import java.text.Normalizer;
+import java.util.Arrays;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Resolução padrão "label PT-BR ou nome do enum" usada por todos os enums de domínio da aplicação.
@@ -30,7 +32,12 @@ public final class EnumLabelSupport {
             if (normalize(e.name()).equals(normalized)
                     || normalize(labelFn.apply(e)).equals(normalized)) return e;
         }
-        throw new IllegalArgumentException("Unknown " + type.getSimpleName() + ": " + raw);
+        String validValues =
+                Arrays.stream(type.getEnumConstants())
+                        .map(labelFn)
+                        .collect(Collectors.joining(", "));
+        throw new IllegalArgumentException(
+                "Valor inválido: \"" + raw + "\". Valores aceitos: " + validValues);
     }
 
     public static String normalize(String input) {

@@ -49,9 +49,13 @@ public class ClientController {
     @Operation(
             summary = "Cadastrar cliente",
             description =
-                    "Cria um novo cliente. Identificadores únicos (CPF, NIT/PIS, número do benefício) são "
-                            + "validados contra duplicidade antes de gravar. Endereços, arquivos, entrevistas e pagamentos "
-                            + "são cadastrados nos sub-recursos de /clients/{id} após a criação.")
+                    """
+                    Cria um novo cliente. Identificadores únicos (CPF, NIT/PIS, número do benefício) \
+                    são validados contra duplicidade antes de gravar. Endereços, arquivos, entrevistas \
+                    e pagamentos são cadastrados nos sub-recursos de /clients/{id} após a criação.
+
+                    **Valores válidos de `clientType`:** `Verificado` ou `Potencial` (nome do enum ou \
+                    label, case/acento-insensitive). Qualquer outro valor retorna 400.""")
     @PostMapping
     public ResponseEntity<ApiResponse<ClientDetailsDTO>> create(
             @Valid @RequestBody ClientCreateRequestDTO createDto, UriComponentsBuilder uriBuilder) {
@@ -133,8 +137,12 @@ public class ClientController {
     @Operation(
             summary = "Atualizar cliente (substituição completa)",
             description =
-                    "PUT = substituição total dos campos editáveis - envie o objeto completo. "
-                            + "Para atualização parcial (situação/arrecadação) use PATCH /clients/{id}.")
+                    """
+                    PUT = substituição total dos campos editáveis - envie o objeto completo. Para \
+                    atualização parcial (situação/benefício/arrecadação) use PATCH /clients/{id}.
+
+                    **Valores válidos de `clientType`:** `Verificado` ou `Potencial` (nome do enum ou \
+                    label, case/acento-insensitive). Qualquer outro valor retorna 400.""")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ClientDetailsDTO>> update(
             @PathVariable UUID id, @Valid @RequestBody ClientUpdateRequestDTO body) {
@@ -142,18 +150,18 @@ public class ClientController {
     }
 
     @Operation(
-            summary = "Atualização parcial (situação, benefício e/ou arrecadação)",
+            summary = "Atualização parcial (situação, benefício, tipo de cliente e/ou arrecadação)",
             description =
                     """
-                    PATCH parcial: envie só o que quer mudar (`situation`, `benefit` e/ou \
-                    `notBillable`). Mudança de situação gera automaticamente um registro no \
-                    histórico (`GET /clients/{id}/situation-history`); mudança de benefício e de \
-                    arrecadação não.
+                    PATCH parcial: envie só o que quer mudar (`situation`, `benefit`, `clientType` \
+                    e/ou `notBillable`). Mudança de situação gera automaticamente um registro no \
+                    histórico (`GET /clients/{id}/situation-history`); mudança de benefício, tipo \
+                    de cliente e de arrecadação não.
 
-                    **Formato de `situation` e `benefit`:** aceita o nome da constante (ex.: \
-                    `APOSENTADORIA_RURAL`) ou o label em PT-BR (ex.: `Aposentadoria rural`), sem \
-                    diferenciar maiúsculas/minúsculas nem acentuação. Qualquer outro valor retorna \
-                    400.
+                    **Formato de `situation`, `benefit` e `clientType`:** aceita o nome da \
+                    constante (ex.: `APOSENTADORIA_RURAL`) ou o label em PT-BR (ex.: \
+                    `Aposentadoria rural`), sem diferenciar maiúsculas/minúsculas nem acentuação. \
+                    Qualquer outro valor retorna 400.
 
                     **Valores válidos de `situation`:**
                     - `Formulário preenchido`
@@ -172,7 +180,11 @@ public class ClientController {
                     - `Aposentadoria por tempo de contribuição do professor`
                     - `Aposentadoria por invalidez`
                     - `Aposentadoria rural`
-                    - `Aposentadoria para PCD`""")
+                    - `Aposentadoria para PCD`
+
+                    **Valores válidos de `clientType`:**
+                    - `Verificado`
+                    - `Potencial`""")
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> patch(
             @PathVariable UUID id, @RequestBody ClientPatchRequestDTO patch) {
@@ -210,6 +222,10 @@ public class ClientController {
         }
         if (outcome.benefitChanged()) {
             names.add("Benefício");
+            feminine.add(false);
+        }
+        if (outcome.clientTypeChanged()) {
+            names.add("Tipo de cliente");
             feminine.add(false);
         }
         if (outcome.notBillableChanged()) {
