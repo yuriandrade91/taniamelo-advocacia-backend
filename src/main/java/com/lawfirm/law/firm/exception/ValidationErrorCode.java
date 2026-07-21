@@ -9,6 +9,7 @@ public enum ValidationErrorCode {
     INVALID_PHONE("Telefone em formato inválido"),
     INVALID_ENUM_VALUE("Valor de enum inválido"),
     INVALID_SITUATION("Situação inválida"),
+    INVALID_BENEFIT("Benefício inválido"),
     DUPLICATE_VALUE("Valor duplicado para campo único");
 
     private final String message;

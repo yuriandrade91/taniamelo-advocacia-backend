@@ -34,23 +34,30 @@ mvn spring-boot:run
 - O schema é gerenciado 100% pelo Flyway (`src/main/resources/db/migration`); o app roda as
   migrations sozinho ao subir. `spring.jpa.hibernate.ddl-auto` é sempre `validate` - Hibernate
   nunca altera o schema, só confere se as entidades batem com o que o Flyway criou.
+- Conjunto atual é um baseline limpo `V1__extensions` .. `V8__client_payments` (todas as PKs em
+  UUID). Um banco criado com um conjunto de migrations anterior a este precisa ser recriado do
+  zero - não há caminho de migração incremental entre os dois esquemas.
 - **Nunca edite uma migration já commitada/já aplicada em algum ambiente.** Qualquer ajuste de
-  schema vira uma migration nova (`V6`, `V7`, ...).
+  schema vira uma migration nova (`V9`, `V10`, ...).
 - **Adotando o Flyway em um banco já existente** (schema criado à mão antes do Flyway): rode uma
   vez com `SPRING_FLYWAY_BASELINE_ON_MIGRATE=true` e `SPRING_FLYWAY_BASELINE_VERSION=<versão atual>`
   exportados no shell (ou via `docker-compose`), só nesse boot. Depois disso o `flyway_schema_history`
   já existe e as próximas migrations aplicam normalmente. Alternativa mais simples para dev local:
-  `docker compose down -v` e deixar o Flyway recriar tudo do zero (V1 em diante).
-- Veja `docs/DATA_MODEL.md` para a modelagem completa das tabelas.
+  `docker compose down -v` e deixar o Flyway recriar tudo do zero.
+- Veja `docs/DATA_MODEL.md` para a modelagem completa das tabelas e `docs/ARCHITECTURE.md` para as
+  decisões de desenho da API.
 
-### Massa de dados para teste de carga
-- `db/mock-data/seed_load_test.sql` tem ~55 clientes + 2 usuários de exemplo. **Não é uma
-  migration** - rode manualmente quando quiser popular um banco local:
+### Massa de dados para desenvolvimento local
+- `db/mock-data/seed_mock.sql` popula TODAS as tabelas (usuários, clientes, endereços, histórico de
+  situação, entrevistas, os 11 tipos de documento, simulações com principal, parcelas em todos os
+  status) - o suficiente para exercitar todo endpoint sem cadastrar nada na mão. **Não é uma
+  migration** - rode manualmente:
   ```bash
-  psql "postgresql://postgres:postgres@localhost:5432/system" -f db/mock-data/seed_load_test.sql
+  psql "postgresql://postgres:postgres@localhost:5432/system" -f db/mock-data/seed_mock.sql
   ```
-- Login de teste: `dra.tania@taniamelo.adv.br` / `advogado123` (LAWYER) e
-  `recepcao@taniamelo.adv.br` / `equipe123` (STAFF).
+- Login de teste (senha `password` para os dois): `dra.tania@taniamelo.adv.br` (ADMIN) e
+  `ana.souza@taniamelo.adv.br` (STAFF).
+- Requests de exemplo de todos os endpoints (autenticados, prontos para rodar): `docs/requests.http`.
 
 ### Autenticação e Swagger
 - Todos os endpoints de negócio exigem um token JWT (`Authorization: Bearer <token>`), obtido em
@@ -74,8 +81,6 @@ mvn spring-boot:run
   envelope padrão, download, PATCH de metadados e exclusão (soft delete - o
   arquivo original é preservado). Desenho completo em `docs/DATA_MODEL.md` e
   `docs/ARCHITECTURE.md`.
-- Requests de exemplo de TODOS os endpoints: `docs/requests.http`; seed de
-  mock: `db/mock-data/seed_mock.sql`.
 - Arquivos ficam em disco local por padrão (`app.storage.local.base-path`,
   `./storage` fora de Docker, volume `app-storage` dentro do compose) atrás de
   uma interface (`FileStorageService`) trocável por S3 depois sem mexer em
@@ -83,14 +88,19 @@ mvn spring-boot:run
 - Limite de upload: 10MB por arquivo, 60MB por requisição
   (`spring.servlet.multipart.max-*`, ajustável via `application.yaml`).
 
+### Situação, benefício e arrecadação
+- `PATCH /clients/{id}` faz atualização parcial do cliente: envie só os campos que quer mudar
+  (`situation`, `benefit` e/ou `notBillable` - aceitam o nome do enum ou o label PT-BR). Mudar
+  `situation` grava automaticamente um registro em `GET /clients/{id}/situation-history` (paginado,
+  mais recente primeiro); mudar `benefit`/`notBillable` não gera histórico.
+- `PATCH /clients/{id}/not-billable` é o atalho de propósito único para só a flag de arrecadação
+  (ex.: toggle rápido na listagem, sem montar o corpo do PATCH genérico).
+
 ### Demais sub-recursos de cliente
 - `/clients/{id}/personal-data` e `/clients/{id}/professional-data` (GET/PUT): recortes por aba dos dados
   pessoais/cadastrais - não mexe em endereço, benefício, situação ou financeiro.
-- `/clients/{id}/not-billable` (PATCH): liga/desliga a flag de arrecadação sem
-  tocar em situação.
 - `/clients/{id}/addresses` (CRUD completo): endereços residencial/comercial/
-  correspondência, um marcado como principal. As colunas de endereço
-  embutidas em `clients` são legado (ver `docs/DATA_MODEL.md`).
+  correspondência, um marcado como principal (endereço não é mais embutido em `clients`).
 - `/clients/{id}/interviews` (CRUD completo): entrevistas com data, duração e conteúdo rich text.
 - `/clients/{id}/payments` (POST/GET/PATCH/DELETE): parcelas de honorários;
   "atrasado" é calculado na leitura, nunca gravado no banco.

@@ -6,6 +6,7 @@ import com.lawfirm.law.firm.dto.ClientDetailsDTO;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPatchResponseDTO;
+import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
 import com.lawfirm.law.firm.dto.NotBillableRequestDTO;
 import com.lawfirm.law.firm.dto.Pagination;
@@ -25,6 +26,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -113,6 +115,23 @@ public class ClientController {
     }
 
     @Operation(
+            summary = "Histórico de mudanças de situação",
+            description =
+                    "Lista paginada no envelope padrão, mais recente primeiro, com o usuário que fez cada mudança. "
+                            + "Toda mudança de situação feita via PATCH /clients/{id} gera um registro aqui automaticamente.")
+    @GetMapping("/{id}/situation-history")
+    public ResponseEntity<ApiResponse<ClientSituationHistoryDTO>> situationHistory(
+            @PathVariable UUID id,
+            @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1")
+                    int pageNumber,
+            @Parameter(description = "Tamanho da página") @RequestParam(defaultValue = "10")
+                    int pageSize) {
+        Page<ClientSituationHistoryDTO> page =
+                clientService.historyByClientId(id, pageNumber, pageSize);
+        return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
+    }
+
+    @Operation(
             summary = "Atualizar cliente (substituição completa)",
             description =
                     "PUT = substituição total dos campos editáveis - envie o objeto completo. "
@@ -124,26 +143,43 @@ public class ClientController {
     }
 
     @Operation(
-            summary = "Atualização parcial (situação e/ou arrecadação)",
+            summary = "Atualização parcial (situação, benefício e/ou arrecadação)",
             description =
-                    "PATCH parcial: envie só o que quer mudar (situation e/ou notBillable). "
-                            + "Mudança de situação gera automaticamente um registro no histórico.")
+                    """
+                    PATCH parcial: envie só o que quer mudar (`situation`, `benefit` e/ou \
+                    `notBillable`). Mudança de situação gera automaticamente um registro no \
+                    histórico (`GET /clients/{id}/situation-history`); mudança de benefício e de \
+                    arrecadação não.
+
+                    **Formato de `situation` e `benefit`:** aceita o nome da constante (ex.: \
+                    `APOSENTADORIA_RURAL`) ou o label em PT-BR (ex.: `Aposentadoria rural`), sem \
+                    diferenciar maiúsculas/minúsculas nem acentuação. Qualquer outro valor retorna \
+                    400.
+
+                    **Valores válidos de `situation`:**
+                    - `Formulário preenchido`
+                    - `Análise documental`
+                    - `Planejamento em execução`
+                    - `Planejamento concluído`
+                    - `Benefício futuro`
+                    - `Benefício concluído`
+
+                    **Valores válidos de `benefit`:**
+                    - `Aposentadoria por idade`
+                    - `Aposentadoria por tempo de contribuição`
+                    - `Aposentadoria por incapacidade permanente`
+                    - `Aposentadoria especial`
+                    - `Aposentadoria por deficiência`
+                    - `Aposentadoria por tempo de contribuição do professor`
+                    - `Aposentadoria por invalidez`
+                    - `Aposentadoria rural`
+                    - `Aposentadoria para PCD`""")
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> patch(
             @PathVariable UUID id, @RequestBody ClientPatchRequestDTO patch) {
         ClientPatchOutcome outcome = clientService.patch(id, patch);
-
-        String message;
-        if (outcome.situationChanged() && outcome.notBillableChanged()) {
-            message = "Situação e arrecadação atualizadas com sucesso!";
-        } else if (outcome.situationChanged()) {
-            message = "Situação atualizada com sucesso!";
-        } else if (outcome.notBillableChanged()) {
-            message = "Arrecadação atualizada com sucesso!";
-        } else {
-            message = "Nenhuma alteração realizada!";
-        }
-        return ResponseEntity.ok(ApiResponse.successObject(new ClientPatchResponseDTO(message)));
+        return ResponseEntity.ok(
+                ApiResponse.successObject(new ClientPatchResponseDTO(patchMessage(outcome))));
     }
 
     @Operation(
@@ -179,6 +215,25 @@ public class ClientController {
     }
 
     // ── Private helpers ──
+
+    /** Monta a mensagem do PATCH a partir de quais campos efetivamente mudaram. */
+    private static String patchMessage(ClientPatchOutcome outcome) {
+        List<String> changed = new ArrayList<>();
+        if (outcome.situationChanged()) changed.add("Situação");
+        if (outcome.benefitChanged()) changed.add("Benefício");
+        if (outcome.notBillableChanged()) changed.add("Arrecadação");
+
+        if (changed.isEmpty()) {
+            return "Nenhuma alteração realizada!";
+        }
+        String joined =
+                changed.size() == 1
+                        ? changed.get(0)
+                        : String.join(", ", changed.subList(0, changed.size() - 1))
+                                + " e "
+                                + changed.get(changed.size() - 1);
+        return joined + " atualizado(s) com sucesso!";
+    }
 
     /**
      * Aceita ISO-8601: data (yyyy-MM-dd) ou timestamp completo. Valor inválido gera 400 explícito -

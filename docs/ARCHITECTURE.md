@@ -13,7 +13,8 @@ sub-recursos de `/api/v1/clients/{id}`:
 | Endereços | `/addresses` (1:N, um principal) | POST/PUT/DELETE |
 | Entrevistas | `/interviews` | POST/PUT/DELETE |
 | Arquivos | `/files/documents` e `/files/simulations` | POST/PATCH/DELETE |
-| Situação/arrecadação | `PATCH /clients/{id}` e `PATCH /clients/{id}/not-billable` | PATCH |
+| Situação/benefício/arrecadação | `PATCH /clients/{id}` e `PATCH /clients/{id}/not-billable` | PATCH |
+| Histórico de situação | `GET /clients/{id}/situation-history` | (leitura - gerado automaticamente pelo PATCH acima) |
 
 **Por que separar é a escolha certa aqui:**
 

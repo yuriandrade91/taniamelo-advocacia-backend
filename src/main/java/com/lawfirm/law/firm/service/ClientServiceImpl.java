@@ -125,6 +125,7 @@ public class ClientServiceImpl implements ClientService {
         Client existing = findOrThrow(id);
 
         boolean situationChanged = false;
+        boolean benefitChanged = false;
         boolean notBillableChanged = false;
 
         if (patch.getSituation() != null) {
@@ -140,6 +141,16 @@ public class ClientServiceImpl implements ClientService {
             }
         }
 
+        if (patch.getBenefit() != null) {
+            BenefitType incoming = parseBenefit(patch.getBenefit());
+            if (!Objects.equals(existing.getBenefit(), incoming)) {
+                existing.setBenefit(incoming);
+                existing.setUpdatedBy(CurrentUser.id());
+                existing = repository.save(existing);
+                benefitChanged = true;
+            }
+        }
+
         if (patch.getNotBillable() != null
                 && !Objects.equals(existing.getNotBillable(), patch.getNotBillable())) {
             existing.setNotBillable(patch.getNotBillable());
@@ -148,7 +159,7 @@ public class ClientServiceImpl implements ClientService {
             notBillableChanged = true;
         }
 
-        return new ClientPatchOutcome(situationChanged, notBillableChanged);
+        return new ClientPatchOutcome(situationChanged, benefitChanged, notBillableChanged);
     }
 
     @Override
@@ -257,6 +268,19 @@ public class ClientServiceImpl implements ClientService {
                     "situation",
                     ValidationErrorCode.INVALID_SITUATION,
                     "Situação inválida: " + raw);
+        }
+    }
+
+    private static BenefitType parseBenefit(String raw) {
+        try {
+            BenefitType b = BenefitType.fromLabel(raw);
+            if (b == null) {
+                throw new ValidationException("benefit", ValidationErrorCode.INVALID_BENEFIT);
+            }
+            return b;
+        } catch (IllegalArgumentException ex) {
+            throw new ValidationException(
+                    "benefit", ValidationErrorCode.INVALID_BENEFIT, "Benefício inválido: " + raw);
         }
     }
 
