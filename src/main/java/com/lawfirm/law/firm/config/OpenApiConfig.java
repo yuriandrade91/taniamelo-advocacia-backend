@@ -79,7 +79,7 @@ public class OpenApiConfig {
         List<String> order =
                 List.of(
                         "Autenticação",
-                        "Cliente - Clientes",
+                        "Cliente(s)",
                         "Cliente - Dados Pessoais",
                         "Cliente - Endereço(s)",
                         "Cliente - Dados Profissionais",

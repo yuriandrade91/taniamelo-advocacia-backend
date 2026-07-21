@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Tag(
-        name = "Cliente - Clientes",
+        name = "Cliente(s)",
         description = "Cadastro e acompanhamento de clientes do escritório previdenciário")
 @RestController
 @RequestMapping("/api/v1/clients")
