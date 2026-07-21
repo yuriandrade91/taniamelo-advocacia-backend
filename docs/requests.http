@@ -75,19 +75,12 @@ Content-Type: application/json
   "notes": "Atualizado via PUT completo"
 }
 
-### Atualização parcial (PATCH — situação e/ou arrecadação)
+### Atualização parcial (PATCH — envie só o que quer mudar: situation, benefit e/ou notBillable)
 PATCH {{host}}/api/v1/clients/{{clientId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "situation": "Planejamento concluído", "notBillable": false }
-
-### Toggle arrecadação (PATCH de propósito único)
-PATCH {{host}}/api/v1/clients/{{clientId}}/not-billable
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{ "notBillable": true }
 
 ### Excluir cliente
 DELETE {{host}}/api/v1/clients/{{clientId}}

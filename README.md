@@ -90,11 +90,11 @@ mvn spring-boot:run
 
 ### Situação, benefício e arrecadação
 - `PATCH /clients/{id}` faz atualização parcial do cliente: envie só os campos que quer mudar
-  (`situation`, `benefit` e/ou `notBillable` - aceitam o nome do enum ou o label PT-BR). Mudar
-  `situation` grava automaticamente um registro em `GET /clients/{id}/situation-history` (paginado,
-  mais recente primeiro); mudar `benefit`/`notBillable` não gera histórico.
-- `PATCH /clients/{id}/not-billable` é o atalho de propósito único para só a flag de arrecadação
-  (ex.: toggle rápido na listagem, sem montar o corpo do PATCH genérico).
+  (`situation`, `benefit` e/ou `notBillable`, em qualquer combinação - aceitam o nome do enum ou o
+  label PT-BR). Mudar `situation` grava automaticamente um registro em
+  `GET /clients/{id}/situation-history` (paginado, mais recente primeiro); mudar
+  `benefit`/`notBillable` não gera histórico. Não há endpoint de propósito único para
+  `notBillable` - enviar só esse campo no PATCH genérico tem o mesmo efeito.
 
 ### Demais sub-recursos de cliente
 - `/clients/{id}/personal-data` e `/clients/{id}/professional-data` (GET/PUT): recortes por aba dos dados

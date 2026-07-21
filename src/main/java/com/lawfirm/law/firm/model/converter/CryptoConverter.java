@@ -91,9 +91,17 @@ public class CryptoConverter implements AttributeConverter<String, String> {
             log.warn(
                     "APP_ENCRYPTION_KEY not set - using an insecure development-only key. "
                             + "Set APP_ENCRYPTION_KEY (base64, 32 bytes) before deploying.");
-            base64Key = "ZGV2LW9ubHktaW5zZWN1cmUtMzItYnl0ZS1rZXkhIQ==";
+            base64Key = "ZGV2LW9ubHktaW5zZWN1cmUtMzItYnl0ZS1rZXkhISE=";
         }
         byte[] keyBytes = Base64.getDecoder().decode(base64Key);
+        if (keyBytes.length != 16 && keyBytes.length != 24 && keyBytes.length != 32) {
+            // Fail fast with a clear message instead of letting every save that touches this
+            // column blow up later with a buried InvalidKeyException.
+            throw new IllegalStateException(
+                    "APP_ENCRYPTION_KEY must decode to 16, 24 or 32 bytes for AES, got "
+                            + keyBytes.length
+                            + " bytes");
+        }
         return new SecretKeySpec(keyBytes, "AES");
     }
 }

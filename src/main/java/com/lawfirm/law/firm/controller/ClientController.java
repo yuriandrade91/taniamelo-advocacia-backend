@@ -8,7 +8,6 @@ import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPatchResponseDTO;
 import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
-import com.lawfirm.law.firm.dto.NotBillableRequestDTO;
 import com.lawfirm.law.firm.dto.Pagination;
 import com.lawfirm.law.firm.exception.NotFoundException;
 import com.lawfirm.law.firm.exception.ValidationErrorCode;
@@ -183,25 +182,6 @@ public class ClientController {
     }
 
     @Operation(
-            summary = "Atualizar arrecadação (não cobrável)",
-            description =
-                    "PATCH de propósito único para alternar a flag 'não cobrável', sem tocar em situação "
-                            + "nem gerar histórico.")
-    @PatchMapping("/{id}/not-billable")
-    public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> patchNotBillable(
-            @PathVariable UUID id, @Valid @RequestBody NotBillableRequestDTO body) {
-        ClientPatchRequestDTO patch = new ClientPatchRequestDTO();
-        patch.setNotBillable(body.getNotBillable());
-        clientService.patch(id, patch);
-
-        String message =
-                Boolean.TRUE.equals(body.getNotBillable())
-                        ? "Cliente marcado como não cobrável."
-                        : "Cliente marcado como cobrável.";
-        return ResponseEntity.ok(ApiResponse.successObject(new ClientPatchResponseDTO(message)));
-    }
-
-    @Operation(
             summary = "Excluir cliente",
             description =
                     "Remove o cliente e, em cascata, seus sub-recursos (histórico, endereços, arquivos, "
@@ -216,23 +196,42 @@ public class ClientController {
 
     // ── Private helpers ──
 
-    /** Monta a mensagem do PATCH a partir de quais campos efetivamente mudaram. */
+    /**
+     * Monta a mensagem do PATCH a partir de quais campos efetivamente mudaram, com concordância de
+     * gênero/número correta (singular casado com o gênero do campo; plural feminino só quando todos
+     * os campos são femininos, senão masculino - regra padrão do PT-BR para listas mistas).
+     */
     private static String patchMessage(ClientPatchOutcome outcome) {
-        List<String> changed = new ArrayList<>();
-        if (outcome.situationChanged()) changed.add("Situação");
-        if (outcome.benefitChanged()) changed.add("Benefício");
-        if (outcome.notBillableChanged()) changed.add("Arrecadação");
+        List<String> names = new ArrayList<>();
+        List<Boolean> feminine = new ArrayList<>();
+        if (outcome.situationChanged()) {
+            names.add("Situação");
+            feminine.add(true);
+        }
+        if (outcome.benefitChanged()) {
+            names.add("Benefício");
+            feminine.add(false);
+        }
+        if (outcome.notBillableChanged()) {
+            names.add("Arrecadação");
+            feminine.add(true);
+        }
 
-        if (changed.isEmpty()) {
+        if (names.isEmpty()) {
             return "Nenhuma alteração realizada!";
         }
         String joined =
-                changed.size() == 1
-                        ? changed.get(0)
-                        : String.join(", ", changed.subList(0, changed.size() - 1))
+                names.size() == 1
+                        ? names.get(0)
+                        : String.join(", ", names.subList(0, names.size() - 1))
                                 + " e "
-                                + changed.get(changed.size() - 1);
-        return joined + " atualizado(s) com sucesso!";
+                                + names.get(names.size() - 1);
+        boolean allFeminine = !feminine.contains(false);
+        String participle =
+                names.size() == 1
+                        ? (feminine.get(0) ? "atualizada" : "atualizado")
+                        : (allFeminine ? "atualizadas" : "atualizados");
+        return joined + " " + participle + " com sucesso!";
     }
 
     /**
