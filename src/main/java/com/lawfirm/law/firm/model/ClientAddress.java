@@ -1,5 +1,7 @@
 package com.lawfirm.law.firm.model;
 
+import com.lawfirm.law.firm.audit.AuditLogListener;
+import com.lawfirm.law.firm.audit.Auditable;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
@@ -7,7 +9,8 @@ import org.hibernate.annotations.UuidGenerator;
 
 @Entity
 @Table(name = "client_addresses")
-public class ClientAddress {
+@EntityListeners(AuditLogListener.class)
+public class ClientAddress implements Auditable {
 
     @Id
     @GeneratedValue

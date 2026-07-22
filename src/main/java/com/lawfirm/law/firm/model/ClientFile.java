@@ -1,5 +1,7 @@
 package com.lawfirm.law.firm.model;
 
+import com.lawfirm.law.firm.audit.AuditLogListener;
+import com.lawfirm.law.firm.audit.Auditable;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,7 +22,8 @@ import org.hibernate.annotations.UuidGenerator;
  */
 @Entity
 @Table(name = "client_files")
-public class ClientFile {
+@EntityListeners(AuditLogListener.class)
+public class ClientFile implements Auditable {
 
     @Id
     @GeneratedValue

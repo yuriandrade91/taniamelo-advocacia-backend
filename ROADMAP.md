@@ -57,6 +57,15 @@ coleção 1:N").
 - Métricas (Micrometer + Prometheus/Grafana) além do `/actuator/health` básico.
 - Auditoria completa de acesso a dados sensíveis (quem viu a senha do INSS de
   qual cliente e quando).
+- **Limitação conhecida da trilha de auditoria (`audit_log`):** o
+  `AuditLogListener` só dispara para remoções que passam pelo EntityManager
+  (`repository.delete(...)`/`deleteById(...)`). Uma remoção em cascata feita
+  pelo Postgres via `ON DELETE CASCADE` (ex.: apagar um cliente remove
+  endereços/arquivos/pagamentos em cascata no banco) não passa pelo Hibernate
+  e por isso não gera uma linha própria por registro filho - só a remoção do
+  cliente em si é auditada. Resolver exigiria carregar e apagar cada
+  sub-recurso explicitamente via repositório (perdendo o `ON DELETE CASCADE`
+  como rede de segurança) ou aceitar a lacuna como está.
 
 ### Fase C — Funcionalidades de domínio previdenciário
 - Gestão de processos administrativos/judiciais com prazos e alertas.
