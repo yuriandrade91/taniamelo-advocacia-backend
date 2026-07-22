@@ -38,6 +38,27 @@ public class ClientControllerTest {
     }
 
     @Test
+    public void listFilterByBenefitTypeAndSituation() throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/clients")
+                                .param("pageNumber", "1")
+                                .param("pageSize", "10")
+                                .param("benefitType", "Aposentadoria por idade")
+                                .param("situation", "Formulário preenchido"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    public void listFilterByInvalidBenefitTypeReturns400WithClearMessage() throws Exception {
+        mockMvc.perform(get("/api/v1/clients").param("benefitType", "not-a-benefit"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errors[0].field").value("benefitType"))
+                .andExpect(jsonPath("$.errors[0].code").value("INVALID_ENUM_VALUE"));
+    }
+
+    @Test
     public void listInitiallyEmpty() throws Exception {
         mockMvc.perform(get("/api/v1/clients"))
                 .andExpect(status().isOk())

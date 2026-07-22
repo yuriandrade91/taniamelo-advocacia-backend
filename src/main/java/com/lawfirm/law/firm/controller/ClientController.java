@@ -28,6 +28,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -68,9 +69,33 @@ public class ClientController {
     @Operation(
             summary = "Listar clientes",
             description =
-                    "Lista paginada no envelope padrão, ordenada pela atividade mais recente (updatedAt desc). "
-                            + "Filtros opcionais: texto livre (nome/CPF, sem acento), tipos de benefício, situações e "
-                            + "intervalo de criação (datas ISO-8601: yyyy-MM-dd ou timestamp completo).")
+                    """
+                    Lista paginada no envelope padrão, ordenada pela atividade mais recente (updatedAt desc). \
+                    Filtros opcionais: texto livre (nome/CPF, sem acento), tipos de benefício, situações e \
+                    intervalo de criação (datas ISO-8601: yyyy-MM-dd ou timestamp completo).
+
+                    `benefitType` e `situation` aceitam um ou mais valores (repita o parâmetro na query \
+                    string), cada um pelo nome do enum ou pelo label (case/acento-insensitive). Valor \
+                    desconhecido retorna 400 (`INVALID_ENUM_VALUE`).
+
+                    **Valores válidos de `benefitType`:**
+                    - `Aposentadoria por idade`
+                    - `Aposentadoria por tempo de contribuição`
+                    - `Aposentadoria por incapacidade permanente`
+                    - `Aposentadoria especial`
+                    - `Aposentadoria por deficiência`
+                    - `Aposentadoria por tempo de contribuição do professor`
+                    - `Aposentadoria por invalidez`
+                    - `Aposentadoria rural`
+                    - `Aposentadoria para PCD`
+
+                    **Valores válidos de `situation`:**
+                    - `Formulário preenchido`
+                    - `Análise documental`
+                    - `Planejamento em execução`
+                    - `Planejamento concluído`
+                    - `Benefício futuro`
+                    - `Benefício concluído`""")
     @GetMapping
     public ResponseEntity<ApiResponse<ClientListResponseDTO>> list(
             @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1")
@@ -82,10 +107,10 @@ public class ClientController {
                     String searchTerm,
             @Parameter(description = "Filtra por um ou mais tipos de benefício (nome ou label)")
                     @RequestParam(required = false)
-                    List<BenefitType> benefitType,
+                    List<String> benefitType,
             @Parameter(description = "Filtra por uma ou mais situações (nome ou label)")
                     @RequestParam(required = false)
-                    List<Situation> situation,
+                    List<String> situation,
             @Parameter(description = "Criado a partir de (ISO-8601: yyyy-MM-dd ou timestamp)")
                     @RequestParam(required = false)
                     String createdFrom,
@@ -98,8 +123,8 @@ public class ClientController {
                         pageNumber,
                         pageSize,
                         searchTerm,
-                        benefitType,
-                        situation,
+                        parseEnumList("benefitType", benefitType, BenefitType::fromLabel),
+                        parseEnumList("situation", situation, Situation::fromLabel),
                         parseInstant("createdFrom", createdFrom, true),
                         parseInstant("createdTo", createdTo, false));
 
@@ -274,5 +299,26 @@ public class ClientController {
                     "Data inválida (use ISO-8601, ex.: 2026-07-18 ou 2026-07-18T00:00:00Z): "
                             + value);
         }
+    }
+
+    /**
+     * Converte os valores de um filtro repetido (nome do enum ou label) para o enum de destino. Não
+     * delega ao conversor de query params do Spring: List&lt;Enum&gt; com um único valor não passa
+     * pelo ConversionService customizado (cai no StringToEnumConverterFactory padrão), então a
+     * validação é feita aqui, com mensagem clara em vez de 400 genérico.
+     */
+    private static <E extends Enum<E>> List<E> parseEnumList(
+            String field, List<String> rawValues, Function<String, E> fromLabel) {
+        if (rawValues == null || rawValues.isEmpty()) return null;
+        List<E> result = new ArrayList<>();
+        for (String raw : rawValues) {
+            try {
+                result.add(fromLabel.apply(raw));
+            } catch (IllegalArgumentException ex) {
+                throw new ValidationException(
+                        field, ValidationErrorCode.INVALID_ENUM_VALUE, ex.getMessage());
+            }
+        }
+        return result;
     }
 }
