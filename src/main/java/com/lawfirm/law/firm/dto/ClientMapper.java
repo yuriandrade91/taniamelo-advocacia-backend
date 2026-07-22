@@ -1,8 +1,9 @@
 package com.lawfirm.law.firm.dto;
 
 import com.lawfirm.law.firm.model.Client;
+import java.time.LocalDate;
 import java.time.Period;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -56,10 +57,10 @@ public interface ClientMapper {
     @AfterMapping
     default void computeAge(Client entity, @MappingTarget ClientDetailsDTO dto) {
         if (entity != null && entity.getBirthDate() != null) {
+            // Idade calculada em UTC para bater com ClientServiceImpl.ageOf e com o
+            // time_zone=UTC fixado na camada JDBC - evita divergência de 1 dia no aniversário.
             dto.setAge(
-                    Period.between(
-                                    entity.getBirthDate(),
-                                    java.time.LocalDate.now(ZoneId.systemDefault()))
+                    Period.between(entity.getBirthDate(), LocalDate.now(ZoneOffset.UTC))
                             .getYears());
         }
     }
