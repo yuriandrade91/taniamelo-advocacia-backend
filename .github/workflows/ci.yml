@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build:
+    name: Build, checkstyle e testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: mvn clean verify
+        run: mvn -B clean verify
+
+  semgrep:
+    name: Semgrep (segurança / padrão de código)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rodar Semgrep
+        # Falha o job só em achado de severidade ERROR; achados menores (WARNING/INFO)
+        # aparecem no log do job sem bloquear o PR (comportamento padrão da action).
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/java
+            p/owasp-top-ten
+
+  docker-build:
+    name: Build da imagem Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: docker build (sem push - só valida o Dockerfile)
+        run: docker build -t law-firm:ci .

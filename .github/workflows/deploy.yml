@@ -1,0 +1,30 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    name: Deploy via SSH na instância EC2
+    runs-on: ubuntu-latest
+    # Gate manual: o ambiente "production" só libera o job depois de aprovação
+    # de um reviewer, configurado em Settings > Environments > production no
+    # GitHub (ver docs/CI_CD.md). Nunca deploy automático direto sem esse gate.
+    environment: production
+    steps:
+      - name: Deploy (git pull + docker compose up --build)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/taniamelo-advocacia-backend
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+            docker compose --profile full up -d --build
+            docker compose ps
