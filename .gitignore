@@ -55,3 +55,6 @@ application-local.properties
 # Environment
 .env
 .env.local
+
+#AWS Files
+*.pem
