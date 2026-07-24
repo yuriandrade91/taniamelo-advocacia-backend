@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
  * no banco.
  */
 @Service
+@ConditionalOnProperty(name = "app.storage.type", havingValue = "local", matchIfMissing = true)
 public class LocalDiskFileStorageService implements FileStorageService {
 
     private static final Logger log = LoggerFactory.getLogger(LocalDiskFileStorageService.class);

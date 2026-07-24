@@ -45,6 +45,17 @@ services:
       # Disco local dos documentos/simulações de CNIS. Fica num volume nomeado
       # (app-storage) para não sumir a cada rebuild da imagem.
       APP_STORAGE_LOCAL_PATH: /app/storage
+      # Storage: "local" (padrão) usa o volume acima; "s3" usa o bucket abaixo.
+      APP_STORAGE_TYPE: ${APP_STORAGE_TYPE:-local}
+      APP_STORAGE_S3_BUCKET: ${APP_STORAGE_S3_BUCKET:-}
+      APP_STORAGE_S3_REGION: ${APP_STORAGE_S3_REGION:-sa-east-1}
+      APP_STORAGE_S3_ENDPOINT: ${APP_STORAGE_S3_ENDPOINT:-}
+      # Credenciais AWS: em EC2 com IAM Role deixe vazias (DefaultCredentialsProvider
+      # pega a role da instância). Fora da AWS, preencha no .env.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      # CORS: default "*" para teste; troque pelo domínio do frontend em produção.
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-*}
     volumes:
       - app-storage:/app/storage
     ports:

@@ -31,7 +31,23 @@
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<jjwt.version>0.12.6</jjwt.version>
 		<springdoc.version>3.0.3</springdoc.version>
+		<awssdk.version>2.31.0</awssdk.version>
 	</properties>
+
+	<!-- BOM da AWS SDK v2: alinha as versões dos módulos AWS (s3, auth, regions).
+	     Só o módulo s3 é usado, e apenas quando app.storage.type=s3 - localmente
+	     (type=local) nada da AWS é instanciado. -->
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>software.amazon.awssdk</groupId>
+				<artifactId>bom</artifactId>
+				<version>${awssdk.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -162,6 +178,13 @@
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>${springdoc.version}</version>
+		</dependency>
+
+		<!-- AWS S3 (armazenamento de arquivos em nuvem). Ativado só quando
+		     app.storage.type=s3; em dev local o bean nem é criado. -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3</artifactId>
 		</dependency>
 
 		<dependency>

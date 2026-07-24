@@ -79,12 +79,25 @@ app:
     # Seed credentials for the first ADMIN user, created automatically if the users table is empty.
     email: ${APP_ADMIN_EMAIL:admin@taniamelo.adv.br}
     password: ${APP_ADMIN_PASSWORD:changeme123}
+  # CORS: origens permitidas separadas por vírgula. Default "*" para dev local
+  # não travar; na AWS defina APP_CORS_ALLOWED_ORIGINS com o domínio do frontend
+  # (ex.: https://app.taniamelo.adv.br).
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}
   storage:
-    # "local" é a única implementação hoje (LocalDiskFileStorageService). Trocar
-    # para S3 no futuro é criar S3FileStorageService e mudar só esta config -
-    # nenhuma entidade/DTO/service muda, todos dependem de FileStorageService.
+    # "local" (padrão) usa LocalDiskFileStorageService; "s3" usa ObjectStorageFileStorageService.
+    # Só esta propriedade muda ao trocar de disco local para S3 - nenhuma
+    # entidade/DTO/service/controller é alterado (todos dependem de FileStorageService).
     type: ${APP_STORAGE_TYPE:local}
     local:
       # Em docker-compose isto é montado como volume nomeado (ver app-storage)
       # para sobreviver a rebuilds da imagem.
       base-path: ${APP_STORAGE_LOCAL_PATH:./storage}
+    s3:
+      # Usados apenas quando type=s3. bucket e region são obrigatórios nesse caso.
+      bucket: ${APP_STORAGE_S3_BUCKET:}
+      region: ${APP_STORAGE_S3_REGION:sa-east-1}
+      # endpoint vazio = AWS real; preencha só para LocalStack/MinIO em teste.
+      endpoint: ${APP_STORAGE_S3_ENDPOINT:}
+      # path-style: true só para LocalStack/MinIO; na AWS real deixe false.
+      path-style-access: ${APP_STORAGE_S3_PATH_STYLE:false}

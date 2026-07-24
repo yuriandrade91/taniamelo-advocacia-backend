@@ -3,11 +3,12 @@ package com.lawfirm.law.firm.storage;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Abstração de armazenamento de arquivos (documentos do cliente, PDFs de simulação de CNIS). A
- * implementação ativa hoje é {@link LocalDiskFileStorageService} (disco local, montado como volume
- * Docker); uma futura {@code S3FileStorageService} pode substituí-la sem tocar em entidade, DTO,
- * service ou controller - todos dependem só desta interface e do {@code storageKey} opaco que ela
- * devolve.
+ * Abstração de armazenamento de arquivos (documentos do cliente, PDFs de simulação de CNIS). Duas
+ * implementações, escolhidas por {@code app.storage.type}: {@link LocalDiskFileStorageService}
+ * (disco local, montado como volume Docker) e {@link ObjectStorageFileStorageService}
+ * (armazenamento de objetos via protocolo S3 - AWS, R2, MinIO). Trocar entre elas é só mudar a
+ * configuração - nenhuma entidade, DTO, service ou controller muda, todos dependem só desta
+ * interface e do {@code storageKey} opaco que ela devolve.
  */
 public interface FileStorageService {
 
