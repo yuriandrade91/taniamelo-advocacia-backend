@@ -1,6 +1,6 @@
-FROM maven:3.8.8-eclipse-temurin-17 AS build
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /workspace
-COPY pom.xml .
+COPY pom.xml checkstyle.xml ./
 COPY src ./src
 # Use BuildKit cache for Maven repository to speed up builds when BuildKit is enabled.
 # Requires Docker BuildKit (usually enabled by default in modern Docker Desktop).
@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 			mvn -DskipTests package; \
 		fi
 
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 COPY --from=build /workspace/target/*.jar /app/app.jar
 COPY scripts/wait-for-db.sh /app/wait-for-db.sh
