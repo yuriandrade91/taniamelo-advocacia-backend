@@ -39,7 +39,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * repository.delete(...)}/{@code deleteById(...)}). Uma remoção em cascata feita pelo Postgres via
  * {@code ON DELETE CASCADE} (ex.: apagar um cliente remove endereços/arquivos/ pagamentos em
  * cascata no banco) não passa pelo Hibernate e por isso não gera uma linha própria por registro
- * filho - só a remoção do cliente em si é auditada. Ver nota em ROADMAP.md.
+ * filho - só a remoção do cliente em si é auditada. Ver nota em docs/ROADMAP.md.
  */
 @Component
 public class AuditLogListener {

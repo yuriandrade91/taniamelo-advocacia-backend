@@ -23,8 +23,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
  * provider automaticamente ao criar o AuthenticationManager via AuthenticationConfiguration.
  *
  * <p>CORS usa o CorsConfigurationSource de CorsConfig (mantido aberto propositalmente enquanto o
- * time trabalha em ambiente local - ver ROADMAP.md), plugado aqui via http.cors(...) - e não como
- * um CorsFilter bean solto - para que a resolução de CORS rode antes da autorização. Preflight
+ * time trabalha em ambiente local - ver docs/ROADMAP.md), plugado aqui via http.cors(...) - e não
+ * como um CorsFilter bean solto - para que a resolução de CORS rode antes da autorização. Preflight
  * OPTIONS também é liberado explicitamente como reforço, já que qualquer endpoint protegido por
  * anyRequest().authenticated() rejeitaria o preflight com 401 (sem headers de CORS) antes do
  * browser sequer tentar a requisição real.

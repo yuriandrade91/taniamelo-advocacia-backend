@@ -6,7 +6,7 @@
 
 ## 1. Veredito
 
-A base é de **padrão alto e internamente consistente**. Camadas bem separadas (controller → service → repository → model), envelope de resposta único, central única de erros, segurança stateless via JWT, mapeamento por MapStruct, validação declarativa e migrations versionadas com Flyway. Não foram encontrados **endpoints quebrados nem falhas de segurança acidentais**. Os pontos abaixo são, em ordem: uma correção de consistência (aplicada), lacunas de infraestrutura de teste, e itens de endurecimento deliberadamente adiados para produção (já documentados no `ROADMAP.md`/`SecurityConfig`).
+A base é de **padrão alto e internamente consistente**. Camadas bem separadas (controller → service → repository → model), envelope de resposta único, central única de erros, segurança stateless via JWT, mapeamento por MapStruct, validação declarativa e migrations versionadas com Flyway. Não foram encontrados **endpoints quebrados nem falhas de segurança acidentais**. Os pontos abaixo são, em ordem: uma correção de consistência (aplicada), lacunas de infraestrutura de teste, e itens de endurecimento deliberadamente adiados para produção (já documentados no `docs/ROADMAP.md`/`SecurityConfig`).
 
 > **Nota sobre execução do build:** o ambiente de análise não tem JDK 25 nem Maven e o proxy bloqueia o Maven Central, então `mvn compile`/`mvn test` **não puderam ser executados aqui**. A verificação foi estática (contratos, tipos, fluxos). Os comandos para você validar localmente estão na seção 7.
 
