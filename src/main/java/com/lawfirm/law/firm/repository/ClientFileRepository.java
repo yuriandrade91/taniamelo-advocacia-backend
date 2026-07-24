@@ -20,6 +20,9 @@ public interface ClientFileRepository extends JpaRepository<ClientFile, UUID> {
     Optional<ClientFile> findByIdAndClient_IdAndKindAndDeletedAtIsNull(
             UUID id, UUID clientId, FileKind kind);
 
+    /** Kind-agnostic - usado por download/delete, que são idênticos para documento e simulação. */
+    Optional<ClientFile> findByIdAndClient_IdAndDeletedAtIsNull(UUID id, UUID clientId);
+
     Optional<ClientFile> findFirstByClient_IdAndKindAndIsPrincipalTrueAndDeletedAtIsNull(
             UUID clientId, FileKind kind);
 

@@ -12,7 +12,8 @@ sub-recursos de `/api/v1/clients/{id}`:
 | Dados profissionais | `/professional-data` | PUT (substituição do subconjunto) |
 | Endereços | `/addresses` (1:N, um principal) | POST/PUT/DELETE |
 | Entrevistas | `/interviews` | POST/PUT/DELETE |
-| Arquivos | `/files/documents` e `/files/simulations` | POST/PATCH/DELETE |
+| Arquivos | `/files/documents` e `/files/simulations` (upload/lista/detalhe/patch - forma difere por tipo) | POST/GET/PATCH |
+| Arquivos (download/exclusão) | `/files/{fileId}/download` e `DELETE /files/{fileId}` (kind-agnostic - resolvido pelo id, sem forma específica por tipo) | GET/DELETE |
 | Situação/benefício/arrecadação | `PATCH /clients/{id}` e `PATCH /clients/{id}/not-billable` | PATCH |
 | Histórico de situação | `GET /clients/{id}/situation-history` | (leitura - gerado automaticamente pelo PATCH acima) |
 
@@ -38,6 +39,19 @@ cadastro/edição geral.
 seção real da UI ou a uma coleção 1:N — não criar endpoint por campo. O
 `PATCH /clients/{id}/not-billable` é a exceção deliberada de "propósito único"
 (toggle rápido na listagem), e o `PATCH /clients/{id}` genérico cobre o resto.
+
+**Caso oposto — quando NÃO separar por tipo:** documentos e simulações (aba
+"Arquivos") têm forma de dado genuinamente diferente (`documentType` vs
+`simulationDate`/`version`/`vinculos`) e regra de negócio que só existe de um
+lado (simulação tem "principal" automático; documento não) — por isso
+upload/lista/detalhe/patch continuam em endpoints separados por tipo, um DTO
+por forma, sem campo opcional condicional. Mas download e exclusão não têm
+nenhuma diferença de contrato entre os dois (mesmo `FileDownload` binário,
+mesmo soft delete) — manter dois endpoints ali era duplicação sem ganho, então
+foram unificados em `/files/{fileId}/download` e `DELETE /files/{fileId}`,
+resolvendo o tipo pelo próprio registro. Regra geral: separar por forma de
+dado/regra de negócio, nunca por identidade — se dois endpoints fariam
+exatamente a mesma coisa só mudando o path, é duplicação, não modelagem.
 
 ## 2. Microserviços e multi-escritório (visão de evolução)
 

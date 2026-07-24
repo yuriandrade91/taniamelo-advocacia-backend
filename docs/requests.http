@@ -240,8 +240,8 @@ Content-Type: application/json
 GET {{host}}/api/v1/clients/{{clientId}}/files/documents/{{documentId}}
 Authorization: Bearer {{token}}
 
-### Download
-GET {{host}}/api/v1/clients/{{clientId}}/files/documents/{{documentId}}/download
+### Download (kind-agnostic - mesmo endpoint serve documento e simulação)
+GET {{host}}/api/v1/clients/{{clientId}}/files/{{documentId}}/download
 Authorization: Bearer {{token}}
 
 ### Editar tipo/observações (PATCH)
@@ -251,8 +251,8 @@ Content-Type: application/json
 
 { "documentType": "Documentos cadastrais / dados pessoais", "notes": "Reclassificado" }
 
-###
-DELETE {{host}}/api/v1/clients/{{clientId}}/files/documents/{{documentId}}
+### Excluir (kind-agnostic - mesmo endpoint serve documento e simulação)
+DELETE {{host}}/api/v1/clients/{{clientId}}/files/{{documentId}}
 Authorization: Bearer {{token}}
 
 ### — Simulações —
@@ -281,8 +281,8 @@ Content-Type: application/json
 GET {{host}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationId}}
 Authorization: Bearer {{token}}
 
-###
-GET {{host}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationId}}/download
+### Download (kind-agnostic - mesmo endpoint serve documento e simulação)
+GET {{host}}/api/v1/clients/{{clientId}}/files/{{simulationId}}/download
 Authorization: Bearer {{token}}
 
 ### Editar metadados
@@ -296,8 +296,8 @@ Content-Type: application/json
 PATCH {{host}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationId}}/principal
 Authorization: Bearer {{token}}
 
-###
-DELETE {{host}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationId}}
+### Excluir (kind-agnostic - mesmo endpoint serve documento e simulação)
+DELETE {{host}}/api/v1/clients/{{clientId}}/files/{{simulationId}}
 Authorization: Bearer {{token}}
 
 ### ── 8. CLIENTE - SITUAÇÃO ─────────────────────────────────

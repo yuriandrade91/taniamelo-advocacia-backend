@@ -57,6 +57,13 @@ mvn spring-boot:run
   ```
 - Login de teste (senha `password` para os dois): `dra.tania@taniamelo.adv.br` (ADMIN) e
   `ana.souza@taniamelo.adv.br` (STAFF).
+- `db/mock-data/seed_mock_bulk_100.sql` complementa o arquivo acima com mais 120 clientes variados
+  (gênero, situação, benefício, endereço, entrevista, arquivo, pagamento) - use pra testar volume/
+  paginação ou pra popular ambientes de PoC (ex.: teste na AWS, ver `docs/AWS_TESTE_GRATUITO.md`).
+  Não usa `TRUNCATE` - rode sempre depois do `seed_mock.sql`:
+  ```bash
+  psql "postgresql://postgres:postgres@localhost:5432/system" -f db/mock-data/seed_mock.sql -f db/mock-data/seed_mock_bulk_100.sql
+  ```
 - Requests de exemplo de todos os endpoints (autenticados, prontos para rodar): `docs/requests.http`.
 
 ### Autenticação e Swagger
@@ -78,9 +85,12 @@ mvn spring-boot:run
   `/files/documents` (11 tipos de documento) e `/files/simulations`
   (versão, vínculos, principal): upload em lote (multipart, uma parte `files`
   + uma parte `metadata` em JSON, na mesma ordem), listagem paginada no
-  envelope padrão, download, PATCH de metadados e exclusão (soft delete - o
-  arquivo original é preservado). Desenho completo em `docs/DATA_MODEL.md` e
-  `docs/ARCHITECTURE.md`.
+  envelope padrão e PATCH de metadados - essas ações têm forma de dado
+  diferente por tipo, por isso continuam em endpoints separados.
+- `download` e exclusão não variam por tipo, então são únicos para os dois:
+  `GET /files/{fileId}/download` e `DELETE /files/{fileId}` (soft delete - o
+  arquivo original é preservado; o tipo é resolvido a partir do próprio id).
+  Desenho completo em `docs/DATA_MODEL.md` e `docs/ARCHITECTURE.md`.
 - Arquivos ficam em disco local por padrão (`app.storage.local.base-path`,
   `./storage` fora de Docker, volume `app-storage` dentro do compose) atrás de
   uma interface (`FileStorageService`) trocável por S3 depois sem mexer em

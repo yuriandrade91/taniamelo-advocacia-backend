@@ -107,10 +107,6 @@ public class ClientFileService {
         return toDocumentDTO(findFileOrThrow(clientId, fileId, FileKind.DOCUMENT));
     }
 
-    public FileDownload downloadDocument(UUID clientId, UUID fileId) {
-        return download(findFileOrThrow(clientId, fileId, FileKind.DOCUMENT));
-    }
-
     @Transactional
     public ClientFileDocumentResponseDTO updateDocument(
             UUID clientId, UUID fileId, ClientFileDocumentUpdateRequestDTO dto) {
@@ -123,11 +119,6 @@ public class ClientFileService {
         }
         file.setUpdatedBy(CurrentUser.id());
         return toDocumentDTO(repository.save(file));
-    }
-
-    @Transactional
-    public void deleteDocument(UUID clientId, UUID fileId) {
-        softDelete(findFileOrThrow(clientId, fileId, FileKind.DOCUMENT));
     }
 
     // ── Simulações ──
@@ -180,10 +171,6 @@ public class ClientFileService {
         return toSimulationDTO(findFileOrThrow(clientId, fileId, FileKind.SIMULATION));
     }
 
-    public FileDownload downloadSimulation(UUID clientId, UUID fileId) {
-        return download(findFileOrThrow(clientId, fileId, FileKind.SIMULATION));
-    }
-
     @Transactional
     public ClientFileSimulationResponseDTO updateSimulation(
             UUID clientId, UUID fileId, ClientFileSimulationUpdateRequestDTO dto) {
@@ -220,27 +207,56 @@ public class ClientFileService {
         return toSimulationDTO(repository.save(target));
     }
 
+    // ── Documento ou simulação (download/delete independem do tipo) ──
+
+    /**
+     * Funciona pra documento e simulação - o tipo é resolvido a partir do próprio registro, sem
+     * precisar de dois endpoints/métodos idênticos por kind.
+     */
+    public FileDownload downloadFile(UUID clientId, UUID fileId) {
+        return download(findAnyFileOrThrow(clientId, fileId));
+    }
+
+    /**
+     * Soft delete kind-agnostic. Se o arquivo removido era uma simulação marcada como principal, a
+     * mais recente restante é promovida - mesma regra do antigo delete por simulação, só que
+     * reaproveitada aqui em vez de duplicada por endpoint.
+     */
     @Transactional
-    public void deleteSimulation(UUID clientId, UUID fileId) {
-        ClientFile file = findFileOrThrow(clientId, fileId, FileKind.SIMULATION);
-        boolean wasPrincipal = Boolean.TRUE.equals(file.getIsPrincipal());
-        file.setIsPrincipal(false);
+    public void deleteFile(UUID clientId, UUID fileId) {
+        ClientFile file = findAnyFileOrThrow(clientId, fileId);
+        boolean wasPrincipal =
+                file.getKind() == FileKind.SIMULATION && Boolean.TRUE.equals(file.getIsPrincipal());
+        if (wasPrincipal) {
+            file.setIsPrincipal(false);
+        }
         softDelete(file);
 
         if (wasPrincipal) {
-            repository
-                    .findFirstByClient_IdAndKindAndDeletedAtIsNullOrderByUploadedAtDesc(
-                            clientId, FileKind.SIMULATION)
-                    .ifPresent(
-                            remaining -> {
-                                remaining.setIsPrincipal(true);
-                                remaining.setUpdatedBy(CurrentUser.id());
-                                repository.save(remaining);
-                            });
+            promoteNextPrincipal(clientId);
         }
     }
 
     // ── Private helpers ──
+
+    private void promoteNextPrincipal(UUID clientId) {
+        repository
+                .findFirstByClient_IdAndKindAndDeletedAtIsNullOrderByUploadedAtDesc(
+                        clientId, FileKind.SIMULATION)
+                .ifPresent(
+                        remaining -> {
+                            remaining.setIsPrincipal(true);
+                            remaining.setUpdatedBy(CurrentUser.id());
+                            repository.save(remaining);
+                        });
+    }
+
+    private ClientFile findAnyFileOrThrow(UUID clientId, UUID fileId) {
+        findClientOrThrow(clientId);
+        return repository
+                .findByIdAndClient_IdAndDeletedAtIsNull(fileId, clientId)
+                .orElseThrow(() -> NotFoundException.of("Arquivo", fileId));
+    }
 
     private ClientFile newFile(Client client, FileKind kind, MultipartFile file, String folder) {
         StoredFile stored = fileStorageService.store(file, folder);
@@ -359,12 +375,7 @@ public class ClientFileService {
         dto.setUploadedAt(entity.getUploadedAt());
         dto.setUpdatedBy(entity.getUpdatedBy());
         dto.setUpdatedAt(entity.getUpdatedAt());
-        dto.setDownloadUrl(
-                "/api/v1/clients/"
-                        + entity.getClient().getId()
-                        + "/files/documents/"
-                        + entity.getId()
-                        + "/download");
+        dto.setDownloadUrl(downloadUrl(entity));
         return dto;
     }
 
@@ -383,12 +394,15 @@ public class ClientFileService {
         dto.setUploadedAt(entity.getUploadedAt());
         dto.setUpdatedBy(entity.getUpdatedBy());
         dto.setUpdatedAt(entity.getUpdatedAt());
-        dto.setDownloadUrl(
-                "/api/v1/clients/"
-                        + entity.getClient().getId()
-                        + "/files/simulations/"
-                        + entity.getId()
-                        + "/download");
+        dto.setDownloadUrl(downloadUrl(entity));
         return dto;
+    }
+
+    private String downloadUrl(ClientFile entity) {
+        return "/api/v1/clients/"
+                + entity.getClient().getId()
+                + "/files/"
+                + entity.getId()
+                + "/download";
     }
 }

@@ -28,7 +28,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Collection única de arquivos do cliente, dividida em duas sub-coleções que espelham as abas da
- * tela: /files/documents e /files/simulations.
+ * tela: /files/documents e /files/simulations (upload/listagem/detalhe/patch, que têm forma
+ * diferente por tipo). Download e exclusão não têm forma específica por tipo, então usam um único
+ * par de endpoints kind-agnostic: /files/{fileId}/download e DELETE /files/{fileId}.
  */
 @Tag(
         name = "Cliente - Arquivos",
@@ -90,13 +92,6 @@ public class ClientFileController {
         return ResponseEntity.ok(ApiResponse.successObject(service.getDocument(clientId, fileId)));
     }
 
-    @Operation(summary = "Download de um documento")
-    @GetMapping("/documents/{fileId}/download")
-    public ResponseEntity<Resource> downloadDocument(
-            @PathVariable UUID clientId, @PathVariable UUID fileId) {
-        return toDownloadResponse(service.downloadDocument(clientId, fileId));
-    }
-
     @Operation(
             summary = "Atualizar metadados de um documento",
             description =
@@ -109,16 +104,6 @@ public class ClientFileController {
             @Valid @RequestBody ClientFileDocumentUpdateRequestDTO dto) {
         return ResponseEntity.ok(
                 ApiResponse.successObject(service.updateDocument(clientId, fileId, dto)));
-    }
-
-    @Operation(
-            summary = "Excluir um documento",
-            description = "Soft delete - o arquivo é preservado como evidência.")
-    @DeleteMapping("/documents/{fileId}")
-    public ResponseEntity<Void> deleteDocument(
-            @PathVariable UUID clientId, @PathVariable UUID fileId) {
-        service.deleteDocument(clientId, fileId);
-        return ResponseEntity.noContent().build();
     }
 
     // ── Simulações ──
@@ -163,13 +148,6 @@ public class ClientFileController {
                 ApiResponse.successObject(service.getSimulation(clientId, fileId)));
     }
 
-    @Operation(summary = "Download de uma simulação")
-    @GetMapping("/simulations/{fileId}/download")
-    public ResponseEntity<Resource> downloadSimulation(
-            @PathVariable UUID clientId, @PathVariable UUID fileId) {
-        return toDownloadResponse(service.downloadSimulation(clientId, fileId));
-    }
-
     @Operation(
             summary = "Atualizar metadados de uma simulação",
             description =
@@ -195,14 +173,28 @@ public class ClientFileController {
                 ApiResponse.successObject(service.markSimulationPrincipal(clientId, fileId)));
     }
 
+    // ── Documento ou simulação (a operação não muda por tipo) ──
+
     @Operation(
-            summary = "Excluir uma simulação",
+            summary = "Download de um arquivo",
             description =
-                    "Soft delete. Se a simulação excluída era a principal, a mais recente restante é promovida.")
-    @DeleteMapping("/simulations/{fileId}")
-    public ResponseEntity<Void> deleteSimulation(
+                    "Funciona tanto para documento quanto para simulação - o tipo é resolvido a "
+                            + "partir do próprio id, então um endpoint só cobre os dois.")
+    @GetMapping("/{fileId}/download")
+    public ResponseEntity<Resource> download(
             @PathVariable UUID clientId, @PathVariable UUID fileId) {
-        service.deleteSimulation(clientId, fileId);
+        return toDownloadResponse(service.downloadFile(clientId, fileId));
+    }
+
+    @Operation(
+            summary = "Excluir um arquivo",
+            description =
+                    "Soft delete - o arquivo é preservado como evidência. Funciona tanto para "
+                            + "documento quanto para simulação; se a simulação excluída era a "
+                            + "principal, a mais recente restante é promovida.")
+    @DeleteMapping("/{fileId}")
+    public ResponseEntity<Void> delete(@PathVariable UUID clientId, @PathVariable UUID fileId) {
+        service.deleteFile(clientId, fileId);
         return ResponseEntity.noContent().build();
     }
 
