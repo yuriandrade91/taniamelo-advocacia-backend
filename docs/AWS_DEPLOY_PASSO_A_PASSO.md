@@ -1,5 +1,12 @@
 # Passo a passo: colocar o backend no ar na AWS (com o crédito já disponível)
 
+> **⚠️ Histórico - instância substituída.** Este documento cobre a instância
+> x86/Ubuntu original (`3.20.238.108`, tudo via `docker-compose`). O ambiente
+> ativo hoje é ARM64/Amazon Linux 2023, sem Docker - ver
+> `docs/AWS_EC2_ARM64_DEPLOY.md`, que é o guia corrente e verificado de ponta
+> a ponta. Mantido aqui só como referência histórica; se a instância antiga
+> ainda existir, encerre-a para não pagar as duas.
+
 Guia de execução, no nível de "clique aqui, rode este comando". Pressupõe
 que você já tem conta AWS com crédito ativo. Para o *porquê* de cada decisão
 (EC2 vs Lightsail, self-hosted vs RDS, quando migrar pra produção real),
