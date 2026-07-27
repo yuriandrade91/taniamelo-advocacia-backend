@@ -11,10 +11,10 @@ jobs:
     name: Build e checkstyle
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Configurar JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "25"
@@ -30,7 +30,7 @@ jobs:
     name: Semgrep (segurança / padrão de código)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Rodar Semgrep
         # Falha o job só em achado de severidade ERROR; achados menores (WARNING/INFO)
@@ -45,7 +45,7 @@ jobs:
     name: Build da imagem Docker
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: docker build (sem push - só valida o Dockerfile)
         run: docker build -t law-firm:ci .
