@@ -305,9 +305,7 @@ public class ClientFileService {
     }
 
     private Client findClientOrThrow(UUID clientId) {
-        return clientRepository
-                .findById(clientId)
-                .orElseThrow(() -> NotFoundException.of("Cliente", clientId));
+        return ClientLookup.orThrow(clientRepository, clientId);
     }
 
     private ClientFile findFileOrThrow(UUID clientId, UUID fileId, FileKind kind) {

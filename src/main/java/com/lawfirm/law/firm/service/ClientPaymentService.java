@@ -130,9 +130,7 @@ public class ClientPaymentService {
     // ── Private helpers ──
 
     private Client findClientOrThrow(UUID clientId) {
-        return clientRepository
-                .findById(clientId)
-                .orElseThrow(() -> NotFoundException.of("Cliente", clientId));
+        return ClientLookup.orThrow(clientRepository, clientId);
     }
 
     private ClientPayment findPaymentOrThrow(UUID clientId, UUID paymentId) {

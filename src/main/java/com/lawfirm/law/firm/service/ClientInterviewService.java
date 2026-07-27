@@ -83,9 +83,7 @@ public class ClientInterviewService {
     // ── Private helpers ──
 
     private Client findClientOrThrow(UUID clientId) {
-        return clientRepository
-                .findById(clientId)
-                .orElseThrow(() -> NotFoundException.of("Cliente", clientId));
+        return ClientLookup.orThrow(clientRepository, clientId);
     }
 
     private ClientInterview findInterviewOrThrow(UUID clientId, UUID interviewId) {
