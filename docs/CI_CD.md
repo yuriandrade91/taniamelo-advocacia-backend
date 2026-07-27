@@ -4,9 +4,13 @@ Dois workflows, complementando o plano em `docs/PROVISIONAMENTO_INFRA.md`
 (Fase 1):
 
 - **`.github/workflows/ci.yml`** - roda em todo `push`/`pull_request` pra
-  `main` e `develop`. Três jobs paralelos: build + checkstyle + testes
-  (`mvn clean verify`), Semgrep (`p/java` + `p/owasp-top-ten`) e um `docker
-  build` só pra validar o `Dockerfile` cedo (sem push de imagem).
+  `main` e `develop`. Três jobs paralelos: build + checkstyle
+  (`mvn clean verify -DskipTests`), Semgrep (`p/java` + `p/owasp-top-ten`) e
+  um `docker build` só pra validar o `Dockerfile` cedo (sem push de imagem).
+  **Testes pulados por ora** - são `@SpringBootTest` e exigem um Postgres
+  real pra subir o contexto, que o runner do GitHub Actions não tem; reativar
+  exige um serviço Postgres no job (ou Testcontainers), não é só tirar a
+  flag.
 - **`.github/workflows/deploy.yml`** - roda em `push` na `main` (ou
   manualmente via `workflow_dispatch`). Conecta na instância EC2 via SSH e
   roda `git pull` + `docker compose --profile full up -d --build`. Fica
