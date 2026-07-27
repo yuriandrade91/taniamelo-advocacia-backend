@@ -48,22 +48,17 @@ mvn spring-boot:run
   decisões de desenho da API.
 
 ### Massa de dados para desenvolvimento local
-- `db/mock-data/seed_mock.sql` popula TODAS as tabelas (usuários, clientes, endereços, histórico de
-  situação, entrevistas, os 11 tipos de documento, simulações com principal, parcelas em todos os
-  status) - o suficiente para exercitar todo endpoint sem cadastrar nada na mão. **Não é uma
-  migration** - rode manualmente:
+- `db/mock-data/seed_mock.sql` popula TODAS as tabelas (usuários, 125 clientes - 5 com dado
+  detalhado de exemplo + 120 variados de massa para testar paginação/filtro -, endereços, histórico
+  de situação, entrevistas, os 11 tipos de documento, simulações com principal, parcelas em todos os
+  status) - o suficiente para exercitar todo endpoint sem cadastrar nada na mão. Arquivo único e
+  autocontido (antes eram dois arquivos que precisavam rodar em ordem exata - unificado para
+  eliminar esse risco). **Não é uma migration** - rode manualmente:
   ```bash
   psql "postgresql://postgres:postgres@localhost:5432/system" -f db/mock-data/seed_mock.sql
   ```
 - Login de teste (senha `password` para os dois): `dra.tania@taniamelo.adv.br` (ADMIN) e
   `ana.souza@taniamelo.adv.br` (STAFF).
-- `db/mock-data/seed_mock_bulk_100.sql` complementa o arquivo acima com mais 120 clientes variados
-  (gênero, situação, benefício, endereço, entrevista, arquivo, pagamento) - use pra testar volume/
-  paginação ou pra popular ambientes de PoC (ex.: teste na AWS, ver `docs/AWS_TESTE_GRATUITO.md`).
-  Não usa `TRUNCATE` - rode sempre depois do `seed_mock.sql`:
-  ```bash
-  psql "postgresql://postgres:postgres@localhost:5432/system" -f db/mock-data/seed_mock.sql -f db/mock-data/seed_mock_bulk_100.sql
-  ```
 - Requests de exemplo de todos os endpoints (autenticados, prontos para rodar): `docs/requests.http`.
 
 ### Autenticação e Swagger

@@ -2,7 +2,7 @@
 
 Objetivo: colocar a aplicação no ar na AWS usando só o que é gratuito (tier
 clássico de 12 meses ou o crédito de US$200/6 meses, dependendo da idade da
-conta), populada com `db/mock-data/seed_mock.sql` + `db/mock-data/seed_mock_bulk_100.sql`
+conta), populada com `db/mock-data/seed_mock.sql` (125 clientes)
 - **sem dado real de cliente** - pra testar tudo ponta a ponta antes de
 decidir migrar pra uma conta paga de verdade. Complementa `docs/INFRA_PLAN.md`
 (que cobre o cenário de produção com dado real).
@@ -21,7 +21,7 @@ Três motivos concretos, dado o estado atual do projeto:
    massa de dado em volume - nenhum desses três era visível testando local
    com 5 clientes. Os três já foram resolvidos: `ObjectStorageFileStorageService`
    (Fase 3 abaixo), CORS parametrizável via `APP_CORS_ALLOWED_ORIGINS`
-   (`CorsConfig.java`) e a massa de teste maior (`db/mock-data/seed_mock_bulk_100.sql`).
+   (`CorsConfig.java`) e a massa de teste maior (`db/mock-data/seed_mock.sql`, 125 clientes).
 3. **O frontend já existe** (em outro repositório) - ou seja, dá pra validar
    a integração ponta a ponta de verdade (não só Postman), que é o teste que
    mais importa antes de decidir gastar dinheiro de verdade em produção.
@@ -120,15 +120,14 @@ projeto, sem depender de qual tier a conta tem.
 
 ## Fase 4 - Popular com dado mockado e validar
 
-1. Rodar, nessa ordem, `db/mock-data/seed_mock.sql` (baseline: 2 usuários + 5
-   clientes) e depois `db/mock-data/seed_mock_bulk_100.sql` (120 clientes
-   adicionais, com endereço/histórico/entrevista/arquivo/pagamento variados)
-   contra o Postgres da instância:
+1. Rodar `db/mock-data/seed_mock.sql` (2 usuários + 125 clientes - 5 com
+   dado detalhado de exemplo + 120 de massa variada, com endereço/histórico/
+   entrevista/arquivo/pagamento) contra o Postgres da instância:
    ```bash
-   psql "$DATABASE_URL" -f db/mock-data/seed_mock.sql -f db/mock-data/seed_mock_bulk_100.sql
+   psql "$DATABASE_URL" -f db/mock-data/seed_mock.sql
    ```
-   Total após rodar os dois: 125 clientes - cobre o "pelo menos 100" pedido
-   com folga pra testar paginação, filtro e volume de arquivo/pagamento.
+   125 clientes cobre o "pelo menos 100" pedido com folga pra testar
+   paginação, filtro e volume de arquivo/pagamento.
 2. Testar login com as credenciais de teste (`dra.tania@taniamelo.adv.br` /
    `ana.souza@taniamelo.adv.br`, senha `password`).
 3. Rodar a suíte de requests do Postman (já montada em rodadas anteriores)

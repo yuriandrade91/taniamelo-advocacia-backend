@@ -44,6 +44,7 @@ Bancos criados com as migrations antigas (V1–V15 legadas) devem ser recriados:
 ## Seeds
 
 `db/mock-data/seed_mock.sql` popula todas as tabelas para exercitar todos os
-endpoints (2 usuários com senha `password`, 5 clientes, endereços com
-principal, histórico, entrevistas, os 11 tipos de documento, simulações com
-principal e parcelas em todos os status).
+endpoints (2 usuários com senha `password`, 125 clientes - 5 com dado
+detalhado de exemplo + 120 de massa variada para testar paginação/filtro -,
+endereços com principal, histórico, entrevistas, os 11 tipos de documento,
+simulações com principal e parcelas em todos os status).

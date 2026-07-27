@@ -346,10 +346,13 @@ curl -sS -X POST "http://localhost:8080/api/v1/clients/$CLIENT_ID/files/document
 
 ## Passo 11 - Popular com dado mockado
 
+Arquivo único, autocontido (125 clientes: 5 com dado detalhado de exemplo +
+120 de massa variada) - confirmado rodando de ponta a ponta nesta instância:
+
 ```bash
 cd ~/taniamelo-advocacia-backend
 PGPASSWORD='TROQUE_ESTA_SENHA' psql -h localhost -U postgres -d system \
-  -f db/mock-data/seed_mock.sql -f db/mock-data/seed_mock_bulk_100.sql
+  -f db/mock-data/seed_mock.sql
 ```
 
 ## Atualizar depois de um novo commit (manual - pipeline ainda não configurado)

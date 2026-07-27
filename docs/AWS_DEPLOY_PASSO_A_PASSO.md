@@ -247,8 +247,7 @@ Dentro da instância, com os containers já de pé:
 
 ```bash
 docker compose cp db/mock-data/seed_mock.sql db:/tmp/seed_mock.sql
-docker compose cp db/mock-data/seed_mock_bulk_100.sql db:/tmp/seed_mock_bulk_100.sql
-docker compose exec db psql -U postgres -d system -f /tmp/seed_mock.sql -f /tmp/seed_mock_bulk_100.sql
+docker compose exec db psql -U postgres -d system -f /tmp/seed_mock.sql
 ```
 
 Teste de login pela API (da sua máquina local):
