@@ -29,7 +29,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
 
-      - name: Atualizar e reiniciar o serviço (git pull + mvn package + nohup)
+            - name: Atualizar e reiniciar o serviço (git pull + mvn package + nohup)
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -48,23 +48,27 @@ jobs:
             # Builda o projeto
             mvn -B clean package -DskipTests
 
-            # Para a aplicação se estiver rodando
-            pkill -f "law-firm-0.0.1-SNAPSHOT.jar" || true
-            sleep 3
+            # Para a aplicação se estiver rodando (sem matar a sessão SSH)
+            APP_PID=$(pgrep -f "law-firm-0.0.1-SNAPSHOT.jar") || true
+            if [ -n "$APP_PID" ]; then
+              kill $APP_PID || true
+              sleep 3
+            fi
 
-            # Inicia a aplicação em background
+            # Inicia a aplicação em background desvinculada da sessão SSH
             nohup /usr/lib/jvm/java-25-amazon-corretto.aarch64/bin/java \
               -jar /home/ec2-user/taniamelo-advocacia-backend/target/law-firm-0.0.1-SNAPSHOT.jar \
               > /home/ec2-user/app.log 2>&1 &
+            disown
 
-            sleep 5
+            sleep 8
 
             # Verifica se subiu
             if ss -tlnp | grep -q 8080; then
               echo "✅ Aplicação rodando na porta 8080!"
             else
               echo "⚠️ Aplicação ainda iniciando, verifique app.log"
-              tail -20 /home/ec2-user/app.log
+              tail -30 /home/ec2-user/app.log
             fi
 
       - name: Fechar porta 22 no Security Group
