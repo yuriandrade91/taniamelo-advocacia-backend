@@ -12,11 +12,26 @@ jobs:
   deploy:
     name: Deploy via SSH na instância EC2 (ARM64 / systemd)
     runs-on: ubuntu-latest
-    # Gate manual: o ambiente "production" só libera o job após aprovação de um
-    # reviewer (Settings > Environments > production no GitHub - ver docs/CI_CD.md).
-    # Para um ambiente de teste, pode remover esta linha para deploy automático.
     environment: production
+
     steps:
+
+      - name: Obter IP do runner
+        id: ip
+        run: echo "ip=$(curl -s https://checkip.amazonaws.com)" >> $GITHUB_OUTPUT
+
+      - name: Abrir porta 22 temporariamente no Security Group
+        run: |
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${{ secrets.EC2_SG_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ip }}/32
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+
       - name: Atualizar e reiniciar o serviço (git pull + mvn package + systemctl restart)
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -25,15 +40,25 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            # SSH não-interativo não carrega o profile: garanta java/mvn no PATH.
             source ~/.bashrc 2>/dev/null || true
             source ~/.bash_profile 2>/dev/null || true
             cd ~/taniamelo-advocacia-backend
             git fetch origin develop
             git reset --hard origin/develop
             mvn -B clean package -DskipTests
-            # Requer sudo sem senha para este comando (ver docs/CI_CD.md):
-            #   ec2-user ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart law-firm
             sudo systemctl restart law-firm
             sleep 5
             sudo systemctl status law-firm --no-pager
+
+      - name: Fechar porta 22 no Security Group
+        if: always()
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id ${{ secrets.EC2_SG_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ip }}/32
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
