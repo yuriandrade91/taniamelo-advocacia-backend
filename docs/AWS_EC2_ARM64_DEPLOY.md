@@ -355,7 +355,7 @@ PGPASSWORD='TROQUE_ESTA_SENHA' psql -h localhost -U postgres -d system \
   -f db/mock-data/seed_mock.sql
 ```
 
-## Atualizar depois de um novo commit (manual - pipeline ainda não configurado)
+## Atualizar depois de um novo commit (manual)
 
 ```bash
 cd ~/taniamelo-advocacia-backend
@@ -365,14 +365,14 @@ sudo systemctl restart law-firm
 sudo journalctl -u law-firm -f
 ```
 
-## Próximo passo (fora do escopo deste documento)
+## Deploy automático (CD)
 
-O deploy acima foi feito manualmente, de propósito, antes de automatizar.
-`.github/workflows/deploy.yml` e `docs/CI_CD.md` hoje ainda apontam pro
-modelo antigo (Docker/`docker compose` na instância x86) - precisam ser
-adaptados pra este fluxo (SSH + `git pull` + `mvn package` +
-`systemctl restart`, sem Docker) antes de ativar o deploy automático nesta
-instância.
+`.github/workflows/deploy.yml` já executa exatamente esse fluxo por SSH a cada
+push na `develop` (SSH + `git reset --hard origin/develop` + `mvn package` +
+`systemctl restart law-firm`, sem Docker). Configuração dos secrets
+(`EC2_HOST`/`EC2_USER`/`EC2_SSH_KEY`), do ambiente `production` e do
+pré-requisito de `sudo` sem senha para `systemctl restart law-firm` estão em
+`docs/CI_CD.md`.
 
 ## Troubleshooting
 

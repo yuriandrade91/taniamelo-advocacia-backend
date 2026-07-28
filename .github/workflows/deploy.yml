@@ -1,20 +1,23 @@
 name: Deploy
 
+# Deploy contínuo na instância EC2 ARM64 (tm-adv-backend / Amazon Linux 2023),
+# que roda o JAR direto na JVM via systemd - SEM Docker. Dispara em push na
+# develop (a branch que a instância segue) ou manualmente.
 on:
   push:
-    branches: [main]
+    branches: [develop]
   workflow_dispatch: {}
 
 jobs:
   deploy:
-    name: Deploy via SSH na instância EC2
+    name: Deploy via SSH na instância EC2 (ARM64 / systemd)
     runs-on: ubuntu-latest
-    # Gate manual: o ambiente "production" só libera o job depois de aprovação
-    # de um reviewer, configurado em Settings > Environments > production no
-    # GitHub (ver docs/CI_CD.md). Nunca deploy automático direto sem esse gate.
+    # Gate manual: o ambiente "production" só libera o job após aprovação de um
+    # reviewer (Settings > Environments > production no GitHub - ver docs/CI_CD.md).
+    # Para um ambiente de teste, pode remover esta linha para deploy automático.
     environment: production
     steps:
-      - name: Deploy (git pull + docker compose up --build)
+      - name: Atualizar e reiniciar o serviço (git pull + mvn package + systemctl restart)
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -22,9 +25,15 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
+            # SSH não-interativo não carrega o profile: garanta java/mvn no PATH.
+            source ~/.bashrc 2>/dev/null || true
+            source ~/.bash_profile 2>/dev/null || true
             cd ~/taniamelo-advocacia-backend
-            git fetch origin main
-            git checkout main
-            git reset --hard origin/main
-            docker compose --profile full up -d --build
-            docker compose ps
+            git fetch origin develop
+            git reset --hard origin/develop
+            mvn -B clean package -DskipTests
+            # Requer sudo sem senha para este comando (ver docs/CI_CD.md):
+            #   ec2-user ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart law-firm
+            sudo systemctl restart law-firm
+            sleep 5
+            sudo systemctl status law-firm --no-pager
