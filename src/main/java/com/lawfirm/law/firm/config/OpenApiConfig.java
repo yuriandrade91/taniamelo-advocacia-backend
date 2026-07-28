@@ -1,5 +1,8 @@
 package com.lawfirm.law.firm.config;
 
+import com.lawfirm.law.firm.model.Tenant;
+import com.lawfirm.law.firm.repository.TenantRepository;
+import com.lawfirm.law.firm.tenant.TenancyProperties;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
@@ -12,6 +15,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.springdoc.core.customizers.GlobalOpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +29,15 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
 
     private static final String BEARER_SCHEME = "bearerAuth";
+    private static final String TENANT_SCHEME = "tenantHeader";
+
+    private final TenancyProperties tenancyProperties;
+    private final TenantRepository tenantRepository;
+
+    public OpenApiConfig(TenancyProperties tenancyProperties, TenantRepository tenantRepository) {
+        this.tenancyProperties = tenancyProperties;
+        this.tenantRepository = tenantRepository;
+    }
 
     @Bean
     public OpenAPI lawFirmOpenApi() {
@@ -47,10 +60,18 @@ public class OpenApiConfig {
                                 422 regra de negócio, 500 erro de sistema (sem detalhe técnico).
                                 - Autentique-se em `POST /api/v1/auth/login` e envie o JWT como \
                                 `Authorization: Bearer <token>`.
-                                """)
+                                - Multi-tenant: toda requisição precisa do cabeçalho `%s` com o \
+                                SLUG (ex.: `tania`, `demo`) ou o UUID do escritório — nunca o nome \
+                                do schema físico, que é interno e não é aceito. Descubra o UUID de \
+                                um slug em `GET /api/v1/tenants/resolve?slug=...`. Clique em \
+                                "Authorize" e preencha os dois esquemas (bearer + tenant) para o \
+                                "Try it out" funcionar em qualquer endpoint.
+                                """
+                                                .formatted(tenancyProperties.getHeaderName()))
                                 .version("v1")
                                 .contact(new Contact().name("Equipe de desenvolvimento")))
-                .addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME))
+                .addSecurityItem(
+                        new SecurityRequirement().addList(BEARER_SCHEME).addList(TENANT_SCHEME))
                 .components(
                         new Components()
                                 .addSecuritySchemes(
@@ -61,7 +82,37 @@ public class OpenApiConfig {
                                                 .scheme("bearer")
                                                 .bearerFormat("JWT")
                                                 .description(
-                                                        "JWT obtido em POST /api/v1/auth/login")));
+                                                        "JWT obtido em POST /api/v1/auth/login"))
+                                .addSecuritySchemes(
+                                        TENANT_SCHEME,
+                                        new SecurityScheme()
+                                                .name(tenancyProperties.getHeaderName())
+                                                .type(SecurityScheme.Type.APIKEY)
+                                                .in(SecurityScheme.In.HEADER)
+                                                .description(
+                                                        "Identifica o tenant (escritório): envie o"
+                                                                + " SLUG ou o UUID de"
+                                                                + " tenants.id — NUNCA o nome do"
+                                                                + " schema físico, que é interno."
+                                                                + " Obrigatório em /auth/login"
+                                                                + " (ainda não há JWT); nos demais"
+                                                                + " endpoints, se ausente, o tenant"
+                                                                + " é lido da claim `tenant` do"
+                                                                + " JWT (que carrega o tenantId)."
+                                                                + " Descubra o tenantId de um slug"
+                                                                + " em GET"
+                                                                + " /api/v1/tenants/resolve."
+                                                                + " Tenants ativos (slug): "
+                                                                + activeTenantSlugs())));
+    }
+
+    /** Slugs dos tenants ativos, para o texto de ajuda do header X-Tenant-Id no Swagger. */
+    private String activeTenantSlugs() {
+        List<String> slugs =
+                tenantRepository.findByStatusOrderByRazaoSocialAsc("ativo").stream()
+                        .map(Tenant::getSlug)
+                        .collect(Collectors.toList());
+        return slugs.isEmpty() ? "(nenhum cadastrado)" : String.join(", ", slugs);
     }
 
     /**

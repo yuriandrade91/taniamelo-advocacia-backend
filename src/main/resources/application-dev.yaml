@@ -13,11 +13,11 @@ spring:
         jdbc:
           time_zone: UTC
 
-  # The app always applies its own migrations on startup (single owner of schema
-  # changes - no separate flyway container). Override via SPRING_FLYWAY_ENABLED
-  # only if you have a specific reason to skip it.
+  # Flyway automático desligado: as migrations são aplicadas por schema pelo
+  # MultiTenantFlywayMigrator (multi-tenancy por schema). Não reative aqui, senão
+  # o Spring rodaria as migrations flat no schema errado.
   flyway:
-    enabled: ${SPRING_FLYWAY_ENABLED:true}
+    enabled: false
 
 server:
   port: ${SERVER_PORT:8080}

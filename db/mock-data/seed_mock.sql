@@ -32,9 +32,9 @@ TRUNCATE client_payments, client_files, client_interviews, client_situation_hist
 
 -- ── Usuários ──  (hash BCrypt de "password")
 -- UUIDs fixos (v4): 9786dc7f... = Tania (ADMIN), e55affc6... = Ana (STAFF)
-INSERT INTO users (id, full_name, email, password_hash, role, active) VALUES
- ('9786dc7f-6b65-465a-b07b-bdf5c152fe66', 'Tania Melo',  'dra.tania@taniamelo.adv.br', '$2a$10$vnyhmcm3Q7JJbZHPbwuhQO8EdFr4IxV/W1bJQkoGaXI4i9PrPqUcW', 'ADMIN', true),
- ('e55affc6-2e17-45b2-8e6a-0dd3be939628', 'Ana Souza',   'ana.souza@taniamelo.adv.br', '$2a$10$vnyhmcm3Q7JJbZHPbwuhQO8EdFr4IxV/W1bJQkoGaXI4i9PrPqUcW', 'STAFF', true);
+INSERT INTO users (id, full_name, email, username, password_hash, role, active) VALUES
+ ('9786dc7f-6b65-465a-b07b-bdf5c152fe66', 'Tania Melo',  'dra.tania@taniamelo.adv.br', 'dra.tania', '$2a$10$vnyhmcm3Q7JJbZHPbwuhQO8EdFr4IxV/W1bJQkoGaXI4i9PrPqUcW', 'ADMIN', true),
+ ('e55affc6-2e17-45b2-8e6a-0dd3be939628', 'Ana Souza',   'ana.souza@taniamelo.adv.br', 'ana.souza', '$2a$10$vnyhmcm3Q7JJbZHPbwuhQO8EdFr4IxV/W1bJQkoGaXI4i9PrPqUcW', 'STAFF', true);
 
 -- ── Clientes ──
 -- UUIDs fixos (v4), na ordem abaixo: Maria, José, Sebastiana, Antônio, Francisca

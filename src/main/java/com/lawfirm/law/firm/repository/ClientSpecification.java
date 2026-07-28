@@ -3,10 +3,13 @@ package com.lawfirm.law.firm.repository;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Client;
 import com.lawfirm.law.firm.model.Situation;
-import com.lawfirm.law.firm.util.EnumLabelSupport;
 import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Predicate;
+import java.text.Normalizer;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 
 /**
@@ -17,32 +20,60 @@ public final class ClientSpecification {
 
     private ClientSpecification() {}
 
+    /**
+     * Busca livre por nome completo ou CPF.
+     *
+     * <p>Nome: acento-fold + lowercase feito em Java preservando espaços/pontuação, casando com
+     * {@code unaccent(lower(full_name))} do Postgres (que também preserva). Normalizar removendo
+     * espaços/pontuação de um lado só faria nome com mais de uma palavra ("Maria da Silva") e CPF
+     * formatado nunca casarem com o valor armazenado.
+     *
+     * <p>CPF: comparação por dígitos dos dois lados ({@code regexp_replace(cpf, '[^0-9]', '')}),
+     * então "52998224725" encontra "529.982.247-25" e vice-versa, independente da formatação.
+     */
     public static Specification<Client> searchTerm(String searchTerm) {
         return (root, query, cb) -> {
             if (searchTerm == null || searchTerm.isBlank()) return null;
 
-            String normalized = EnumLabelSupport.normalize(searchTerm.trim());
-            String term = "%" + normalized + "%";
+            String folded =
+                    Normalizer.normalize(searchTerm.trim().toLowerCase(), Normalizer.Form.NFD)
+                            .replaceAll("\\p{M}", "");
 
-            Expression<String> cpfExpr =
-                    cb.function("unaccent", String.class, cb.lower(root.get("cpf")));
             Expression<String> fullNameExpr =
                     cb.function("unaccent", String.class, cb.lower(root.get("fullName")));
+            Predicate nameLike = cb.like(fullNameExpr, "%" + folded + "%");
 
-            return cb.or(cb.like(cpfExpr, term), cb.like(fullNameExpr, term));
+            String digits = folded.replaceAll("\\D", "");
+            if (digits.isEmpty()) {
+                return nameLike;
+            }
+
+            Expression<String> cpfDigits =
+                    cb.function(
+                            "regexp_replace",
+                            String.class,
+                            root.get("cpf"),
+                            cb.literal("[^0-9]"),
+                            cb.literal(""),
+                            cb.literal("g"));
+            Predicate cpfLike = cb.like(cpfDigits, "%" + digits + "%");
+
+            return cb.or(nameLike, cpfLike);
         };
     }
 
     public static Specification<Client> benefitIn(List<BenefitType> benefits) {
-        return (root, query, cb) ->
-                (benefits == null || benefits.isEmpty()) ? null : root.get("benefit").in(benefits);
+        return (root, query, cb) -> {
+            List<BenefitType> cleaned = withoutNulls(benefits);
+            return cleaned.isEmpty() ? null : root.get("benefit").in(cleaned);
+        };
     }
 
     public static Specification<Client> situationIn(List<Situation> situations) {
-        return (root, query, cb) ->
-                (situations == null || situations.isEmpty())
-                        ? null
-                        : root.get("situation").in(situations);
+        return (root, query, cb) -> {
+            List<Situation> cleaned = withoutNulls(situations);
+            return cleaned.isEmpty() ? null : root.get("situation").in(cleaned);
+        };
     }
 
     public static Specification<Client> createdBetween(Instant from, Instant to) {
@@ -62,5 +93,15 @@ public final class ClientSpecification {
             result = (result == null) ? s : result.and(s);
         }
         return result;
+    }
+
+    /**
+     * Remove nulos da lista de filtro. Um parâmetro de query vazio (ex.: {@code ?benefitType=}) é
+     * convertido para {@code null} pelo conversor de enum e chega aqui como {@code [null]}; sem
+     * essa limpeza viraria um {@code IN (null)} inválido/sem correspondência.
+     */
+    private static <T> List<T> withoutNulls(List<T> values) {
+        if (values == null || values.isEmpty()) return List.of();
+        return values.stream().filter(Objects::nonNull).collect(Collectors.toList());
     }
 }

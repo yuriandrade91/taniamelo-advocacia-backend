@@ -33,16 +33,22 @@ public class JwtService {
         this.expirationMillis = expirationMinutes * 60_000;
     }
 
-    public String generateToken(UUID userId, String email, String role) {
+    public String generateToken(UUID userId, String email, String role, String tenant) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(email)
                 .claim("uid", userId)
                 .claim("role", role)
+                .claim("tenant", tenant)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(expirationMillis)))
                 .signWith(signingKey)
                 .compact();
+    }
+
+    /** Schema do tenant embutido no token (claim {@code tenant}), ou {@code null} se ausente. */
+    public String extractTenant(String token) {
+        return parseClaims(token).get("tenant", String.class);
     }
 
     public long getExpirationMillis() {

@@ -1,5 +1,7 @@
 package com.lawfirm.law.firm.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public class LoginResponseDTO {
 
     private String token;
@@ -8,6 +10,14 @@ public class LoginResponseDTO {
     private String fullName;
     private String email;
     private String role;
+
+    @Schema(
+            description = "Identificador público (opaco) do tenant - UUID canônico",
+            example = "3f1a7c2e-9b40-4a1e-8a2b-0d5f6c7e8a90")
+    private String tenantId;
+
+    @Schema(description = "Slug amigável do tenant (subdomínio/URL)", example = "tania")
+    private String tenantSlug;
 
     public LoginResponseDTO() {}
 
@@ -66,5 +76,21 @@ public class LoginResponseDTO {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    public String getTenantSlug() {
+        return tenantSlug;
+    }
+
+    public void setTenantSlug(String tenantSlug) {
+        this.tenantSlug = tenantSlug;
     }
 }

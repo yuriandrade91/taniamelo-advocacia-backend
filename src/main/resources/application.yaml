@@ -22,9 +22,11 @@ spring:
   # empty database would silently skip running V1..V4 the moment they enable it.
   # Leave disabled here; turn it on only via env vars on the one environment that
   # needs it (see README "Adotando o Flyway em um banco já existente").
+  # Flyway automático DESLIGADO: com multi-tenancy por schema, as migrations são
+  # aplicadas por schema pelo MultiTenantFlywayMigrator (db/migration/shared no
+  # public + db/migration/tenant em cada schema). Ver com.lawfirm.law.firm.tenant.
   flyway:
-    baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:false}
-    baseline-version: ${SPRING_FLYWAY_BASELINE_VERSION:0}
+    enabled: false
 
   # Dev resources: avoid caching static resources so LiveReload changes appear immediately
   web:
@@ -74,7 +76,25 @@ app:
   jwt:
     # MUST be overridden via APP_JWT_SECRET (32+ chars) outside of local dev.
     secret: ${APP_JWT_SECRET:dev-only-secret-change-me-please-32chars}
+    # TTL do access token (JWT no header). Com refresh token ativo, pode ser curto.
     expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:480}
+    # TTL do refresh token (cookie httpOnly). Rotacionado a cada /auth/refresh.
+    refresh-expiration-days: ${APP_JWT_REFRESH_EXPIRATION_DAYS:14}
+  # Multi-tenancy por schema. Cada tenant = um schema Postgres autocontido.
+  # O identificador do tenant é o próprio nome do schema; o frontend informa via
+  # cabeçalho X-Tenant-Id (necessário no login). Só schemas listados são aceitos.
+  tenancy:
+    default-schema: ${APP_TENANCY_DEFAULT_SCHEMA:tenant_tania}
+    schemas: ${APP_TENANCY_SCHEMAS:tenant_tania,tenant_demo}
+    header-name: ${APP_TENANCY_HEADER:X-Tenant-Id}
+  # Cookie do refresh token. Em produção com front em outro domínio:
+  # secure=true e same-site=None. Em dev local (http, mesma origem): Lax/false.
+  auth:
+    refresh-cookie:
+      name: ${APP_AUTH_REFRESH_COOKIE_NAME:refreshToken}
+      path: ${APP_AUTH_REFRESH_COOKIE_PATH:/api/v1/auth}
+      secure: ${APP_AUTH_REFRESH_COOKIE_SECURE:false}
+      same-site: ${APP_AUTH_REFRESH_COOKIE_SAMESITE:Lax}
   admin:
     # Seed credentials for the first ADMIN user, created automatically if the users table is empty.
     email: ${APP_ADMIN_EMAIL:admin@taniamelo.adv.br}

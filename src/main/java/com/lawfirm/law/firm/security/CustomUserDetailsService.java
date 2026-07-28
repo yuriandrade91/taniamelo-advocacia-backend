@@ -15,12 +15,17 @@ public class CustomUserDetailsService implements UserDetailsService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * O parâmetro é o identificador de login, que pode ser o e-mail OU o username (a autenticação
+     * aceita os dois). A busca é feita no schema do tenant corrente (resolvido antes desta
+     * chamada).
+     */
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    public UserDetails loadUserByUsername(String login) throws UsernameNotFoundException {
         return userRepository
-                .findByEmailIgnoreCase(email)
+                .findByEmailIgnoreCaseOrUsernameIgnoreCase(login, login)
                 .map(UserPrincipal::new)
                 .orElseThrow(
-                        () -> new UsernameNotFoundException("Usuário não encontrado: " + email));
+                        () -> new UsernameNotFoundException("Usuário não encontrado: " + login));
     }
 }

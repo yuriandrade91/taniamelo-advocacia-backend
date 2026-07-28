@@ -36,14 +36,17 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final CorsConfigurationSource corsConfigurationSource;
+    private final com.lawfirm.law.firm.tenant.TenantResolutionFilter tenantResolutionFilter;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             RestAuthenticationEntryPoint authenticationEntryPoint,
-            CorsConfigurationSource corsConfigurationSource) {
+            CorsConfigurationSource corsConfigurationSource,
+            com.lawfirm.law.firm.tenant.TenantResolutionFilter tenantResolutionFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.corsConfigurationSource = corsConfigurationSource;
+        this.tenantResolutionFilter = tenantResolutionFilter;
     }
 
     @Bean
@@ -77,6 +80,9 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/api/v1/auth/**")
                                         .permitAll()
+                                        // Resolução pública de tenant por slug (pré-login).
+                                        .requestMatchers(HttpMethod.GET, "/api/v1/tenants/resolve")
+                                        .permitAll()
                                         // Docs are public (just the API shape, no business data);
                                         // the actual
                                         // operations behind them still require a bearer token to
@@ -94,7 +100,10 @@ public class SecurityConfig {
                                         .anyRequest()
                                         .authenticated())
                 .addFilterBefore(
-                        jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // Resolve o tenant (schema) antes de qualquer acesso ao banco - inclusive antes do
+                // JwtAuthenticationFilter, que carrega o usuário do schema correto.
+                .addFilterBefore(tenantResolutionFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

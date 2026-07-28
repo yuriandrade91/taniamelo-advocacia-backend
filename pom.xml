@@ -29,9 +29,18 @@
 	<properties>
 		<java.version>25</java.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
-		<jjwt.version>0.12.6</jjwt.version>
+		<jjwt.version>0.12.7</jjwt.version>
 		<springdoc.version>3.0.3</springdoc.version>
 		<awssdk.version>2.31.0</awssdk.version>
+		<jacoco.version>0.8.13</jacoco.version>
+		<sonar-maven-plugin.version>5.1.0.4751</sonar-maven-plugin.version>
+
+		<!-- SonarQube / SonarCloud: chaveie o projeto e (em CI) passe -Dsonar.token=... .
+		     sonar.host.url default aponta para o SonarCloud; troque para a URL do seu
+		     SonarQube self-hosted se for o caso. A cobertura vem do JaCoCo (report XML). -->
+		<sonar.projectKey>taniamelo-advocacia-backend</sonar.projectKey>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 	</properties>
 
 	<!-- BOM da AWS SDK v2: alinha as versões dos módulos AWS (s3, auth, regions).
@@ -297,6 +306,39 @@
 						</goals>
 					</execution>
 				</executions>
+			</plugin>
+
+			<!-- JaCoCo: instrumenta os testes e gera o relatório de cobertura (XML)
+			     que o Sonar consome. prepare-agent liga o agente antes dos testes;
+			     report gera o XML em target/site/jacoco/jacoco.xml no fim da fase test. -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<executions>
+					<execution>
+						<id>jacoco-prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>jacoco-report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Sonar: análise estática + cobertura. Rode `mvn verify sonar:sonar`
+			     (com -Dsonar.token=... em CI). Não roda no build normal nem no
+			     pre-commit; é acionado explicitamente. -->
+			<plugin>
+				<groupId>org.sonarsource.scanner.maven</groupId>
+				<artifactId>sonar-maven-plugin</artifactId>
+				<version>${sonar-maven-plugin.version}</version>
 			</plugin>
 		</plugins>
 	</build>
