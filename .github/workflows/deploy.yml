@@ -47,27 +47,10 @@ jobs:
             # Builda o projeto
             mvn -B clean package -DskipTests
 
-            # Para a aplicação com timeout seguro
-            APP_PID=$(pgrep -f "law-firm-0.0.1-SNAPSHOT.jar" | head -1) || true
-            if [ -n "$APP_PID" ]; then
-              kill -15 $APP_PID 2>/dev/null || true
-              sleep 5
-            fi
+            # Agenda o restart para daqui 1 minuto (fora da sessão SSH)
+            echo "/home/ec2-user/restart-app.sh" | at now + 1 minute
 
-            # Inicia em novo grupo de processo isolado da sessão SSH
-            setsid nohup /usr/lib/jvm/java-25-amazon-corretto.aarch64/bin/java \
-              -jar /home/ec2-user/taniamelo-advocacia-backend/target/law-firm-0.0.1-SNAPSHOT.jar \
-              > /home/ec2-user/app.log 2>&1 < /dev/null &
-
-            sleep 10
-
-            # Verifica se subiu
-            if ss -tlnp | grep -q 8080; then
-              echo "✅ Aplicação rodando na porta 8080!"
-            else
-              echo "⚠️ Aplicação ainda iniciando, verifique app.log"
-              tail -30 /home/ec2-user/app.log
-            fi
+            echo "✅ Build concluído! App será reiniciado em 1 minuto."
 
       - name: Fechar porta 22 no Security Group
         if: always()
