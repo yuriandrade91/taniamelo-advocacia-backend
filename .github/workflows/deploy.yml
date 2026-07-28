@@ -36,7 +36,6 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e
             source ~/.bashrc 2>/dev/null || true
             source ~/.bash_profile 2>/dev/null || true
             cd ~/taniamelo-advocacia-backend
@@ -48,20 +47,19 @@ jobs:
             # Builda o projeto
             mvn -B clean package -DskipTests
 
-            # Para a aplicação se estiver rodando (sem matar a sessão SSH)
-            APP_PID=$(pgrep -f "law-firm-0.0.1-SNAPSHOT.jar") || true
+            # Para a aplicação com timeout seguro
+            APP_PID=$(pgrep -f "law-firm-0.0.1-SNAPSHOT.jar" | head -1) || true
             if [ -n "$APP_PID" ]; then
-              kill $APP_PID || true
-              sleep 3
+              kill -15 $APP_PID 2>/dev/null || true
+              sleep 5
             fi
 
-            # Inicia a aplicação em background desvinculada da sessão SSH
-            nohup /usr/lib/jvm/java-25-amazon-corretto.aarch64/bin/java \
+            # Inicia em novo grupo de processo isolado da sessão SSH
+            setsid nohup /usr/lib/jvm/java-25-amazon-corretto.aarch64/bin/java \
               -jar /home/ec2-user/taniamelo-advocacia-backend/target/law-firm-0.0.1-SNAPSHOT.jar \
-              > /home/ec2-user/app.log 2>&1 &
-            disown
+              > /home/ec2-user/app.log 2>&1 < /dev/null &
 
-            sleep 8
+            sleep 10
 
             # Verifica se subiu
             if ss -tlnp | grep -q 8080; then
