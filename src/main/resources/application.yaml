@@ -26,7 +26,7 @@ spring:
   # aplicadas por schema pelo MultiTenantFlywayMigrator (db/migration/shared no
   # public + db/migration/tenant em cada schema). Ver com.lawfirm.law.firm.tenant.
   flyway:
-    enabled: true
+    enabled: false
 
   # Dev resources: avoid caching static resources so LiveReload changes appear immediately
   web:
