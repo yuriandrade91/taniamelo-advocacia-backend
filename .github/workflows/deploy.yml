@@ -12,7 +12,6 @@ jobs:
     environment: development
 
     steps:
-
       - name: Obter IP do runner
         id: ip
         run: echo "ip=$(curl -s https://checkip.amazonaws.com)" >> $GITHUB_OUTPUT
@@ -37,8 +36,10 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             source ~/.bashrc 2>/dev/null || true
-            source ~/.bash_profile 2>/dev/null || true
             cd ~/taniamelo-advocacia-backend
+
+            # Para a aplicação
+            sudo systemctl stop law-firm
 
             # Atualiza o código
             git fetch origin develop
@@ -47,10 +48,10 @@ jobs:
             # Builda o projeto
             mvn -B clean package -DskipTests
 
-            # Agenda o restart para daqui 1 minuto (fora da sessão SSH)
-            echo "/home/ec2-user/restart-app.sh" | at now + 1 minute
+            # Reinicia a aplicação
+            sudo systemctl start law-firm
 
-            echo "✅ Build concluído! App será reiniciado em 1 minuto."
+            echo "✅ Deploy concluído!"
 
       - name: Fechar porta 22 no Security Group
         if: always()
@@ -64,4 +65,3 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-          
