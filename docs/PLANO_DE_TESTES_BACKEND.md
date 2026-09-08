@@ -127,9 +127,34 @@ porque é o que se usa todo dia; infraestrutura depois.
 > Fase 6. A Fase 6 fica com o que sobra — rotação de token, expiração, registro
 > de tenant novo.
 
-### Fase 0 — Destravar o CI *(pré-requisito, bloqueia todas as demais)*
+### Fase 0 — Destravar o CI *(pré-requisito, bloqueia todas as demais)* — ✅ CONCLUÍDA
 
-Nenhum teste novo. O objetivo é fazer os 640 que já existem passarem a valer.
+Nenhum teste novo. O objetivo era fazer os que já existem passarem a valer.
+
+**Resultado:** `mvn verify` executa a suíte inteira, verde, com um Postgres 16 em
+container. O que ficou diferente do plano abaixo, e por quê:
+
+- **Sem `@Testcontainers`/`@Container`/`@DynamicPropertySource`.** O Spring Boot 4
+  resolve isso com `@ServiceConnection` sobre um bean do container
+  (`PostgresContainerConfig`): o datasource aponta para o container sem nenhuma
+  propriedade escrita à mão. Menos código e sem risco de a URL e o container
+  saírem de sincronia.
+- **Sem `testcontainers-junit-jupiter`.** Ele só serve para o estilo por anotação,
+  que deixamos de usar. Uma dependência a menos.
+- **Sem Rest-assured por ora.** Entra quando a Camada 3 começar; adicioná-lo
+  agora seria dependência parada no `pom.xml`.
+- **Base chamada `PostgresIntegrationTest`**, não `AbstractIntegrationTest`: o
+  nome diz o que ela traz. Ela carrega `@SpringBootTest`, `@ActiveProfiles("test")`
+  e o `@Import` do container — as três juntas, porque basta uma divergir para o
+  Spring criar um segundo contexto e, com ele, um segundo container.
+- **`h2` saiu do `pom.xml`.** Estava como `runtime` desde o início, sem nenhum
+  perfil, yaml ou teste que o usasse.
+- **Deploy passou a depender do CI.** `deploy.yml` disparava em `push` na
+  `develop`, em paralelo com o CI: um commit que quebrasse a suíte ia para a
+  instância mesmo assim. Agora usa `workflow_run` sobre o workflow "CI" e só roda
+  com conclusão `success` (o `workflow_dispatch` continua como saída manual).
+
+O plano original, mantido como registro:
 
 1. Adicionar Testcontainers (`postgresql`, `junit-jupiter`) e Rest-assured ao
    `pom.xml`, escopo `test`.
@@ -171,8 +196,10 @@ public abstract class AbstractIntegrationTest {
    O runner do GitHub já tem Docker — o job `docker-build` prova isso —, então
    Testcontainers funciona sem serviço adicional.
 
-**Critério de saída:** `mvn verify` verde no CI, com os ~640 testes executando, e
-`ClientControllerTest` sem tocar em banco de desenvolvimento.
+**Critério de saída:** `mvn verify` verde no CI, com os testes executando, e
+`ClientControllerTest` sem tocar em banco de desenvolvimento. ✅ Atingido —
+**842 testes, 0 falhas**, e nenhum deles toca
+`jdbc:postgresql://localhost:5432/system`.
 
 ---
 
@@ -378,14 +405,14 @@ Cada um é uma dívida com nome e endereço:
    endereços, entrevistas nem arquivos; a modal busca cada um e usa
    `allSettled` para que um 404 de arquivos não derrube a ficha inteira.
    *(lacuna B3)*
-3. **Endereço principal decidido na interface.** O `POST` aceita um endereço por
-   vez e não coordena `isPrimary`. Quem impede dois principais é a tela — que é
-   o mesmo que dizer que não está impedido. *(lacuna B5)*
-4. **Desfazer com janela de 5 segundos.** Concluir, cancelar e excluir
-   compromisso mudam a tela na hora e só enviam a requisição 5s depois, porque
-   depois de enviada não há restore. *(lacuna B6)*
-5. **Histórico sem "de → para".** O DTO expõe só a situação nova, então a linha
-   do tempo diz "passou para X". *(lacuna B4)*
+3. **Cadastro de endereços sem transação comum.** ~~O cadastro faz uma requisição
+   por endereço.~~ **Fechado:** `POST /clients/{id}/addresses/batch` grava a lista
+   inteira numa transação. O `POST` individual continua existindo. *(lacuna B5)*
+4. **Desfazer com janela de 5 segundos.** Excluir compromisso muda a tela na hora
+   e só envia a requisição 5s depois. **O motivo acabou:** existe
+   `PATCH /appointments/{id}/restore`. A janela pode sair do frontend. *(lacuna B6)*
+5. **Histórico sem "de → para".** ~~O DTO expõe só a situação nova.~~ **Fechado:**
+   `previousSituation` entrou no DTO, e `GET /users` resolve o "por quem". *(lacuna B4)*
 6. **Tabela de atualização monetária no navegador.** A análise do CNIS precisa
    dos fatores de correção; sem lugar no servidor, eles ficam no
    `localStorage` de cada máquina. *(lacuna B7)*
@@ -399,7 +426,9 @@ mapa de pendências, para decisão à parte. Onde a lacuna toca uma fase, o test
 daquela fase registra o comportamento **atual** e vira asserção do novo quando
 ela for fechada.
 
-O frontend chama **40 rotas**; o backend serve **34**.
+O frontend chama **40 rotas**; o backend serve **38** — B4, B5 e B6 foram
+fechadas, e vieram junto `GET /users` e as duas rotas de restore, que o frontend
+ainda não consome. Restam abertas B1, B2, B3 e B7.
 
 ### B1 — Famílias de rota inexistentes
 
@@ -423,24 +452,38 @@ pendente sem que ninguém tenha errado.
 A ficha do cliente precisa de duas chamadas (`/clients/{id}` e
 `/clients/{id}/addresses`) para montar uma tela só.
 
-### B4 — `ClientSituationHistoryDTO` incompleto
+### B4 — `ClientSituationHistoryDTO` incompleto — ✅ FECHADA
 
-Expõe `currentSituation`, mas a entidade guarda também `previousSituation`. A
-linha do tempo consegue dizer "passou para X" e não "de X para Y". E
-`changedByUserId` é UUID sem rota que resolva nome — o "por quem" não é exibível.
+O DTO passou a expor `previousSituation` (nulo só na primeira entrada), e
+`GET /api/v1/users` traduz em nome os UUIDs de autoria — `changedByUserId`,
+`createdBy`, `updatedBy` e `responsibleUserId`, que antes não eram exibíveis em
+lugar nenhum.
 
-### B5 — `POST /clients/{id}/addresses` não aceita lista
+### B5 — `POST /clients/{id}/addresses` não aceita lista — ✅ FECHADA
 
-O cadastro permite até três endereços e precisa de uma requisição por endereço,
-sem transação comum. E **`isPrimary` não é coordenado no servidor**: dois
-endereços podem ficar principais, e quem decide qual vale é a ordem de chegada.
-Hoje quem impede isso é a interface — o que significa que não está impedido.
+`POST /clients/{id}/addresses/batch` recebe de 1 a 10 endereços e grava todos em
+uma transação: ou entram todos, ou não entra nenhum.
 
-### B6 — Soft delete sem restore
+> **Correção do levantamento original.** A versão anterior deste anexo afirmava
+> que `isPrimary` não era coordenado no servidor. **Era.** `ClientAddressService`
+> desmarca o principal anterior no `create` e no `update`, promove o mais antigo
+> restante no `delete`, e o banco garante o invariante com o índice único parcial
+> `ux_client_addresses_primary` desde a V3. O erro veio de ler a assinatura dos
+> métodos sem ler o corpo.
 
-`Appointment` e `Client` usam `deletedAt`, e não há rota para desfazer. O
-frontend contorna com uma janela de 5 segundos antes de enviar o `DELETE`,
-porque depois de enviado não há volta.
+### B6 — Soft delete sem restore — ✅ FECHADA
+
+`PATCH /appointments/{id}/restore` e `PATCH /clients/{id}/restore` desfazem a
+exclusão. Ambas são idempotentes em registro ativo e devolvem 404 em id
+inexistente; a da agenda registra `RESTORED` na trilha.
+
+> **Correção do levantamento original.** A versão anterior afirmava que
+> "`Appointment` e `Client` usam `deletedAt`". **Client não usava.**
+> `ClientServiceImpl.delete` chamava `repository.deleteById` — exclusão física —
+> e as cinco FKs de sub-recurso são `ON DELETE CASCADE`: um `DELETE` apagava
+> endereços, entrevistas, arquivos, pagamentos e todo o histórico de situação, e
+> zerava o vínculo do compromisso na agenda (`ON DELETE SET NULL`). A coluna
+> `deleted_at` em `clients` só passou a existir na migration V12.
 
 ### B7 — Sem persistência para a análise do CNIS
 
