@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -146,6 +147,52 @@ class ClientAddressServiceTest {
         assertFalse(previous.getIsPrimary());
         verify(repository).saveAndFlush(previous);
         assertTrue(captureSaved().getIsPrimary());
+    }
+
+    @Test
+    @DisplayName("createAll grava a lista inteira, na ordem enviada")
+    void createAllPersistsEveryAddressInOrder() {
+        // Primeiro endereço do cliente: o count sobe conforme os saves acontecem.
+        when(repository.countByClient_Id(TestFixtures.CLIENT_ID)).thenReturn(0L, 1L, 2L);
+
+        ClientAddressRequestDTO first = requestDto();
+        first.setStreet("Rua A");
+        ClientAddressRequestDTO second = requestDto();
+        second.setStreet("Rua B");
+
+        List<ClientAddressResponseDTO> created =
+                service.createAll(TestFixtures.CLIENT_ID, List.of(first, second));
+
+        assertEquals(2, created.size());
+        assertEquals("Rua A", created.get(0).getStreet());
+        assertEquals("Rua B", created.get(1).getStreet());
+        verify(repository, times(2)).save(any(ClientAddress.class));
+    }
+
+    @Test
+    @DisplayName("createAll: só o primeiro da lista vira principal automaticamente")
+    void createAllMarksOnlyTheFirstAsPrimary() {
+        when(repository.countByClient_Id(TestFixtures.CLIENT_ID)).thenReturn(0L, 1L);
+
+        service.createAll(TestFixtures.CLIENT_ID, List.of(requestDto(), requestDto()));
+
+        ArgumentCaptor<ClientAddress> saved = ArgumentCaptor.forClass(ClientAddress.class);
+        verify(repository, times(2)).save(saved.capture());
+        assertTrue(saved.getAllValues().get(0).getIsPrimary());
+        assertFalse(saved.getAllValues().get(1).getIsPrimary());
+    }
+
+    @Test
+    @DisplayName("createAll de cliente inexistente estoura 404 antes de gravar qualquer endereço")
+    void createAllOfMissingClientSavesNothing() {
+        UUID unknown = UUID.randomUUID();
+        when(clientRepository.findById(unknown)).thenReturn(Optional.empty());
+
+        assertThrows(
+                NotFoundException.class,
+                () -> service.createAll(unknown, List.of(requestDto(), requestDto())));
+
+        verify(repository, never()).save(any(ClientAddress.class));
     }
 
     @Test

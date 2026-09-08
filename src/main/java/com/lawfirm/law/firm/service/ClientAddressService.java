@@ -11,6 +11,7 @@ import com.lawfirm.law.firm.model.ClientAddress;
 import com.lawfirm.law.firm.repository.ClientAddressRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +53,23 @@ public class ClientAddressService {
         }
 
         return toDTO(repository.save(entity));
+    }
+
+    /**
+     * Grava vários endereços numa transação só - tudo ou nada.
+     *
+     * <p>Reusa {@link #create} por endereço em vez de repetir a lógica: a coordenação do principal
+     * (primeiro endereço vira principal, {@code isPrimary=true} desmarca o anterior) é a mesma, e
+     * duplicá-la aqui seria criar uma segunda regra para divergir da primeira. Se mais de um
+     * endereço da lista pedir principal, vale o último - a ordem da lista decide.
+     *
+     * @return os endereços criados, na ordem em que foram enviados
+     */
+    @Transactional
+    public List<ClientAddressResponseDTO> createAll(
+            UUID clientId, List<ClientAddressRequestDTO> addresses) {
+        findClientOrThrow(clientId);
+        return addresses.stream().map(dto -> create(clientId, dto)).toList();
     }
 
     public org.springframework.data.domain.Page<ClientAddressResponseDTO> list(

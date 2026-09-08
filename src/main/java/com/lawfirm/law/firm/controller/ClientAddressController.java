@@ -1,12 +1,14 @@
 package com.lawfirm.law.firm.controller;
 
 import com.lawfirm.law.firm.dto.ApiResponse;
+import com.lawfirm.law.firm.dto.ClientAddressBatchRequestDTO;
 import com.lawfirm.law.firm.dto.ClientAddressRequestDTO;
 import com.lawfirm.law.firm.dto.ClientAddressResponseDTO;
 import com.lawfirm.law.firm.service.ClientAddressService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,6 +46,29 @@ public class ClientAddressController {
             @PathVariable UUID clientId, @Valid @RequestBody ClientAddressRequestDTO dto) {
         ClientAddressResponseDTO created = service.create(clientId, dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.successObject(created));
+    }
+
+    @Operation(
+            summary = "Cadastrar vários endereços de uma vez",
+            description =
+                    """
+                    Grava a lista inteira em **uma transação**: se qualquer endereço falhar, \
+                    nenhum é gravado.
+
+                    É o caminho do cadastro, que permite mais de um endereço. Um POST por endereço \
+                    também funciona, mas sem transação comum - uma falha no segundo deixaria a \
+                    ficha pela metade.
+
+                    A regra do principal é a mesma do POST individual: o primeiro endereço do \
+                    cliente vira principal, e `isPrimary=true` desmarca o anterior. Se mais de um \
+                    item da lista pedir principal, vale o **último** - a ordem da lista decide.
+
+                    Aceita de 1 a 10 endereços. Devolve os criados, na ordem enviada.""")
+    @PostMapping("/batch")
+    public ResponseEntity<ApiResponse<ClientAddressResponseDTO>> createBatch(
+            @PathVariable UUID clientId, @Valid @RequestBody ClientAddressBatchRequestDTO dto) {
+        List<ClientAddressResponseDTO> created = service.createAll(clientId, dto.getAddresses());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.successList(created));
     }
 
     @Operation(

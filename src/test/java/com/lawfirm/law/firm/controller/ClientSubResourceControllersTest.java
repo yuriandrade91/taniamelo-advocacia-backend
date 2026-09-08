@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -15,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.lawfirm.law.firm.dto.ClientAddressBatchRequestDTO;
 import com.lawfirm.law.firm.dto.ClientAddressRequestDTO;
 import com.lawfirm.law.firm.dto.ClientAddressResponseDTO;
 import com.lawfirm.law.firm.dto.ClientInterviewResponseDTO;
@@ -118,6 +120,57 @@ class ClientSubResourceControllersTest {
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.isPrimary").value(true))
                     .andExpect(jsonPath("$.data.addressType").value("Residencial"));
+        }
+
+        @Test
+        @DisplayName("POST /batch devolve 201 com a lista criada")
+        void createBatchReturns201() throws Exception {
+            when(addressService.createAll(eq(CLIENT), any()))
+                    .thenReturn(List.of(responseDto(), responseDto()));
+
+            ClientAddressBatchRequestDTO body = new ClientAddressBatchRequestDTO();
+            body.setAddresses(List.of(requestDto(), requestDto()));
+
+            mockMvc.perform(
+                            post("/api/v1/clients/{clientId}/addresses/batch", CLIENT)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.length()").value(2));
+        }
+
+        @Test
+        @DisplayName("POST /batch com lista vazia vira 400 sem chamar o service")
+        void createBatchWithEmptyListIsRejected() throws Exception {
+            ClientAddressBatchRequestDTO body = new ClientAddressBatchRequestDTO();
+            body.setAddresses(List.of());
+
+            mockMvc.perform(
+                            post("/api/v1/clients/{clientId}/addresses/batch", CLIENT)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isBadRequest());
+
+            verify(addressService, never()).createAll(any(), any());
+        }
+
+        @Test
+        @DisplayName("POST /batch valida cada endereço da lista")
+        void createBatchValidatesEachItem() throws Exception {
+            ClientAddressRequestDTO invalid = requestDto();
+            invalid.setStreet(null); // @NotBlank no item
+
+            ClientAddressBatchRequestDTO body = new ClientAddressBatchRequestDTO();
+            body.setAddresses(List.of(requestDto(), invalid));
+
+            mockMvc.perform(
+                            post("/api/v1/clients/{clientId}/addresses/batch", CLIENT)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isBadRequest());
+
+            verify(addressService, never()).createAll(any(), any());
         }
 
         @Test
