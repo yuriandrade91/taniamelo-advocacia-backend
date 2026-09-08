@@ -1,8 +1,13 @@
 name: Deploy
 
+# Dispara DEPOIS do CI, não em paralelo com ele. Com `push` o deploy subia junto
+# com o build e um commit que quebrasse a suíte ia para a instância mesmo assim -
+# o pipeline avisava do erro depois de já tê-lo publicado.
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches: [develop]
+    types: [completed]
   workflow_dispatch: {}
 
 jobs:
@@ -10,6 +15,11 @@ jobs:
     name: Deploy via SSH na instância EC2 (ARM64)
     runs-on: ubuntu-latest
     environment: development
+    # workflow_dispatch é a saída manual (rollback, redeploy); pelo gatilho
+    # automático, só passa CI verde.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Obter IP do runner
@@ -46,6 +56,11 @@ jobs:
 
             # Builda o projeto, carimbando o SHA que acabou de ser baixado.
             # É o que faz /actuator/info dizer qual versão está rodando aqui.
+            #
+            # -DskipTests aqui é intencional e não é uma lacuna: a suíte já rodou
+            # no CI, que é o gate deste job. Repeti-la na instância exigiria Docker
+            # (Testcontainers) num t4g pequeno e só atrasaria o deploy do mesmo
+            # commit que acabou de passar.
             mvn -B clean package -DskipTests -Dgit.commit=$(git rev-parse --short HEAD)
 
             # Reinicia a aplicação

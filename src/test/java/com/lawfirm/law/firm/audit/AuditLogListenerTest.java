@@ -9,12 +9,12 @@ import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.repository.ClientRepository;
+import com.lawfirm.law.firm.support.PostgresIntegrationTest;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,8 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
  * testes não podem rodar dentro de uma transação de teste que sempre faz rollback (afterCommit
  * nunca dispararia) - cada teste commita de verdade e limpa os próprios dados em @AfterEach.
  */
-@SpringBootTest
-class AuditLogListenerTest {
+class AuditLogListenerTest extends PostgresIntegrationTest {
 
     @Autowired private ClientRepository clientRepository;
 

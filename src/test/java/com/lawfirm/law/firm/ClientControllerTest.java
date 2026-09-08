@@ -12,20 +12,19 @@ import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.repository.ClientRepository;
+import com.lawfirm.law.firm.support.PostgresIntegrationTest;
 import java.time.LocalDate;
 import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
-public class ClientControllerTest {
+public class ClientControllerTest extends PostgresIntegrationTest {
 
     @Autowired private WebApplicationContext wac;
 

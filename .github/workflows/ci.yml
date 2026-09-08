@@ -20,11 +20,19 @@ jobs:
           java-version: "25"
           cache: maven
 
-      # Testes pulados por ora: são @SpringBootTest e exigem um Postgres real
-      # pra subir o contexto, que o runner não tem. TODO: reativar com um
-      # serviço Postgres no job (ou Testcontainers) em vez de -DskipTests.
-      - name: mvn clean verify (sem testes)
-        run: mvn -B clean verify -DskipTests
+      # Roda a suíte inteira. Os testes de contexto sobem um Postgres via
+      # Testcontainers (ver PostgresContainerConfig); o runner ubuntu-latest já
+      # traz o Docker daemon, então não é preciso serviço Postgres no job.
+      - name: mvn clean verify
+        run: mvn -B clean verify
+
+      - name: Publicar relatório de testes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+          retention-days: 7
 
   semgrep:
     name: Semgrep (segurança / padrão de código)

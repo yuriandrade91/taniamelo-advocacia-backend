@@ -40,6 +40,10 @@
 		<!-- SonarQube / SonarCloud: chaveie o projeto e (em CI) passe -Dsonar.token=... .
 		     sonar.host.url default aponta para o SonarCloud; troque para a URL do seu
 		     SonarQube self-hosted se for o caso. A cobertura vem do JaCoCo (report XML). -->
+		<!-- Alinhada com a versão que o spring-boot-testcontainers 4.1.0 já traz do core;
+		     o BOM abaixo só estende esse alinhamento aos módulos (postgresql), que o
+		     parent do Boot não gerencia. -->
+		<testcontainers.version>2.0.5</testcontainers.version>
 		<sonar.projectKey>taniamelo-advocacia-backend</sonar.projectKey>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
 		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
@@ -50,6 +54,13 @@
 	     (type=local) nada da AWS é instanciado. -->
 	<dependencyManagement>
 		<dependencies>
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>testcontainers-bom</artifactId>
+				<version>${testcontainers.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 			<dependency>
 				<groupId>software.amazon.awssdk</groupId>
 				<artifactId>bom</artifactId>
@@ -103,13 +114,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-
-		<!-- H2 in-memory database for development -->
-		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<scope>runtime</scope>
 		</dependency>
 
 		<!-- Validation annotations -->
@@ -201,6 +205,22 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Testcontainers: os testes de contexto sobem um Postgres real em container.
+		     E preciso ser Postgres de verdade, nao um banco em memoria: a aplicacao usa
+		     multi-tenancy por schema (search_path), extensao unaccent e Flyway aplicado
+		     por schema pelo MultiTenantFlywayMigrator - nada disso e reproduzivel em H2.
+		     Versoes gerenciadas pelo BOM do Spring Boot. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-postgresql</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

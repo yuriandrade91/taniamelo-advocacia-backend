@@ -1,0 +1,38 @@
+# Perfil `test`: só o que precisa ser diferente do application.yaml.
+#
+# O datasource NÃO aparece aqui de propósito - quem o define é o
+# @ServiceConnection do PostgresContainerConfig, apontando para o container que
+# subiu naquela execução. Fixar uma URL aqui reintroduziria a dependência de um
+# Postgres na máquina, que é justamente o que este perfil elimina.
+spring:
+  jpa:
+    # Flyway continua sendo a fonte de verdade do schema (aplicado por tenant pelo
+    # MultiTenantFlywayMigrator); o Hibernate só confere se o mapeamento bate.
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+  # Devtools não faz sentido em teste e o restart classloader atrapalha o cache de contexto.
+  devtools:
+    restart:
+      enabled: false
+    livereload:
+      enabled: false
+
+app:
+  # Fixo e explícito: o teste não deve depender do default de dev nem de variável de ambiente.
+  jwt:
+    secret: test-only-secret-not-used-anywhere-else-32chars
+  storage:
+    # Arquivos de teste vão para target/, que o `mvn clean` já limpa. Sem isto os
+    # uploads dos testes se acumulariam em ./storage, junto com os de desenvolvimento.
+    type: local
+    local:
+      base-path: ./target/test-storage
+
+logging:
+  level:
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    org.flywaydb: WARN
