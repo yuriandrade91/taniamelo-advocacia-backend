@@ -13,6 +13,7 @@ import com.lawfirm.law.firm.exception.NotFoundException;
 import com.lawfirm.law.firm.exception.ValidationErrorCode;
 import com.lawfirm.law.firm.exception.ValidationException;
 import com.lawfirm.law.firm.model.BenefitType;
+import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.service.ClientPatchOutcome;
 import com.lawfirm.law.firm.service.ClientService;
@@ -108,6 +109,14 @@ public class ClientController {
             @Parameter(description = "Filtra por uma ou mais situações (nome ou label)")
                     @RequestParam(required = false)
                     List<String> situation,
+            @Parameter(
+                            description =
+                                    "Filtra por um ou mais tipos de cliente: VERIFICADO / POTENCIAL"
+                                            + " (aceita o nome da constante ou o label"
+                                            + " \"Verificado\"/\"Potencial\"). Repita o parâmetro"
+                                            + " para múltiplos valores.")
+                    @RequestParam(required = false)
+                    List<String> clientType,
             @Parameter(description = "Criado a partir de (ISO-8601: yyyy-MM-dd ou timestamp)")
                     @RequestParam(required = false)
                     String createdFrom,
@@ -122,6 +131,7 @@ public class ClientController {
                         searchTerm,
                         parseEnumList("benefitType", benefitType, BenefitType::fromLabel),
                         parseEnumList("situation", situation, Situation::fromLabel),
+                        parseEnumList("clientType", clientType, ClientType::fromLabel),
                         RequestDates.parseInstant("createdFrom", createdFrom, true),
                         RequestDates.parseInstant("createdTo", createdTo, false));
 

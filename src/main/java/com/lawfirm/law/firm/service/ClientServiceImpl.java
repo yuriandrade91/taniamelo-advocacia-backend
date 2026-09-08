@@ -77,6 +77,7 @@ public class ClientServiceImpl implements ClientService {
             String searchTerm,
             List<BenefitType> benefitTypes,
             List<Situation> situations,
+            List<ClientType> clientTypes,
             Instant createdFrom,
             Instant createdTo) {
         Specification<Client> spec =
@@ -85,6 +86,7 @@ public class ClientServiceImpl implements ClientService {
                                 ClientSpecification.searchTerm(searchTerm),
                                 ClientSpecification.benefitIn(benefitTypes),
                                 ClientSpecification.situationIn(situations),
+                                ClientSpecification.clientTypeIn(clientTypes),
                                 ClientSpecification.createdBetween(createdFrom, createdTo)));
 
         // updatedAt é sempre populado (prePersist/preUpdate), então ordenar por ele

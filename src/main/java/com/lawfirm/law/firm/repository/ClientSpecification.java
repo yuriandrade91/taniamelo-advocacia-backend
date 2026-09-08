@@ -2,6 +2,7 @@ package com.lawfirm.law.firm.repository;
 
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Client;
+import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.Situation;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -73,6 +74,20 @@ public final class ClientSpecification {
         return (root, query, cb) -> {
             List<Situation> cleaned = withoutNulls(situations);
             return cleaned.isEmpty() ? null : root.get("situation").in(cleaned);
+        };
+    }
+
+    /**
+     * Filtra por tipo de cliente (Verificado / Potencial).
+     *
+     * <p>Mesma forma de {@link #situationIn}: lista vazia devolve {@code null}, que o {@link
+     * #combine} descarta. É o que faz "sem filtro" e "filtro com todos os valores" produzirem a
+     * mesma query, em vez de um {@code IN ()} que o Postgres recusa.
+     */
+    public static Specification<Client> clientTypeIn(List<ClientType> clientTypes) {
+        return (root, query, cb) -> {
+            List<ClientType> cleaned = withoutNulls(clientTypes);
+            return cleaned.isEmpty() ? null : root.get("clientType").in(cleaned);
         };
     }
 
