@@ -321,11 +321,18 @@ public class AppointmentService {
         entity.setMeetingUrl(dto.getMeetingUrl());
         entity.setDescription(dto.getDescription());
 
-        // Vínculo com cliente: se veio clientId, valida e usa o cliente (nome vem dele);
-        // senão, aceita o nome livre digitado (pessoa ainda não cadastrada) - nunca 404.
-        UUID clientId = resolveClientId(dto.getClientId());
-        entity.setClientId(clientId);
-        entity.setClientName(clientId != null ? null : trimToNull(dto.getClientName()));
+        // Vínculo com cliente: se veio clientId, valida e usa o cliente; senão, aceita o
+        // nome livre digitado (pessoa ainda não cadastrada) - nunca 404.
+        //
+        // client_name é gravado NOS DOIS casos, como retrato do nome no momento do
+        // agendamento. Na leitura o nome do cliente vinculado tem prioridade (rename do
+        // cliente reflete na agenda); o retrato só entra quando o vínculo deixa de
+        // resolver - cliente excluído logicamente. Sem ele, excluir um cliente deixaria a
+        // audiência na agenda sem dizer de quem é.
+        Client client = resolveClient(dto.getClientId());
+        entity.setClientId(client != null ? client.getId() : null);
+        entity.setClientName(
+                client != null ? client.getFullName() : trimToNull(dto.getClientName()));
     }
 
     private static String trimToNull(String value) {
@@ -333,12 +340,15 @@ public class AppointmentService {
     }
 
     /** Valida que o cliente existe (quando informado) antes de ligar a FK. */
-    private UUID resolveClientId(UUID clientId) {
+    /**
+     * Cliente vinculado, ou {@code null} quando o compromisso usa nome livre. 404 se o id não
+     * existe.
+     */
+    private Client resolveClient(UUID clientId) {
         if (clientId == null) {
             return null;
         }
-        ClientLookup.orThrow(clientRepository, clientId);
-        return clientId;
+        return ClientLookup.orThrow(clientRepository, clientId);
     }
 
     private static String requireJustification(String justification) {
@@ -416,11 +426,11 @@ public class AppointmentService {
         dto.setStatus(entity.getStatus() != null ? entity.getStatus().getLabel() : null);
         dto.setCancellationReason(entity.getCancellationReason());
         dto.setClientId(entity.getClientId());
-        // Nome exibido: do cliente vinculado (fresco) ou o nome livre digitado.
-        dto.setClientName(
-                entity.getClientId() != null
-                        ? clientNames.get(entity.getClientId())
-                        : entity.getClientName());
+        // Nome exibido: o do cliente vinculado, quando ele ainda resolve (assim renomear o
+        // cliente reflete na agenda); senão o retrato gravado no compromisso.
+        String linkedName =
+                entity.getClientId() != null ? clientNames.get(entity.getClientId()) : null;
+        dto.setClientName(linkedName != null ? linkedName : entity.getClientName());
         dto.setPastDateAuthorizedBy(entity.getPastDateAuthorizedBy());
         dto.setPastDateAuthorizedAt(entity.getPastDateAuthorizedAt());
         dto.setCreatedBy(entity.getCreatedBy());

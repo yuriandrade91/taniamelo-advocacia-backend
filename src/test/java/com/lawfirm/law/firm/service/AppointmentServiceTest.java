@@ -161,8 +161,8 @@ class AppointmentServiceTest {
         }
 
         @Test
-        @DisplayName("com clientId válido, o nome livre é descartado (o nome vem do cliente)")
-        void linkedClientDiscardsFreeTextName() {
+        @DisplayName("com clientId válido, o nome livre é descartado e o do cliente é gravado")
+        void linkedClientSnapshotsTheClientName() {
             AppointmentRequestDTO dto = requestDto();
             dto.setClientId(TestFixtures.CLIENT_ID);
             dto.setClientName("Nome digitado à mão");
@@ -174,8 +174,26 @@ class AppointmentServiceTest {
 
             Appointment saved = captureSaved();
             assertEquals(TestFixtures.CLIENT_ID, saved.getClientId());
-            assertNull(saved.getClientName());
+            // O nome digitado é descartado, mas a coluna NÃO fica nula: guarda o nome do
+            // cliente no momento do agendamento. É esse retrato que mantém o compromisso
+            // identificável se o cliente for excluído depois.
+            assertEquals("Maria da Silva", saved.getClientName());
             assertEquals("Maria da Silva", response.getClientName(), "nome vem do cliente");
+        }
+
+        @Test
+        @DisplayName("nome do cliente renomeado tem prioridade sobre o retrato gravado")
+        void currentClientNameWinsOverSnapshot() {
+            AppointmentRequestDTO dto = requestDto();
+            dto.setClientId(TestFixtures.CLIENT_ID);
+
+            Client renamed = TestFixtures.client();
+            renamed.setFullName("Maria da Silva Souza");
+            when(clientRepository.findAllById(any())).thenReturn(List.of(renamed));
+
+            AppointmentResponseDTO response = service.create(dto);
+
+            assertEquals("Maria da Silva Souza", response.getClientName());
         }
 
         @Test
