@@ -177,13 +177,38 @@ public class ClientServiceImpl implements ClientService {
                 situationChanged, benefitChanged, clientTypeChanged, notBillableChanged);
     }
 
+    /**
+     * Exclusão lógica. Não apaga a linha: as FKs de endereços, entrevistas, arquivos, pagamentos e
+     * histórico são {@code ON DELETE CASCADE}, então um delete de verdade levaria a ficha inteira
+     * junto - inclusive o histórico, que é o registro do que aconteceu. O cliente some das
+     * consultas pelo {@code @SQLRestriction} da entidade e volta por {@link #restore(UUID)}.
+     */
     @Override
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw NotFoundException.of("Cliente", id);
+        Client existing = findOrThrow(id);
+        existing.setDeletedAt(Instant.now());
+        existing.setUpdatedBy(CurrentUser.id());
+        repository.save(existing);
+    }
+
+    /**
+     * Desfaz a exclusão lógica. Idempotente: restaurar um cliente ativo não é erro, só não muda
+     * nada - quem clica duas vezes não deveria ver uma falha.
+     */
+    @Override
+    @Transactional
+    public void restore(UUID id) {
+        Client existing =
+                repository
+                        .findByIdIncludingDeleted(id)
+                        .orElseThrow(() -> NotFoundException.of("Cliente", id));
+        if (existing.getDeletedAt() == null) {
+            return;
         }
-        repository.deleteById(id);
+        existing.setDeletedAt(null);
+        existing.setUpdatedBy(CurrentUser.id());
+        repository.save(existing);
     }
 
     @Override

@@ -309,24 +309,66 @@ class ClientServiceImplTest {
         }
 
         @Test
-        @DisplayName("delete remove quando o cliente existe")
-        void deleteRemovesExistingClient() {
-            when(repository.existsById(TestFixtures.CLIENT_ID)).thenReturn(true);
+        @DisplayName("delete marca deletedAt em vez de apagar a linha")
+        void deleteIsLogicalNotPhysical() {
+            Client existing = TestFixtures.client();
+            when(repository.findById(TestFixtures.CLIENT_ID)).thenReturn(Optional.of(existing));
 
             service.delete(TestFixtures.CLIENT_ID);
 
-            verify(repository).deleteById(TestFixtures.CLIENT_ID);
+            // O delete físico levaria junto endereços, entrevistas, arquivos, pagamentos e o
+            // histórico (FKs ON DELETE CASCADE). Nada disso pode acontecer aqui.
+            verify(repository, never()).deleteById(any());
+            verify(repository).save(existing);
+            assertNotNull(existing.getDeletedAt());
         }
 
         @Test
-        @DisplayName("delete de id inexistente estoura 404 sem chamar o banco")
+        @DisplayName("delete de id inexistente estoura 404 sem gravar nada")
         void deleteOfMissingClientThrows() {
             UUID id = UUID.randomUUID();
-            when(repository.existsById(id)).thenReturn(false);
+            when(repository.findById(id)).thenReturn(Optional.empty());
 
             NotFoundException ex = assertThrows(NotFoundException.class, () -> service.delete(id));
             assertTrue(ex.getMessage().contains(id.toString()));
+            verify(repository, never()).save(any());
             verify(repository, never()).deleteById(any());
+        }
+
+        @Test
+        @DisplayName("restore limpa deletedAt de um cliente excluído")
+        void restoreClearsDeletedAt() {
+            Client deleted = TestFixtures.client();
+            deleted.setDeletedAt(Instant.parse("2026-01-10T12:00:00Z"));
+            when(repository.findByIdIncludingDeleted(TestFixtures.CLIENT_ID))
+                    .thenReturn(Optional.of(deleted));
+
+            service.restore(TestFixtures.CLIENT_ID);
+
+            assertNull(deleted.getDeletedAt());
+            verify(repository).save(deleted);
+        }
+
+        @Test
+        @DisplayName("restore de cliente ativo não grava nada (idempotente)")
+        void restoreOfActiveClientIsNoOp() {
+            Client active = TestFixtures.client();
+            when(repository.findByIdIncludingDeleted(TestFixtures.CLIENT_ID))
+                    .thenReturn(Optional.of(active));
+
+            service.restore(TestFixtures.CLIENT_ID);
+
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("restore de id inexistente estoura 404")
+        void restoreOfMissingClientThrows() {
+            UUID id = UUID.randomUUID();
+            when(repository.findByIdIncludingDeleted(id)).thenReturn(Optional.empty());
+
+            assertThrows(NotFoundException.class, () -> service.restore(id));
+            verify(repository, never()).save(any());
         }
     }
 

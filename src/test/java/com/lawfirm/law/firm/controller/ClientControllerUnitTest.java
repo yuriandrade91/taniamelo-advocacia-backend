@@ -393,6 +393,27 @@ class ClientControllerUnitTest {
             mockMvc.perform(delete("/api/v1/clients/{id}", TestFixtures.CLIENT_ID))
                     .andExpect(status().isNotFound());
         }
+
+        @Test
+        @DisplayName("PATCH /restore devolve a mensagem de confirmação")
+        void restoreReturnsMessage() throws Exception {
+            mockMvc.perform(patch("/api/v1/clients/{id}/restore", TestFixtures.CLIENT_ID))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.message").value("Cliente restaurado com sucesso."));
+
+            verify(clientService).restore(TestFixtures.CLIENT_ID);
+        }
+
+        @Test
+        @DisplayName("PATCH /restore de id inexistente propaga 404")
+        void restoreOfMissingClientReturns404() throws Exception {
+            doThrow(NotFoundException.of("Cliente", TestFixtures.CLIENT_ID))
+                    .when(clientService)
+                    .restore(TestFixtures.CLIENT_ID);
+
+            mockMvc.perform(patch("/api/v1/clients/{id}/restore", TestFixtures.CLIENT_ID))
+                    .andExpect(status().isNotFound());
+        }
     }
 
     @Nested

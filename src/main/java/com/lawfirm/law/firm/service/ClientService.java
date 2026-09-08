@@ -40,7 +40,14 @@ public interface ClientService {
     /** Atualização parcial (situação/arrecadação). Retorna o que efetivamente mudou. */
     ClientPatchOutcome patch(UUID id, ClientPatchRequestDTO patch);
 
+    /**
+     * Exclusão lógica: marca {@code deletedAt} e some das consultas. Reversível por {@link
+     * #restore}.
+     */
     void delete(UUID id);
+
+    /** Desfaz a exclusão lógica. Idempotente em cliente já ativo. */
+    void restore(UUID id);
 
     Page<ClientSituationHistoryDTO> historyByClientId(UUID clientId, int pageNumber, int pageSize);
 

@@ -228,14 +228,43 @@ public class ClientController {
     @Operation(
             summary = "Excluir cliente",
             description =
-                    "Remove o cliente e, em cascata, seus sub-recursos (histórico, endereços, arquivos, "
-                            + "entrevistas, pagamentos).")
+                    """
+                    Exclusão **lógica**: o cliente sai de todas as listagens e buscas, mas a ficha \
+                    continua no banco.
+
+                    Nada em cascata é apagado - endereços, entrevistas, arquivos, pagamentos e o \
+                    histórico de situação permanecem, e voltam inteiros por \
+                    `PATCH /clients/{id}/restore`.
+
+                    Compromissos vinculados na agenda mantêm o nome do cliente (gravado junto do \
+                    compromisso), então nenhum item da agenda fica órfão.
+
+                    Buscar, editar ou listar sub-recursos de um cliente excluído devolve 404 - do \
+                    ponto de vista da API ele não existe mais.""")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> delete(@PathVariable UUID id) {
         clientService.delete(id);
         return ResponseEntity.ok(
                 ApiResponse.successObject(
                         new ClientPatchResponseDTO("Cliente excluído com sucesso.")));
+    }
+
+    @Operation(
+            summary = "Restaurar cliente excluído",
+            description =
+                    """
+                    Desfaz a exclusão lógica: o cliente volta às listagens com toda a ficha \
+                    (endereços, entrevistas, arquivos, pagamentos e histórico), que nunca foi \
+                    apagada.
+
+                    Idempotente: restaurar um cliente que já está ativo devolve 200 sem alterar \
+                    nada. Id inexistente devolve 404.""")
+    @PatchMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> restore(@PathVariable UUID id) {
+        clientService.restore(id);
+        return ResponseEntity.ok(
+                ApiResponse.successObject(
+                        new ClientPatchResponseDTO("Cliente restaurado com sucesso.")));
     }
 
     // ── Private helpers ──

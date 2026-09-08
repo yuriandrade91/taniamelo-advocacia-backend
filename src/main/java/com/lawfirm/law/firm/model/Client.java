@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UuidGenerator;
 
 /**
@@ -24,6 +25,16 @@ import org.hibernate.annotations.UuidGenerator;
 @Entity
 @Table(name = "clients")
 @EntityListeners(AuditLogListener.class)
+/*
+ * Exclusão é lógica: a restrição abaixo some com os excluídos de TODA consulta JPA
+ * desta entidade - listagem, findById, existsByCpf e o findAllById que a agenda usa
+ * para resolver nome. Fica na entidade, e não repetida em cada query, porque a
+ * regra precisa valer também para a consulta que alguém escrever amanhã.
+ *
+ * Para alcançar um excluído (restaurar), use ClientRepository#findByIdIncludingDeleted,
+ * que é nativa e por isso escapa da restrição.
+ */
+@SQLRestriction("deleted_at IS NULL")
 public class Client implements Auditable {
 
     @Id
@@ -157,6 +168,10 @@ public class Client implements Auditable {
 
     @Column(name = "updated_by")
     private UUID updatedBy;
+
+    /** Marca da exclusão lógica. Nulo = cliente ativo (ver {@code @SQLRestriction} na classe). */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     @PrePersist
     public void prePersist() {
@@ -447,5 +462,13 @@ public class Client implements Auditable {
 
     public void setUpdatedBy(UUID updatedBy) {
         this.updatedBy = updatedBy;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }
