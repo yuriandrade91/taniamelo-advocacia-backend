@@ -28,6 +28,8 @@
 	</scm>
 	<properties>
 		<java.version>25</java.version>
+		<!-- Sobrescrito no deploy com o SHA curto do commit; ver deploy.yml -->
+		<git.commit>desconhecido</git.commit>
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<jjwt.version>0.12.7</jjwt.version>
 		<springdoc.version>3.0.3</springdoc.version>
@@ -232,6 +234,29 @@
 					<!-- Evita o uso da porta JMX padrão (9001) pelo goal 'start' do plugin; define 0 para não tentar conectar -->
 					<jmxPort>0</jmxPort>
 				</configuration>
+				<executions>
+					<!-- Gera META-INF/build-info.properties, que o Actuator expõe em
+					     /actuator/info. Sem isso não há como saber QUAL versão está
+					     rodando numa instância sem entrar por SSH - e sem isso
+					     nenhuma comparação "AWS x local" é verificável.
+
+					     `git.commit` vem de fora, via -Dgit.commit no comando do deploy,
+					     com "desconhecido" como padrão: assim o build local não
+					     precisa de git e o deploy carimba o SHA de verdade. É a opção
+					     sem dependência nova - o git-commit-id-maven-plugin faria o
+					     mesmo trazendo um plugin a mais para manter. -->
+					<execution>
+						<id>build-info</id>
+						<goals>
+							<goal>build-info</goal>
+						</goals>
+						<configuration>
+							<additionalProperties>
+								<commit>${git.commit}</commit>
+							</additionalProperties>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 
 			<!-- Formatter (the "Prettier" of this project): enforces one canonical

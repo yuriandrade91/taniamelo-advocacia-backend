@@ -44,8 +44,9 @@ jobs:
             git fetch origin develop
             git reset --hard origin/develop
 
-            # Builda o projeto
-            mvn -B clean package -DskipTests
+            # Builda o projeto, carimbando o SHA que acabou de ser baixado.
+            # É o que faz /actuator/info dizer qual versão está rodando aqui.
+            mvn -B clean package -DskipTests -Dgit.commit=$(git rev-parse --short HEAD)
 
             # Reinicia a aplicação
             bash /home/ec2-user/restart-app.sh

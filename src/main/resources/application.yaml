@@ -71,6 +71,17 @@ management:
   endpoint:
     health:
       show-details: never
+  info:
+    # Liga o bloco `build` do /actuator/info (versão, artefato, horário do build
+    # e o `commit` carimbado pelo build-info). É o que responde "qual versão está
+    # rodando nesta instância?" sem SSH.
+    #
+    # `env` fica DESLIGADO de propósito: ele publicaria propriedades do ambiente
+    # num endpoint sem autenticação.
+    build:
+      enabled: true
+    env:
+      enabled: false
 
 app:
   jwt:
