@@ -1,0 +1,397 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-0000-4000-8000-agenda000001",
+    "name": "Tania Melo - Agenda (Appointments)",
+    "description": "Testes ponta a ponta dos endpoints de Agenda (/api/v1/appointments), com asserts automáticos. Configure as variáveis da coleção (baseUrl, tenant, loginId, password, clientId) e rode pelo Runner ou via newman. O login captura o accessToken; datas passado/futuro são calculadas no pre-request da coleção.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Datas determinísticas relativas a agora (ISO-8601 UTC).",
+          "const now = Date.now();",
+          "const iso = (days, hours) => new Date(now + days*86400000 + hours*3600000).toISOString();",
+          "pm.collectionVariables.set('futureStart', iso(2, 0));",
+          "pm.collectionVariables.set('futureEnd',   iso(2, 1));",
+          "pm.collectionVariables.set('pastStart',   iso(-3, 0));",
+          "pm.collectionVariables.set('pastEnd',     iso(-3, 1));",
+          "pm.collectionVariables.set('curYear', String(new Date().getUTCFullYear()));",
+          "pm.collectionVariables.set('curMonth', String(new Date().getUTCMonth() + 1));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "tenant", "value": "tania", "description": "slug ou UUID do tenant (X-Tenant-Id)" },
+    { "key": "loginId", "value": "dra.tania@taniamelo.adv.br", "description": "email OU username" },
+    { "key": "password", "value": "password" },
+    { "key": "clientId", "value": "7d7ff165-cb15-481b-8e9a-b755ba876ca1", "description": "cliente real do seed (Maria) no tenant tania" },
+    { "key": "accessToken", "value": "" },
+    { "key": "tenantId", "value": "" },
+    { "key": "apptId", "value": "" },
+    { "key": "pastApptId", "value": "" },
+    { "key": "cancelApptId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0. Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('envelope success', () => pm.expect(b.success).to.be.true);",
+                  "pm.test('tem access token', () => pm.expect(b.data.token).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('accessToken', b.data.token);",
+                  "pm.collectionVariables.set('tenantId', b.data.tenantId);",
+                  "pm.test('tenantId e slug presentes', () => { pm.expect(b.data.tenantId).to.be.a('string'); pm.expect(b.data.tenantSlug).to.be.a('string'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Tenant-Id", "value": "{{tenant}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"login\": \"{{loginId}}\",\n  \"password\": \"{{password}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. CRUD (happy path)",
+      "item": [
+        {
+          "name": "Criar (futuro, com cliente)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const b = pm.response.json();",
+            "pm.test('status Agendado', () => pm.expect(b.data.status).to.eql('Agendado'));",
+            "pm.test('clientName veio do cliente', () => pm.expect(b.data.clientName).to.be.a('string').and.not.empty);",
+            "pm.collectionVariables.set('apptId', b.data.id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Entrevista com Maria (teste)\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{futureStart}}\",\n  \"endAt\": \"{{futureEnd}}\",\n  \"modality\": \"Presencial\",\n  \"location\": \"Escritório - Sala 1\",\n  \"description\": \"Criado pelo teste automatizado.\",\n  \"clientId\": \"{{clientId}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments"] }
+          }
+        },
+        {
+          "name": "Buscar por id",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const b = pm.response.json();",
+            "pm.test('id confere', () => pm.expect(b.data.id).to.eql(pm.collectionVariables.get('apptId')));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/{{apptId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","{{apptId}}"] }
+          }
+        },
+        {
+          "name": "Listar (ano+mês)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const b = pm.response.json();",
+            "pm.test('data é array', () => pm.expect(b.data).to.be.an('array'));",
+            "pm.test('tem paginação', () => pm.expect(b.pagination).to.be.an('object'));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments?year=2026&month=8&pageNumber=1&pageSize=10", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments"], "query": [ {"key":"year","value":"2026"}, {"key":"month","value":"8"}, {"key":"pageNumber","value":"1"}, {"key":"pageSize","value":"10"} ] }
+          }
+        },
+        {
+          "name": "Listar (múltiplos anos/meses/tipo/status)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const b = pm.response.json();",
+            "pm.test('data é array', () => pm.expect(b.data).to.be.an('array'));",
+            "pm.test('tem paginação', () => pm.expect(b.pagination).to.be.an('object'));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments?year={{curYear}}&year=2030&month={{curMonth}}&type=Entrevista&type=Reunião&status=Agendado&status=Concluído&pageNumber=1&pageSize=10", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments"], "query": [ {"key":"year","value":"{{curYear}}"}, {"key":"year","value":"2030"}, {"key":"month","value":"{{curMonth}}"}, {"key":"type","value":"Entrevista"}, {"key":"type","value":"Reunião"}, {"key":"status","value":"Agendado"}, {"key":"status","value":"Concluído"}, {"key":"pageNumber","value":"1"}, {"key":"pageSize","value":"10"} ] }
+          }
+        },
+        {
+          "name": "Resumo por mês (abas)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const b = pm.response.json();",
+            "pm.test('array de {year,month,count}', () => { pm.expect(b.data).to.be.an('array'); if (b.data.length) { pm.expect(b.data[0]).to.have.property('month'); pm.expect(b.data[0]).to.have.property('count'); } });"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/summary?year=2026", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","summary"], "query": [ {"key":"year","value":"2026"} ] }
+          }
+        },
+        {
+          "name": "Editar (com justificativa)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const b = pm.response.json();",
+            "pm.test('título atualizado', () => pm.expect(b.data.title).to.eql('Entrevista com Maria (editada)'));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Entrevista com Maria (editada)\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{futureStart}}\",\n  \"endAt\": \"{{futureEnd}}\",\n  \"modality\": \"Online\",\n  \"meetingUrl\": \"https://meet.google.com/xxx-yyyy-zzz\",\n  \"clientId\": \"{{clientId}}\",\n  \"justification\": \"Ajuste de modalidade para online.\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/{{apptId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","{{apptId}}"] }
+          }
+        },
+        {
+          "name": "Concluir",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('status Concluído', () => pm.expect(pm.response.json().data.status).to.eql('Concluído'));"
+          ]}}],
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/{{apptId}}/complete", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","{{apptId}}","complete"] }
+          }
+        },
+        {
+          "name": "Histórico (contém EDITED)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const acts = pm.response.json().data.map(h => h.action);",
+            "pm.test('registrou edição', () => pm.expect(acts).to.include('EDITED'));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/{{apptId}}/history", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","{{apptId}}","history"] }
+          }
+        },
+        {
+          "name": "Excluir (soft delete)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+          ]}}],
+          "request": {
+            "method": "DELETE",
+            "header": [ { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/{{apptId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","{{apptId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Vínculo com cliente",
+      "item": [
+        {
+          "name": "Criar com nome livre (sem clientId)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const b = pm.response.json();",
+            "pm.test('clientId nulo', () => pm.expect(b.data.clientId).to.be.oneOf([null, undefined]));",
+            "pm.test('clientName livre preservado', () => pm.expect(b.data.clientName).to.eql('Fulano Não Cadastrado'));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Reunião com pessoa não cadastrada\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{futureStart}}\",\n  \"endAt\": \"{{futureEnd}}\",\n  \"clientName\": \"Fulano Não Cadastrado\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments"] }
+          }
+        },
+        {
+          "name": "Criar com clientId inexistente (404)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+            "pm.test('code NOT_FOUND', () => pm.expect(pm.response.json().errors[0].code).to.eql('NOT_FOUND'));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Cliente inexistente\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{futureStart}}\",\n  \"endAt\": \"{{futureEnd}}\",\n  \"clientId\": \"00000000-0000-4000-8000-000000000000\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Regras e erros",
+      "item": [
+        {
+          "name": "Sem token (401)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+            "pm.test('code UNAUTHENTICATED', () => pm.expect(pm.response.json().errors[0].code).to.eql('UNAUTHENTICATED'));"
+          ]}}],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [ { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments?year=2026", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments"], "query": [ {"key":"year","value":"2026"} ] }
+          }
+        },
+        {
+          "name": "start > end (400)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Período inválido\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{futureEnd}}\",\n  \"endAt\": \"{{futureStart}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments"] }
+          }
+        },
+        {
+          "name": "Retroativo SEM confirmação (422)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));",
+            "pm.test('code PAST_DATE_NOT_CONFIRMED', () => pm.expect(pm.response.json().errors[0].code).to.eql('PAST_DATE_NOT_CONFIRMED'));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Compromisso retroativo\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{pastStart}}\",\n  \"endAt\": \"{{pastEnd}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments"] }
+          }
+        },
+        {
+          "name": "Retroativo CONFIRMADO (201 + autoria)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const b = pm.response.json();",
+            "pm.test('registrou quem autorizou', () => pm.expect(b.data.pastDateAuthorizedBy).to.be.a('string').and.not.empty);",
+            "pm.collectionVariables.set('pastApptId', b.data.id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Compromisso retroativo (ciente)\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{pastStart}}\",\n  \"endAt\": \"{{pastEnd}}\",\n  \"pastDateAcknowledged\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments"] }
+          }
+        },
+        {
+          "name": "Auditoria do retroativo (ACKNOWLEDGED)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const acts = pm.response.json().data.map(h => h.action);",
+            "pm.test('histórico tem ACKNOWLEDGED', () => pm.expect(acts).to.include('ACKNOWLEDGED'));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/{{pastApptId}}/history", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","{{pastApptId}}","history"] }
+          }
+        },
+        {
+          "name": "Editar sem justificativa (400)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+            "pm.test('campo justification', () => pm.expect(JSON.stringify(pm.response.json().errors)).to.include('justification'));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Sem justificativa\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{futureStart}}\",\n  \"endAt\": \"{{futureEnd}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/{{pastApptId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","{{pastApptId}}"] }
+          }
+        },
+        {
+          "name": "Setup: criar p/ cancelar",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "pm.collectionVariables.set('cancelApptId', pm.response.json().data.id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"A cancelar\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{futureStart}}\",\n  \"endAt\": \"{{futureEnd}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments"] }
+          }
+        },
+        {
+          "name": "Cancelar sem justificativa (400)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+          ]}}],
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"justification\": \"\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/{{cancelApptId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","{{cancelApptId}}","cancel"] }
+          }
+        },
+        {
+          "name": "Cancelar (200)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('status Cancelado', () => pm.expect(pm.response.json().data.status).to.eql('Cancelado'));"
+          ]}}],
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"justification\": \"Cliente remarcou.\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/{{cancelApptId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","{{cancelApptId}}","cancel"] }
+          }
+        },
+        {
+          "name": "Cancelar já cancelado (422)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));",
+            "pm.test('code OPERATION_NOT_ALLOWED', () => pm.expect(pm.response.json().errors[0].code).to.eql('OPERATION_NOT_ALLOWED'));"
+          ]}}],
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" }, { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"justification\": \"De novo.\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/{{cancelApptId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","{{cancelApptId}}","cancel"] }
+          }
+        },
+        {
+          "name": "Concluir um cancelado (422)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));",
+            "pm.test('code OPERATION_NOT_ALLOWED', () => pm.expect(pm.response.json().errors[0].code).to.eql('OPERATION_NOT_ALLOWED'));"
+          ]}}],
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/{{cancelApptId}}/complete", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","{{cancelApptId}}","complete"] }
+          }
+        },
+        {
+          "name": "Buscar id inexistente (404)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+            "pm.test('code NOT_FOUND', () => pm.expect(pm.response.json().errors[0].code).to.eql('NOT_FOUND'));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Tenant-Id", "value": "{{tenant}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/v1/appointments/11111111-1111-4111-8111-111111111111", "host": ["{{baseUrl}}"], "path": ["api","v1","appointments","11111111-1111-4111-8111-111111111111"] }
+          }
+        }
+      ]
+    }
+  ]
+}
