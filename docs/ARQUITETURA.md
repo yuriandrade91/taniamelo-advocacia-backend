@@ -275,5 +275,7 @@ Além disso, mudança de situação do cliente gera trilha própria em
 - **Notificações e mensageria** (RabbitMQ, scheduler, SSE):
   `NOTIFICACOES_E_MENSAGERIA.md`.
 - **Refresh token + cookie httpOnly**: `adr/ADR-0002-refresh-token.md`.
+- **Extração para microsserviços** (identity, financial, schedules):
+  `adr/ADR-0003-extracao-microservicos.md`.
 - **Backlog geral** (autorização por papel, observabilidade, Testcontainers,
   domínio previdenciário): `ROADMAP.md`.
