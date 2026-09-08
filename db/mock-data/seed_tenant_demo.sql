@@ -72,4 +72,45 @@ INSERT INTO client_payments (client_id, description, amount, installment_number,
 INSERT INTO client_situation_history (id, client_id, previous_situation, new_situation, changed_at, changed_by) VALUES
  (gen_random_uuid(), 'c0000001-0000-4000-8000-000000000002', 'Análise documental', 'Planejamento em execução', now() - interval '5 days', 'a1a1a1a1-0000-4000-8000-000000000001');
 
+-- ── Agenda (compromissos) ── (massa distinta da do tenant tania)
+-- Usuário Rafael = a1a1a1a1-...001; cliente Paulo = c0000001-...001.
+TRUNCATE appointment_history, appointments RESTART IDENTITY CASCADE;
+
+INSERT INTO appointments
+ (id, title, type, start_at, end_at, modality, location, meeting_url, description,
+  status, cancellation_reason, client_id, client_name, created_by) VALUES
+ ('bb000001-0000-4000-8000-000000000001', 'Reunião com Paulo Henrique', 'Reunião',
+  '2026-08-19 15:00:00-03', '2026-08-19 16:00:00-03', 'Presencial', 'Escritório Demo', NULL,
+  'Revisão de tempo de contribuição.', 'Agendado', NULL,
+  'c0000001-0000-4000-8000-000000000001', NULL, 'a1a1a1a1-0000-4000-8000-000000000001'),
+
+ ('bb000001-0000-4000-8000-000000000002', 'Perícia - cliente novo', 'Perícia',
+  '2026-09-10 09:00:00-03', '2026-09-10 10:00:00-03', 'Presencial', 'Agência INSS', NULL,
+  NULL, 'Agendado', NULL, NULL, 'Maria Teste (não cadastrada)',
+  'a1a1a1a1-0000-4000-8000-000000000001'),
+
+ ('bb000001-0000-4000-8000-000000000003', 'Audiência online', 'Audiência',
+  '2026-11-20 14:00:00-03', '2026-11-20 15:00:00-03', 'Online', NULL,
+  'https://meet.google.com/demo-xxxx-yyy', 'Audiência por videoconferência.', 'Agendado', NULL,
+  'c0000001-0000-4000-8000-000000000001', NULL, 'a1a1a1a1-0000-4000-8000-000000000001'),
+
+ ('bb000001-0000-4000-8000-000000000004', 'Prazo: recurso', 'Prazo',
+  '2026-08-25 17:00:00-03', '2026-08-25 17:30:00-03', 'Presencial', NULL, NULL,
+  'Prazo final para protocolo do recurso.', 'Cancelado', 'Recurso protocolado antes do prazo.',
+  NULL, NULL, 'a1a1a1a1-0000-4000-8000-000000000001');
+
+INSERT INTO appointment_history
+ (appointment_id, action, justification, changed_by) VALUES
+ ('bb000001-0000-4000-8000-000000000004', 'CANCELLED', 'Recurso protocolado antes do prazo.',
+  'a1a1a1a1-0000-4000-8000-000000000001'),
+ ('bb000001-0000-4000-8000-000000000001', 'ACKNOWLEDGED',
+  'Ciência confirmada: compromisso com data no passado.',
+  'a1a1a1a1-0000-4000-8000-000000000001');
+
+-- Autorizador da data retroativa (reunião de 19/08, no passado).
+UPDATE appointments
+   SET past_date_authorized_by = 'a1a1a1a1-0000-4000-8000-000000000001',
+       past_date_authorized_at = now()
+ WHERE id = 'bb000001-0000-4000-8000-000000000001';
+
 COMMIT;
