@@ -152,8 +152,15 @@ public class ClientController {
     @Operation(
             summary = "Histórico de mudanças de situação",
             description =
-                    "Lista paginada no envelope padrão, mais recente primeiro, com o usuário que fez cada mudança. "
-                            + "Toda mudança de situação feita via PATCH /clients/{id} gera um registro aqui automaticamente.")
+                    """
+                    Lista paginada no envelope padrão, mais recente primeiro. Toda mudança de \
+                    situação via `PATCH /clients/{id}` gera um registro aqui automaticamente.
+
+                    Cada entrada traz `previousSituation` e `currentSituation`, para a linha do \
+                    tempo dizer "de X para Y". Na primeira entrada (situação definida no cadastro) \
+                    `previousSituation` vem nulo.
+
+                    `changedByUserId` é o id do usuário; o nome sai de `GET /users`.""")
     @GetMapping("/{id}/situation-history")
     public ResponseEntity<ApiResponse<ClientSituationHistoryDTO>> situationHistory(
             @PathVariable UUID id,

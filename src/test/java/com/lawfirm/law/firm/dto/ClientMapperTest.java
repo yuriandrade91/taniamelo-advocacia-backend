@@ -265,9 +265,22 @@ class ClientMapperTest {
         ClientSituationHistoryDTO dto = mapper.toHistoryDTO(history);
 
         assertEquals("Análise documental", dto.getCurrentSituation());
+        // "de X para Y": sem previousSituation a linha do tempo só consegue dizer "passou para Y".
+        assertEquals("Formulário preenchido", dto.getPreviousSituation());
         assertEquals(history.getId(), dto.getId());
         assertEquals(TestFixtures.USER_ID, dto.getChangedByUserId());
         assertEquals(Instant.parse("2026-04-01T12:00:00Z"), dto.getChangedAt());
+    }
+
+    @Test
+    @DisplayName("toHistoryDTO da primeira entrada vem sem situação anterior")
+    void toHistoryDtoOfFirstEntryHasNoPrevious() {
+        ClientSituationHistory first = new ClientSituationHistory();
+        first.setId(UUID.randomUUID());
+        first.setNewSituation("Formulário preenchido");
+        first.setChangedAt(Instant.parse("2026-04-01T12:00:00Z"));
+
+        assertNull(mapper.toHistoryDTO(first).getPreviousSituation());
     }
 
     @Test

@@ -50,6 +50,7 @@ public interface ClientMapper {
     ClientListResponseDTO toListDTO(Client entity);
 
     // history mapping
+    @Mapping(target = "previousSituation", source = "previousSituation")
     @Mapping(target = "currentSituation", source = "newSituation")
     @Mapping(target = "changedByUserId", source = "changedBy")
     ClientSituationHistoryDTO toHistoryDTO(com.lawfirm.law.firm.model.ClientSituationHistory h);
