@@ -11,7 +11,10 @@ import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
 import com.lawfirm.law.firm.model.Situation;
+import com.lawfirm.law.firm.repository.ClientRepository;
 import java.time.LocalDate;
+import java.util.concurrent.ThreadLocalRandom;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +29,8 @@ public class ClientControllerTest {
 
     @Autowired private WebApplicationContext wac;
 
+    @Autowired private ClientRepository clientRepository;
+
     private MockMvc mockMvc;
 
     private ObjectMapper objectMapper;
@@ -35,6 +40,39 @@ public class ClientControllerTest {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
+        // A suite roda contra um banco real: garante o mesmo ponto de partida em toda execucao,
+        // senao o cliente criado por um teste faz o seguinte falhar (lista nao vazia / CPF
+        // duplicado).
+        clientRepository.deleteAll();
+    }
+
+    @AfterEach
+    public void cleanup() {
+        clientRepository.deleteAll();
+    }
+
+    /** CPF valido gerado na hora, para o teste nunca esbarrar num CPF ja gravado. */
+    private static String randomValidCpf() {
+        int[] digits = new int[11];
+        for (int i = 0; i < 9; i++) {
+            digits[i] = ThreadLocalRandom.current().nextInt(10);
+        }
+        digits[9] = checkDigit(digits, 9, 10);
+        digits[10] = checkDigit(digits, 10, 11);
+        StringBuilder cpf = new StringBuilder();
+        for (int digit : digits) {
+            cpf.append(digit);
+        }
+        return cpf.toString();
+    }
+
+    private static int checkDigit(int[] digits, int length, int startWeight) {
+        int sum = 0;
+        for (int i = 0; i < length; i++) {
+            sum += digits[i] * (startWeight - i);
+        }
+        int check = 11 - (sum % 11);
+        return check >= 10 ? 0 : check;
     }
 
     @Test
@@ -73,7 +111,7 @@ public class ClientControllerTest {
         ClientCreateRequestDTO dto = new ClientCreateRequestDTO();
         dto.setFullName("Test User");
         dto.setBirthDate(LocalDate.of(1990, 1, 1));
-        dto.setCpf("000.000.000-00");
+        dto.setCpf(randomValidCpf());
         dto.setRg("MG-12.345.678");
         dto.setEmail("admin@taniamelo.adv.br");
         dto.setMobilePhone("+5511999999999");
@@ -89,6 +127,11 @@ public class ClientControllerTest {
         // required fields
         dto.setMotherName("Test Mother");
         dto.setInssPassword("pwd123");
+        // Obrigatorios na pratica: as colunas sao NOT NULL e o mapper sobrescreve os defaults
+        // da entidade com o null do DTO. Ver ClientMapperTest#entityDefaultsAreOverwrittenByNull.
+        dto.setNationality("Brasileira");
+        dto.setIsWhatsapp(true);
+        dto.setHasDisability(false);
 
         String body = objectMapper.writeValueAsString(dto);
 
