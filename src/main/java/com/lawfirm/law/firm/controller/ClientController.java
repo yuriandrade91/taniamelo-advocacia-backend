@@ -16,15 +16,12 @@ import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.service.ClientPatchOutcome;
 import com.lawfirm.law.firm.service.ClientService;
+import com.lawfirm.law.firm.util.RequestDates;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -125,8 +122,8 @@ public class ClientController {
                         searchTerm,
                         parseEnumList("benefitType", benefitType, BenefitType::fromLabel),
                         parseEnumList("situation", situation, Situation::fromLabel),
-                        parseInstant("createdFrom", createdFrom, true),
-                        parseInstant("createdTo", createdTo, false));
+                        RequestDates.parseInstant("createdFrom", createdFrom, true),
+                        RequestDates.parseInstant("createdTo", createdTo, false));
 
         return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
     }
@@ -273,32 +270,6 @@ public class ClientController {
                         ? (feminine.get(0) ? "atualizada" : "atualizado")
                         : (allFeminine ? "atualizadas" : "atualizados");
         return joined + " " + participle + " com sucesso!";
-    }
-
-    /**
-     * Aceita ISO-8601: data (yyyy-MM-dd) ou timestamp completo. Valor inválido gera 400 explícito -
-     * nunca é ignorado silenciosamente.
-     */
-    private static Instant parseInstant(String field, String value, boolean startOfDay) {
-        if (value == null || value.isBlank()) return null;
-        String s = value.trim();
-        try {
-            return Instant.parse(s);
-        } catch (DateTimeParseException ignored) {
-            // tenta como data simples abaixo
-        }
-        try {
-            LocalDate date = LocalDate.parse(s);
-            return startOfDay
-                    ? date.atStartOfDay(ZoneOffset.UTC).toInstant()
-                    : date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
-        } catch (DateTimeParseException ignored) {
-            throw new ValidationException(
-                    field,
-                    ValidationErrorCode.INVALID_DATE,
-                    "Data inválida (use ISO-8601, ex.: 2026-07-18 ou 2026-07-18T00:00:00Z): "
-                            + value);
-        }
     }
 
     /**

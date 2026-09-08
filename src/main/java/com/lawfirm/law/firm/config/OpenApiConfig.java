@@ -137,7 +137,8 @@ public class OpenApiConfig {
                         "Cliente - Entrevista",
                         "Cliente - Arquivos",
                         "Cliente - Situação",
-                        "Cliente - Financeiro");
+                        "Cliente - Financeiro",
+                        "Agenda");
         return openApi -> {
             Map<String, Tag> byName = new LinkedHashMap<>();
             for (Tag tag : openApi.getTags()) {
