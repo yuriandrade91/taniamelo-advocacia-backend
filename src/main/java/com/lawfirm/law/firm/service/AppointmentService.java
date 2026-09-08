@@ -239,6 +239,7 @@ public class AppointmentService {
     @Transactional
     public AppointmentResponseDTO update(UUID id, AppointmentRequestDTO dto) {
         Appointment entity = findOrThrow(id);
+        ensureEditable(entity);
         String justification = requireJustification(dto.getJustification());
         ensurePastDateAcknowledged(dto);
 
@@ -332,6 +333,28 @@ public class AppointmentService {
     }
 
     // ── Private helpers ──
+
+    /**
+     * Só compromisso agendado pode ser editado.
+     *
+     * <p>{@code cancel} e {@code complete} já recusavam transição inválida, mas o {@code PUT} não
+     * checava nada: dava para remarcar o horário de uma audiência já realizada, ou mexer numa
+     * cancelada sem que ela deixasse de estar cancelada - o resultado era um compromisso com status
+     * dizendo uma coisa e conteúdo dizendo outra. Quem precisa reagendar algo encerrado cria um
+     * compromisso novo, e a trilha continua contando os dois fatos separados.
+     */
+    private void ensureEditable(Appointment entity) {
+        if (entity.getStatus() == AppointmentStatus.AGENDADO) {
+            return;
+        }
+        throw new BusinessException(
+                BusinessErrorCode.OPERATION_NOT_ALLOWED,
+                "Compromisso "
+                        + (entity.getStatus() == AppointmentStatus.CANCELADO
+                                ? "cancelado"
+                                : "concluído")
+                        + " não pode ser editado. Crie um novo compromisso.");
+    }
 
     private Appointment findOrThrow(UUID id) {
         return repository

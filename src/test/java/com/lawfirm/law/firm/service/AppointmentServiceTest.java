@@ -583,6 +583,64 @@ class AppointmentServiceTest {
     }
 
     @Nested
+    @DisplayName("update — guarda de estado")
+    class UpdateStateGuard {
+
+        @Test
+        @DisplayName("compromisso cancelado não pode ser editado")
+        void cancelledCannotBeEdited() {
+            Appointment cancelled = existing();
+            cancelled.setStatus(AppointmentStatus.CANCELADO);
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(cancelled));
+
+            AppointmentRequestDTO dto = requestDto();
+            dto.setJustification("mudou o horário");
+
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class, () -> service.update(APPOINTMENT_ID, dto));
+            assertTrue(ex.getMessage().contains("cancelado"));
+            verify(repository, never()).save(any(Appointment.class));
+        }
+
+        @Test
+        @DisplayName("compromisso concluído não pode ser editado")
+        void completedCannotBeEdited() {
+            Appointment done = existing();
+            done.setStatus(AppointmentStatus.CONCLUIDO);
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(done));
+
+            AppointmentRequestDTO dto = requestDto();
+            dto.setJustification("mudou o horário");
+
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class, () -> service.update(APPOINTMENT_ID, dto));
+            assertTrue(ex.getMessage().contains("concluído"));
+            verify(repository, never()).save(any(Appointment.class));
+        }
+
+        @Test
+        @DisplayName("a guarda vem antes da justificativa: o motivo do 400 é o estado, não o corpo")
+        void stateGuardRunsBeforeJustificationCheck() {
+            Appointment cancelled = existing();
+            cancelled.setStatus(AppointmentStatus.CANCELADO);
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(cancelled));
+
+            // Sem justificativa E cancelado: a mensagem tem de apontar o estado, senão a
+            // pessoa preenche a justificativa e leva o mesmo erro de novo.
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class,
+                            () -> service.update(APPOINTMENT_ID, requestDto()));
+            assertTrue(ex.getMessage().contains("não pode ser editado"));
+        }
+    }
+
+    @Nested
     @DisplayName("cancel / complete / delete")
     class StateTransitions {
 
