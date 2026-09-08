@@ -64,7 +64,10 @@ public class TenantController {
             summary = "Tenant corrente",
             description =
                     "Dados do escritório da sessão atual (razão social, CNPJ, plano, status).")
-    @SecurityRequirement(name = "tenantHeader")
+    @SecurityRequirements({
+        @SecurityRequirement(name = "bearerAuth"),
+        @SecurityRequirement(name = "tenantHeader")
+    })
     @GetMapping("/current")
     public ResponseEntity<ApiResponse<TenantResponseDTO>> current() {
         String schema = currentSchema();
