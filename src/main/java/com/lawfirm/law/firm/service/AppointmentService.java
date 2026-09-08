@@ -284,12 +284,41 @@ public class AppointmentService {
         return toDTO(repository.save(entity));
     }
 
+    /**
+     * Exclusão lógica. Registra {@code DELETED} na trilha: sem isso a ação mais destrutiva da
+     * agenda seria a única sem rastro, numa entidade preservada justamente para auditoria. Não pede
+     * justificativa - o que a trilha precisa saber aqui é quem excluiu e quando.
+     */
     @Transactional
     public void delete(UUID id) {
         Appointment entity = findOrThrow(id);
         entity.setDeletedAt(Instant.now());
         entity.setUpdatedBy(CurrentUser.id());
-        repository.save(entity);
+        Appointment saved = repository.save(entity);
+
+        recordHistory(saved, AppointmentAction.DELETED, null);
+    }
+
+    /**
+     * Desfaz a exclusão lógica. É o que dispensa a janela de arrependimento que a tela mantinha
+     * antes de enviar o {@code DELETE}: agora dá para excluir na hora e voltar atrás depois.
+     *
+     * <p>Idempotente: restaurar um compromisso ativo devolve o compromisso sem alterar nada nem
+     * poluir a trilha - quem clica duas vezes não deveria ver erro.
+     */
+    @Transactional
+    public AppointmentResponseDTO restore(UUID id) {
+        Appointment entity =
+                repository.findById(id).orElseThrow(() -> NotFoundException.of("Compromisso", id));
+        if (entity.getDeletedAt() == null) {
+            return toDTO(entity);
+        }
+        entity.setDeletedAt(null);
+        entity.setUpdatedBy(CurrentUser.id());
+        Appointment saved = repository.save(entity);
+
+        recordHistory(saved, AppointmentAction.RESTORED, null);
+        return toDTO(saved);
     }
 
     public Page<AppointmentHistoryDTO> history(UUID id, int pageNumber, int pageSize) {

@@ -157,11 +157,34 @@ public class AppointmentController {
 
     @Operation(
             summary = "Excluir compromisso",
-            description = "Soft delete - preservado para auditoria.")
+            description =
+                    """
+                    Exclusão **lógica**: o compromisso sai da agenda e do resumo por mês, mas \
+                    continua no banco e volta por `PATCH /{id}/restore`.
+
+                    Fica registrado na trilha (`GET /{id}/history`) como `DELETED`, com quem \
+                    excluiu e quando. Não pede justificativa.
+
+                    Excluir um compromisso já excluído devolve 404 - para a API ele não existe \
+                    mais.""")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "Restaurar compromisso excluído",
+            description =
+                    """
+                    Desfaz a exclusão lógica e devolve o compromisso à agenda com o mesmo id, \
+                    horário e histórico. Registra `RESTORED` na trilha.
+
+                    Idempotente: restaurar um compromisso ativo devolve 200 com o compromisso, sem \
+                    alterar nada e sem gerar registro na trilha. Id inexistente devolve 404.""")
+    @PatchMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> restore(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.successObject(service.restore(id)));
     }
 
     @Operation(

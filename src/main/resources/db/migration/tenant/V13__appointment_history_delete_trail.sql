@@ -1,0 +1,12 @@
+-- V13 (por tenant): registrar exclusão e restauração de compromisso na trilha.
+--
+-- appointment_history só recebia EDITED, CANCELLED e ACKNOWLEDGED. A exclusão -
+-- a ação mais destrutiva, numa tabela que existe para auditoria - não deixava
+-- rastro nenhum: o compromisso simplesmente sumia da agenda.
+--
+-- Registrar DELETED/RESTORED exige soltar o NOT NULL de justification. Editar e
+-- cancelar continuam exigindo justificativa (regra do AppointmentService, que já
+-- devolve 400 sem ela); excluir não pede motivo hoje, e o que a trilha precisa
+-- guardar nesse caso é quem excluiu e quando - não um texto inventado só para
+-- satisfazer a coluna.
+ALTER TABLE appointment_history ALTER COLUMN justification DROP NOT NULL;

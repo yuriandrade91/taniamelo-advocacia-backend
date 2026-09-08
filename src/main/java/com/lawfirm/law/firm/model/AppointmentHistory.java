@@ -36,7 +36,8 @@ public class AppointmentHistory {
     @Column(name = "action", nullable = false, length = 20)
     private AppointmentAction action;
 
-    @Column(name = "justification", nullable = false)
+    /** Obrigatória em EDITED/CANCELLED (regra do service); nula em DELETED/RESTORED. */
+    @Column(name = "justification")
     private String justification;
 
     @Column(name = "changed_at", nullable = false)

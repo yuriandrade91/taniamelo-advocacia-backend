@@ -673,6 +673,60 @@ class AppointmentServiceTest {
         }
 
         @Test
+        @DisplayName("delete deixa rastro na trilha, sem exigir justificativa")
+        void deleteRecordsHistory() {
+            authenticate();
+
+            service.delete(APPOINTMENT_ID);
+
+            AppointmentHistory history = captureHistory();
+            assertEquals(AppointmentAction.DELETED, history.getAction());
+            // Excluir não pede motivo; o que a trilha precisa guardar é quem e quando.
+            assertNull(history.getJustification());
+            assertEquals(TestFixtures.USER_ID, history.getChangedBy());
+        }
+
+        @Test
+        @DisplayName("restore limpa deletedAt e registra RESTORED")
+        void restoreClearsDeletedAtAndRecordsHistory() {
+            authenticate();
+            Appointment deleted = existing();
+            deleted.setDeletedAt(Instant.parse("2026-02-01T10:00:00Z"));
+            when(repository.findById(APPOINTMENT_ID)).thenReturn(Optional.of(deleted));
+
+            AppointmentResponseDTO response = service.restore(APPOINTMENT_ID);
+
+            assertNotNull(response);
+            assertNull(deleted.getDeletedAt());
+            assertEquals(TestFixtures.USER_ID, deleted.getUpdatedBy());
+
+            AppointmentHistory history = captureHistory();
+            assertEquals(AppointmentAction.RESTORED, history.getAction());
+            assertNull(history.getJustification());
+        }
+
+        @Test
+        @DisplayName("restore de compromisso ativo é no-op e não polui a trilha")
+        void restoreOfActiveAppointmentIsNoOp() {
+            Appointment active = existing();
+            when(repository.findById(APPOINTMENT_ID)).thenReturn(Optional.of(active));
+
+            assertNotNull(service.restore(APPOINTMENT_ID));
+
+            verify(repository, never()).save(any(Appointment.class));
+            verify(historyRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("restore de id inexistente estoura 404")
+        void restoreOfMissingAppointmentThrows() {
+            UUID unknown = UUID.randomUUID();
+            when(repository.findById(unknown)).thenReturn(Optional.empty());
+
+            assertThrows(NotFoundException.class, () -> service.restore(unknown));
+        }
+
+        @Test
         @DisplayName("operações sobre compromisso inexistente estouram 404")
         void missingAppointmentThrows() {
             UUID unknown = UUID.randomUUID();

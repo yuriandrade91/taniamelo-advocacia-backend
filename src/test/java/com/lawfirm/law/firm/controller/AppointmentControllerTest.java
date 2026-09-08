@@ -308,6 +308,26 @@ class AppointmentControllerTest {
     }
 
     @Test
+    @DisplayName("PATCH /restore devolve o compromisso de volta")
+    void restoreReturnsAppointment() throws Exception {
+        when(service.restore(ID)).thenReturn(responseDto());
+
+        mockMvc.perform(patch("/api/v1/appointments/{id}/restore", ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(ID.toString()));
+    }
+
+    @Test
+    @DisplayName("PATCH /restore de id inexistente vira 404")
+    void restoreOfMissingReturns404() throws Exception {
+        when(service.restore(ID)).thenThrow(NotFoundException.of("Compromisso", ID));
+
+        mockMvc.perform(patch("/api/v1/appointments/{id}/restore", ID))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("GET /history devolve a trilha paginada")
     void historyReturnsPagedTrail() throws Exception {
         when(service.history(eq(ID), anyInt(), anyInt()))
