@@ -74,6 +74,23 @@ test.describe("paginação", () => {
     expect(pagina.pageSize).toBeGreaterThan(0);
   });
 
+  test("pageSize acima do teto é cortado em 100, não recusado", async ({ api }) => {
+    // `pageSize=100000` era aceito: uma requisição só bastava para a API montar a
+    // base inteira em memória. O teto corta em vez de devolver 400 de propósito —
+    // quem pediu demais continua navegando, com a paginação dizendo o total real.
+    const { itens, pagina } = await listaDe<Item>(await api.get("/api/v1/clients?pageSize=100000"));
+
+    expect(pagina.pageSize, "pageSize deveria ser cortado no teto de 100").toBe(100);
+    expect(itens.length, "veio mais registro do que o teto permite").toBeLessThanOrEqual(100);
+  });
+
+  test("pageSize dentro do teto continua respeitado", async ({ api }) => {
+    // O par do teste acima: se o teto virasse "sempre 100", quem pede 7 receberia
+    // 100 e ninguém perceberia, porque o teste do teto sozinho continuaria passando.
+    const { pagina } = await listaDe<Item>(await api.get("/api/v1/clients?pageSize=7"));
+    expect(pagina.pageSize).toBe(7);
+  });
+
   test("página muito além do fim devolve lista vazia, não 404", async ({ api }) => {
     const { itens } = await listaDe<Item>(await api.get("/api/v1/clients?pageNumber=99999&pageSize=10"));
     expect(itens).toEqual([]);

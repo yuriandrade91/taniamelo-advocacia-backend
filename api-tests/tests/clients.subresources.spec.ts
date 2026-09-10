@@ -327,7 +327,6 @@ test.describe("abas de dados pessoais e profissionais", () => {
   });
 
   test("dados profissionais gravam e voltam", async ({ api, clienteId }) => {
-    // inssPassword é obrigatória aqui: a aba profissional é a dona dela no cadastro.
     await dadosDe(
       await api.put(`/api/v1/clients/${clienteId}/professional-data`, {
         data: { profession: "Costureira", ctps: "1234567", ctpsSeries: "0001-MG", inssPassword: "senha-inss" },
@@ -340,12 +339,14 @@ test.describe("abas de dados pessoais e profissionais", () => {
     expect(dados.ctps).toBe("1234567");
   });
 
-  test("aba profissional sem a senha do INSS devolve 400", async ({ api, clienteId }) => {
-    const erros = await errosDe(
+  test("aba profissional sem a senha do INSS é aceita e mantém a gravada", async ({ api, clienteId }) => {
+    // Já foi 400. Deixou de ser quando a senha saiu do GET: o formulário não a
+    // recebe mais para devolver, então exigi-la na gravação tornaria a aba
+    // impossível de salvar. Ausente agora significa "mantém a que está lá" —
+    // o que clients.inss.spec.ts afirma pelo valor, e não só pelo status.
+    await dadosDe(
       await api.put(`/api/v1/clients/${clienteId}/professional-data`, { data: { profession: "Pedreiro" } }),
-      400,
     );
-    expect(erros.map((e) => e.field)).toContain("inssPassword");
   });
 
   test("cliente inexistente devolve 404 nas duas abas", async ({ api }) => {

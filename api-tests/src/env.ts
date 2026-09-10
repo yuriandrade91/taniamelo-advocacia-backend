@@ -22,6 +22,13 @@ export const env = {
   password: obrigatoria("API_PASSWORD"),
   /** Segundo escritório, só para provar isolamento. Ausente = testes de vazamento pulados. */
   tenantSecundario: process.env.API_TENANT_SECUNDARIO,
+  /**
+   * Usuário STAFF do mesmo escritório, para provar que a autorização por papel
+   * recusa de verdade. Ausente = testes de papel pulados com aviso: um usuário
+   * a mais no banco é decisão do escritório, não da suíte.
+   */
+  loginStaff: process.env.API_LOGIN_STAFF,
+  passwordStaff: process.env.API_PASSWORD_STAFF,
 };
 
 /** Prefixo que marca tudo que a suíte cria, para resíduo ser reconhecível no banco. */

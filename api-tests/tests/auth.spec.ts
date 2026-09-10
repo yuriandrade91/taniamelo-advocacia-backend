@@ -69,6 +69,10 @@ test.describe("POST /auth/login", () => {
     await ctx.dispose();
   });
 
+  // Atenção ao mexer nesta seção: a conta trava depois de 5 falhas seguidas.
+  // A suíte erra a senha do usuário real DUAS vezes, e cada login bem-sucedido
+  // zera o contador. Somar mais casos de senha errada aqui derruba a suíte
+  // inteira com 429 — use um login descartável, como faz o teste de rajada.
   test("senha errada devolve 401 sem dizer se o usuário existe", async () => {
     const ctx = await contexto();
     const resposta = await ctx.post("/api/v1/auth/login", {
@@ -229,5 +233,65 @@ test.describe("token inválido", () => {
       headers: { Authorization: "sem-o-prefixo-bearer" },
     });
     expect(resposta.status()).toBe(401);
+  });
+});
+
+test.describe("freio de tentativas", () => {
+  test("rajada de senhas erradas vira 429 com Retry-After", async () => {
+    // Login descartável de propósito: a rajada precisa estourar a cota DAQUELE
+    // login, sem gastar a do usuário real (que travaria a suíte) nem a do IP
+    // (compartilhada por todos os testes deste arquivo).
+    const descartavel = `rajada-${Date.now()}@teste.invalido`;
+    const ctx = await contexto();
+
+    const respostas: number[] = [];
+    for (let tentativa = 1; tentativa <= 6; tentativa++) {
+      const r = await ctx.post("/api/v1/auth/login", {
+        headers: comTenant,
+        data: { login: descartavel, password: `errada-${tentativa}` },
+      });
+      respostas.push(r.status());
+      if (r.status() === 429) {
+        const erros = await errosDe(r, 429);
+        expect(erros.map((e) => e.code)).toContain("TOO_MANY_ATTEMPTS");
+
+        // Sem Retry-After, quem consome só pode adivinhar quando voltar — e
+        // adivinhar, na prática, significa tentar de novo imediatamente.
+        const retryAfter = r.headers()["retry-after"];
+        expect(retryAfter, "429 sem Retry-After").toBeTruthy();
+        expect(Number(retryAfter)).toBeGreaterThan(0);
+
+        // A mensagem não pode revelar se o login existe: se conta bloqueada e
+        // conta inexistente respondessem diferente, o 429 entregaria de graça a
+        // lista de quem tem acesso ao escritório.
+        const texto = JSON.stringify(erros).toLowerCase();
+        expect(texto).not.toContain("bloquead");
+        expect(texto).not.toContain("não existe");
+
+        await ctx.dispose();
+        return;
+      }
+      expect(r.status(), "tentativa antes do teto deveria ser 401").toBe(401);
+    }
+
+    await ctx.dispose();
+    throw new Error(
+      `6 senhas erradas seguidas no mesmo login não foram freadas: ${respostas.join(", ")}`,
+    );
+  });
+
+  test("login válido não é afetado pelo freio do login errado", async () => {
+    // O freio só conta falha. Se contasse tentativa, o escritório inteiro
+    // ficaria de fora depois de um dia movimentado.
+    const ctx = await contexto();
+    for (let i = 0; i < 3; i++) {
+      await dadosDe<Login>(
+        await ctx.post("/api/v1/auth/login", {
+          headers: comTenant,
+          data: { login: env.login, password: env.password },
+        }),
+      );
+    }
+    await ctx.dispose();
   });
 });

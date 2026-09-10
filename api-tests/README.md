@@ -40,6 +40,7 @@ Variáveis (arquivo `.env`, shell ou secret do CI — **nunca commitadas**):
 | `API_TENANT` | escritório usado pela suíte. Default: `demo` |
 | `API_LOGIN` / `API_PASSWORD` | usuário **dedicado ao teste** |
 | `API_TENANT_SECUNDARIO` | segundo escritório, só para provar isolamento |
+| `API_LOGIN_STAFF` / `API_PASSWORD_STAFF` | usuário **STAFF**, para provar a autorização por papel |
 
 > **Use `demo`, nunca `tania`.** A suíte cria, cancela e exclui registros. Tudo
 > que ela cria nasce marcado com `[api-test]`, para resíduo ser reconhecível no
@@ -82,6 +83,8 @@ tests/appointments.crud.spec.ts   agendamento e validações
 tests/appointments.conflicts.spec.ts  conflito de horário (avisa, não bloqueia)
 tests/appointments.lifecycle.spec.ts  cancelar, concluir, guarda de edição, excluir, restaurar
 tests/appointments.filters.spec.ts    filtros da agenda e resumo por mês
+tests/clients.inss.spec.ts        a senha do INSS: saiu do GET, sai por rota própria, e a edição não a apaga
+tests/roles.spec.ts               autorização por papel: STAFF opera, só ADMIN/LAWYER destrói
 tests/users.spec.ts               consulta de usuários e o que ela não pode vazar
 ```
 
@@ -99,8 +102,15 @@ tests/users.spec.ts               consulta de usuários e o que ela não pode va
 - **Erro se afirma pelo envelope, não só pelo status.** Um 400 com `errors: []`
   deixa quem consome sem saber o que corrigir, e isso é defeito de contrato tanto
   quanto o status errado.
+- **Senha errada só contra login descartável.** O backend trava a conta depois de
+  5 falhas seguidas e freia o IP depois de 30 por minuto. A suíte gasta ~9
+  tentativas por execução (2 contra o usuário real, que qualquer login certo
+  zera; 6 numa rajada com login inventado). Cabe rodar Playwright e Postman na
+  mesma janela; três execuções seguidas no mesmo minuto, não. Caso novo com senha
+  errada usa login descartável — somar ao usuário real derruba a suíte inteira
+  com 429.
 
-## Três defeitos que esta suíte encontrou
+## Quatro defeitos que esta suíte encontrou
 
 Ficam registrados porque explicam por que vários testes existem:
 
@@ -114,3 +124,7 @@ Ficam registrados porque explicam por que vários testes existem:
 3. **Validação de `@RequestPart` virava 500.** Subir documento sem `documentType`
    devolvia "Erro interno do sistema... contate o suporte" — a API culpando a si
    mesma por um campo que faltou no corpo. Agora é 400 com o nome do campo.
+4. **Busca por nome com algarismo virava busca por CPF.** O termo tinha os
+   dígitos extraídos e virava `cpf LIKE '%2%'`, que casa com quase toda a base:
+   procurar "Maria 2ª" trazia meio escritório. Agora o ramo do CPF só entra em
+   termo sem letra e com pelo menos 3 dígitos.

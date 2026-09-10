@@ -19,6 +19,7 @@ const ROTAS_PROTEGIDAS: Array<[string, string]> = [
   ["GET", "/api/v1/clients/00000000-0000-0000-0000-000000000000/payments"],
   ["GET", "/api/v1/clients/00000000-0000-0000-0000-000000000000/personal-data"],
   ["GET", "/api/v1/clients/00000000-0000-0000-0000-000000000000/professional-data"],
+  ["GET", "/api/v1/clients/00000000-0000-0000-0000-000000000000/inss-password"],
   ["GET", "/api/v1/clients/00000000-0000-0000-0000-000000000000/files/documents"],
   ["GET", "/api/v1/appointments"],
   ["POST", "/api/v1/appointments"],

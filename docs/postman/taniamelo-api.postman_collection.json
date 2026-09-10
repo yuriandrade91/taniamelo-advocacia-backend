@@ -138,6 +138,10 @@
     {
       "key": "encostaFim",
       "value": ""
+    },
+    {
+      "key": "loginDescartavel",
+      "value": ""
     }
   ],
   "item": [
@@ -368,6 +372,104 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rajada de senhas erradas vira 429 com Retry-After",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenantSlug}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{loginDescartavel}}\",\n  \"password\": \"errada-6\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Rajada de senhas erradas no MESMO login, para provar o freio.",
+                  "//",
+                  "// Login descartável de propósito: a cota que precisa estourar é a daquele login,",
+                  "// sem gastar a do usuário real (que travaria a conta por 15 minutos e derrubaria",
+                  "// o resto da coleção) nem a do IP, compartilhada por todas as requisições daqui.",
+                  "const descartavel = \"rajada-\" + Date.now() + \"@teste.invalido\";",
+                  "pm.collectionVariables.set(\"loginDescartavel\", descartavel);",
+                  "",
+                  "const tentativa = (n) => new Promise((resolve) => {",
+                  "  pm.sendRequest({",
+                  "    url: pm.variables.replaceIn(\"{{baseUrl}}/api/v1/auth/login\"),",
+                  "    method: \"POST\",",
+                  "    header: {",
+                  "      \"Content-Type\": \"application/json\",",
+                  "      \"X-Tenant-Id\": pm.variables.replaceIn(\"{{tenantSlug}}\")",
+                  "    },",
+                  "    body: { mode: \"raw\", raw: JSON.stringify({ login: descartavel, password: \"errada-\" + n }) }",
+                  "  }, () => resolve());",
+                  "});",
+                  "",
+                  "// 5 falhas gastam a cota; a requisição desta aba é a sexta, e deve vir 429.",
+                  "(async () => { for (let n = 1; n <= 5; n++) { await tentativa(n); } })();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 429\", () => pm.response.to.have.status(429));",
+                  "pm.test(\"envelope de erro com código\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors.map(e => e.code)).to.include(\"TOO_MANY_ATTEMPTS\");",
+                  "});",
+                  "// Sem Retry-After, quem consome só pode adivinhar quando voltar — e adivinhar,",
+                  "// na prática, significa tentar de novo imediatamente.",
+                  "pm.test(\"Retry-After diz quando voltar\", () => {",
+                  "  const retry = pm.response.headers.get(\"Retry-After\");",
+                  "  pm.expect(retry, \"429 sem Retry-After\").to.not.be.null;",
+                  "  pm.expect(Number(retry)).to.be.above(0);",
+                  "});",
+                  "// A mensagem não pode revelar se o login existe: se conta bloqueada e conta",
+                  "// inexistente respondessem diferente, o 429 entregaria de graça a lista de quem",
+                  "// tem acesso ao escritório.",
+                  "pm.test(\"não revela se a conta existe\", () => {",
+                  "  const texto = pm.response.text().toLowerCase();",
+                  "  pm.expect(texto).to.not.include(\"bloquead\");",
+                  "  pm.expect(texto).to.not.include(\"não existe\");",
+                  "});"
                 ]
               }
             }
@@ -1094,6 +1196,117 @@
           ]
         },
         {
+          "name": "A ficha NÃO traz a senha do INSS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "// Voltava em toda abertura de ficha, indo junto para log de acesso, cache de",
+                  "// navegador e print de tela de quem só queria conferir um telefone.",
+                  "pm.test(\"sem inssPassword no corpo\", () => {",
+                  "  pm.expect(pm.response.json().data, \"a senha do INSS voltou na ficha\").to.not.have.property(\"inssPassword\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A senha do INSS sai pela rota própria",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/inss-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "inss-password"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "// Restrita a ADMIN/LAWYER e auditada: cada leitura grava quem consultou e quando.",
+                  "pm.test(\"devolve a senha cadastrada\", () => {",
+                  "  pm.expect(pm.response.json().data.inssPassword).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Senha do INSS de id inexistente devolve 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/11111111-2222-3333-4444-555555555555/inss-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "11111111-2222-3333-4444-555555555555",
+                "inss-password"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors).to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Id inexistente devolve 404",
           "request": {
             "method": "GET",
@@ -1200,6 +1413,90 @@
                   "  pm.expect(b.pagination).to.have.property(\"totalRecords\");",
                   "});",
                   "pm.test(\"no máximo pageSize itens\", () => pm.expect(b.data.length).to.be.at.most(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "pageSize acima do teto é cortado em 100",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients?pageSize=100000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "100000"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const b = pm.response.json();",
+                  "// Era aceito: uma requisição só bastava para a API montar a base inteira em",
+                  "// memória. Corta no teto em vez de devolver 400 — quem pediu demais continua",
+                  "// navegando, com a paginação dizendo o total real.",
+                  "pm.test(\"pageSize cortado em 100\", () => pm.expect(b.pagination.pageSize).to.eql(100));",
+                  "pm.test(\"no máximo 100 itens\", () => pm.expect(b.data.length).to.be.at.most(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "pageSize dentro do teto continua respeitado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients?pageSize=7",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "7"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "// O par do teste acima: se o teto virasse \"sempre 100\", quem pede 7 receberia",
+                  "// 100 e o teste do teto sozinho continuaria passando.",
+                  "pm.test(\"pageSize respeitado\", () => pm.expect(pm.response.json().pagination.pageSize).to.eql(7));"
                 ]
               }
             }
@@ -2340,7 +2637,7 @@
           ]
         },
         {
-          "name": "Aba profissional exige a senha do INSS",
+          "name": "Aba profissional SEM a senha do INSS é aceita",
           "request": {
             "method": "PUT",
             "header": [
@@ -2378,13 +2675,52 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
-                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
                   "  const b = pm.response.json();",
-                  "  pm.expect(b.success).to.be.false;",
-                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
                   "});",
-                  "pm.test(\"aponta o campo inssPassword\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"inssPassword\"));"
+                  "// Já foi 400. Deixou de ser quando a senha saiu do GET: o formulário não a",
+                  "// recebe mais para devolver, então exigi-la na gravação tornaria a aba",
+                  "// impossível de salvar. Ausente agora significa \"mantém a que está lá\".",
+                  "pm.test(\"não devolve a senha\", () => pm.expect(pm.response.json().data).to.not.have.property(\"inssPassword\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E a senha gravada continua lá",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/inss-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "inss-password"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "// O ponto mais frágil da mudança: se \"ausente\" significasse \"apaga\", editar a",
+                  "// profissão de um cliente destruiria o acesso dele ao INSS — em silêncio.",
+                  "pm.test(\"a senha sobreviveu à edição sem o campo\", () => {",
+                  "  pm.expect(pm.response.json().data.inssPassword).to.be.a(\"string\").and.not.empty;",
+                  "});"
                 ]
               }
             }
