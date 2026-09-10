@@ -58,3 +58,7 @@ application-local.properties
 
 #AWS Files
 *.pem
+
+# Configuração local de ferramenta de IA. Cada máquina tem a sua; versionar
+# faria aparecer como arquivo novo em todo `git status` de quem não usa.
+.claude/
