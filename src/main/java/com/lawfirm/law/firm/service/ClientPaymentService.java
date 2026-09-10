@@ -13,6 +13,7 @@ import com.lawfirm.law.firm.model.PaymentStatus;
 import com.lawfirm.law.firm.repository.ClientPaymentRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
+import com.lawfirm.law.firm.util.PageRequests;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -59,9 +60,9 @@ public class ClientPaymentService {
             UUID clientId, int pageNumber, int pageSize) {
         findClientOrThrow(clientId);
         var pageable =
-                org.springframework.data.domain.PageRequest.of(
-                        Math.max(0, pageNumber - 1),
-                        pageSize <= 0 ? 10 : pageSize,
+                PageRequests.of(
+                        pageNumber,
+                        pageSize,
                         org.springframework.data.domain.Sort.by(
                                 org.springframework.data.domain.Sort.Direction.ASC, "dueDate"));
         return repository.findByClient_IdAndDeletedAtIsNull(clientId, pageable).map(this::toDTO);

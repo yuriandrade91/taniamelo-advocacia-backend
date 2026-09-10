@@ -22,6 +22,7 @@ import com.lawfirm.law.firm.repository.AppointmentRepository;
 import com.lawfirm.law.firm.repository.AppointmentSpecification;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
+import com.lawfirm.law.firm.util.PageRequests;
 import com.lawfirm.law.firm.util.RequestDates;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -35,7 +36,6 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.Function;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -154,9 +154,9 @@ public class AppointmentService {
                                 AppointmentSpecification.titleContains(params.getSearchTerm())));
 
         Pageable pageable =
-                PageRequest.of(
-                        Math.max(0, params.getPageNumber() - 1),
-                        params.getPageSize() <= 0 ? 10 : params.getPageSize(),
+                PageRequests.of(
+                        params.getPageNumber(),
+                        params.getPageSize(),
                         Sort.by(Sort.Direction.ASC, "startAt"));
 
         Page<Appointment> page = repository.findAll(spec, pageable);
@@ -325,10 +325,7 @@ public class AppointmentService {
     public Page<AppointmentHistoryDTO> history(UUID id, int pageNumber, int pageSize) {
         findOrThrow(id);
         Pageable pageable =
-                PageRequest.of(
-                        Math.max(0, pageNumber - 1),
-                        pageSize <= 0 ? 10 : pageSize,
-                        Sort.by(Sort.Direction.DESC, "changedAt"));
+                PageRequests.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "changedAt"));
         return historyRepository.findByAppointment_Id(id, pageable).map(this::toHistoryDTO);
     }
 

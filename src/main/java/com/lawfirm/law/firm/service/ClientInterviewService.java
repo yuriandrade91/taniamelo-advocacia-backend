@@ -8,10 +8,10 @@ import com.lawfirm.law.firm.model.ClientInterview;
 import com.lawfirm.law.firm.repository.ClientInterviewRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
+import com.lawfirm.law.firm.util.PageRequests;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,10 +46,7 @@ public class ClientInterviewService {
     public Page<ClientInterviewResponseDTO> list(UUID clientId, int pageNumber, int pageSize) {
         findClientOrThrow(clientId);
         var pageable =
-                PageRequest.of(
-                        Math.max(0, pageNumber - 1),
-                        pageSize <= 0 ? 10 : pageSize,
-                        Sort.by(Sort.Direction.DESC, "occurredAt"));
+                PageRequests.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "occurredAt"));
         return repository.findByClient_IdAndDeletedAtIsNull(clientId, pageable).map(this::toDTO);
     }
 

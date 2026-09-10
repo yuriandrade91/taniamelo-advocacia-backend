@@ -25,6 +25,7 @@ import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSpecification;
 import com.lawfirm.law.firm.security.CurrentUser;
 import com.lawfirm.law.firm.util.ContributionTimeParser;
+import com.lawfirm.law.firm.util.PageRequests;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
@@ -35,7 +36,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -92,10 +92,7 @@ public class ClientServiceImpl implements ClientService {
         // updatedAt é sempre populado (prePersist/preUpdate), então ordenar por ele
         // dá "atividade mais recente primeiro" sem query manual.
         var pageable =
-                PageRequest.of(
-                        Math.max(0, pageNumber - 1),
-                        pageSize <= 0 ? 10 : pageSize,
-                        Sort.by(Sort.Direction.DESC, "updatedAt"));
+                PageRequests.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "updatedAt"));
         return repository.findAll(spec, pageable).map(mapper::toListDTO);
     }
 
@@ -215,11 +212,7 @@ public class ClientServiceImpl implements ClientService {
     public Page<ClientSituationHistoryDTO> historyByClientId(
             UUID clientId, int pageNumber, int pageSize) {
         findOrThrow(clientId);
-        var pageable =
-                PageRequest.of(
-                        Math.max(0, pageNumber - 1),
-                        pageSize <= 0 ? 10 : pageSize,
-                        Sort.by("changedAt").descending());
+        var pageable = PageRequests.of(pageNumber, pageSize, Sort.by("changedAt").descending());
         return historyRepository.findByClient_Id(clientId, pageable).map(mapper::toHistoryDTO);
     }
 

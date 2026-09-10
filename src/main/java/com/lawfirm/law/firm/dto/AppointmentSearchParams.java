@@ -18,7 +18,9 @@ public class AppointmentSearchParams {
     @Schema(description = "Número da página (1-based)", defaultValue = "1")
     private int pageNumber = 1;
 
-    @Schema(description = "Tamanho da página", defaultValue = "10")
+    @Schema(
+            description = "Tamanho da página (máximo 100; valores acima são cortados no teto)",
+            defaultValue = "10")
     private int pageSize = 10;
 
     @Schema(

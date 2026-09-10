@@ -98,7 +98,10 @@ public class ClientController {
     public ResponseEntity<ApiResponse<ClientListResponseDTO>> list(
             @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1")
                     int pageNumber,
-            @Parameter(description = "Tamanho da página") @RequestParam(defaultValue = "10")
+            @Parameter(
+                            description =
+                                    "Tamanho da página (máximo 100; valores acima são cortados no teto)")
+                    @RequestParam(defaultValue = "10")
                     int pageSize,
             @Parameter(description = "Busca livre por nome completo ou CPF")
                     @RequestParam(required = false)
@@ -166,7 +169,10 @@ public class ClientController {
             @PathVariable UUID id,
             @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1")
                     int pageNumber,
-            @Parameter(description = "Tamanho da página") @RequestParam(defaultValue = "10")
+            @Parameter(
+                            description =
+                                    "Tamanho da página (máximo 100; valores acima são cortados no teto)")
+                    @RequestParam(defaultValue = "10")
                     int pageSize) {
         Page<ClientSituationHistoryDTO> page =
                 clientService.historyByClientId(id, pageNumber, pageSize);

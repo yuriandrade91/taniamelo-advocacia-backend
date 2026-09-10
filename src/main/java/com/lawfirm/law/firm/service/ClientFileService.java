@@ -21,13 +21,13 @@ import com.lawfirm.law.firm.storage.FileDownload;
 import com.lawfirm.law.firm.storage.FileStorageService;
 import com.lawfirm.law.firm.storage.LoadedFile;
 import com.lawfirm.law.firm.storage.StoredFile;
+import com.lawfirm.law.firm.util.PageRequests;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -299,9 +299,7 @@ public class ClientFileService {
     }
 
     private Pageable pageable(int pageNumber, int pageSize) {
-        int pageIndex = Math.max(0, pageNumber - 1);
-        int size = pageSize <= 0 ? 10 : pageSize;
-        return PageRequest.of(pageIndex, size, Sort.by(Sort.Direction.DESC, "uploadedAt"));
+        return PageRequests.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "uploadedAt"));
     }
 
     private Client findClientOrThrow(UUID clientId) {

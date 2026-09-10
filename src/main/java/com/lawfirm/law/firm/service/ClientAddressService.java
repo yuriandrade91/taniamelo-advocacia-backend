@@ -11,6 +11,7 @@ import com.lawfirm.law.firm.model.ClientAddress;
 import com.lawfirm.law.firm.repository.ClientAddressRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
+import com.lawfirm.law.firm.util.PageRequests;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -76,9 +77,9 @@ public class ClientAddressService {
             UUID clientId, int pageNumber, int pageSize) {
         findClientOrThrow(clientId);
         var pageable =
-                org.springframework.data.domain.PageRequest.of(
-                        Math.max(0, pageNumber - 1),
-                        pageSize <= 0 ? 10 : pageSize,
+                PageRequests.of(
+                        pageNumber,
+                        pageSize,
                         org.springframework.data.domain.Sort.by(
                                 org.springframework.data.domain.Sort.Order.desc("isPrimary"),
                                 org.springframework.data.domain.Sort.Order.asc("createdAt")));
