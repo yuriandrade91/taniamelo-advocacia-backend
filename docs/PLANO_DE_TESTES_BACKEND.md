@@ -257,7 +257,10 @@ Endereços, entrevistas, dados pessoais e profissionais.
   coordenação no backend** (ver Anexo B). O teste registra o comportamento
   atual, e passa a afirmar o novo quando a lacuna for fechada.
 - Entrevistas: `content` obrigatório; ordenação por `occurredAt`.
-- Dados pessoais/profissionais: `PUT` parcial não apaga campo não enviado.
+- Dados pessoais/profissionais: `PUT` **substitui a aba**. Campo opcional omitido
+  é apagado (mesmo contrato de `PUT /clients/{id}`); os de coluna `NOT NULL`
+  (`nationality`, `isWhatsapp`, `hasDisability`) são preservados. Uma versão
+  anterior deste plano dizia o contrário — descrevia um `PATCH` que não existe.
 - Sub-recurso de cliente de **outro tenant** → 404.
 
 **Camada 3 (E2E)**
