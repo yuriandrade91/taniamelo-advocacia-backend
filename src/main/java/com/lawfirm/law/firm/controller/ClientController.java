@@ -3,6 +3,7 @@ package com.lawfirm.law.firm.controller;
 import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
+import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPatchResponseDTO;
@@ -262,6 +263,28 @@ public class ClientController {
         return ResponseEntity.ok(
                 ApiResponse.successObject(
                         new ClientPatchResponseDTO("Cliente excluído com sucesso.")));
+    }
+
+    @Operation(
+            summary = "Revelar a senha do INSS do cliente",
+            description =
+                    """
+                    Devolve a senha de acesso do cliente ao portal do INSS. **Restrito a ADMIN e \
+                    LAWYER**, e **cada leitura fica registrada** na auditoria com quem consultou e \
+                    quando.
+
+                    Existe como rota separada porque a senha saiu de `GET /clients/{id}`. Voltar em \
+                    toda abertura de ficha a levava para log de acesso, cache de navegador e print \
+                    de tela — e tornava meia medida a criptografia em repouso, que protege contra \
+                    quem lê o banco e não contra quem tem login.
+
+                    Na edição (`PUT /clients/{id}` e `PUT /professional-data`) o campo passou a ser \
+                    opcional: ausente significa "mantém a que está gravada".""")
+    @RequerAdvogado
+    @GetMapping("/{id}/inss-password")
+    public ResponseEntity<ApiResponse<ClientInssPasswordDTO>> revealInssPassword(
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.successObject(clientService.revealInssPassword(id)));
     }
 
     @Operation(

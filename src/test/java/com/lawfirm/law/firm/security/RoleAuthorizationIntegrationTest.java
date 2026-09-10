@@ -78,6 +78,14 @@ class RoleAuthorizationIntegrationTest extends PostgresIntegrationTest {
 
     @Test
     @WithMockUser(roles = "STAFF")
+    @DisplayName("STAFF não lê a senha do INSS de um cliente")
+    void staffCannotRevealInssPassword() throws Exception {
+        mockMvc.perform(get("/api/v1/clients/{id}/inss-password", ID))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "STAFF")
     @DisplayName("o 403 vem no envelope padrão, não em HTML")
     void forbiddenUsesTheStandardEnvelope() throws Exception {
         mockMvc.perform(delete("/api/v1/clients/{id}", ID))

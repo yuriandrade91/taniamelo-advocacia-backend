@@ -98,6 +98,11 @@ class SecuredEndpointsContractTest {
         // Listar quem trabalha no escritório não é da conta de quem só opera.
         assertRequerAdvogado(
                 "com.lawfirm.law.firm.controller.UserController", "list", boolean.class);
+        // A senha do INSS é leitura, mas é a leitura mais sensível da API.
+        assertRequerAdvogado(
+                "com.lawfirm.law.firm.controller.ClientController",
+                "revealInssPassword",
+                java.util.UUID.class);
     }
 
     private static void assertRequerAdvogado(String classe, String metodo, Class<?>... parametros)

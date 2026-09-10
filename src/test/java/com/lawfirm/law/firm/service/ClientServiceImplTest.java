@@ -14,8 +14,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.lawfirm.law.firm.audit.AuditAction;
+import com.lawfirm.law.firm.audit.AuditLog;
+import com.lawfirm.law.firm.audit.AuditLogRepository;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
+import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientMapper;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
@@ -72,12 +76,13 @@ class ClientServiceImplTest {
     @Mock private ClientRepository repository;
     @Mock private ClientMapper mapper;
     @Mock private ClientSituationHistoryRepository historyRepository;
+    @Mock private AuditLogRepository auditRepository;
 
     private ClientServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ClientServiceImpl(repository, mapper, historyRepository);
+        service = new ClientServiceImpl(repository, mapper, historyRepository, auditRepository);
         when(repository.save(any(Client.class))).thenAnswer(i -> i.getArgument(0));
     }
 
@@ -369,6 +374,75 @@ class ClientServiceImplTest {
 
             assertThrows(NotFoundException.class, () -> service.restore(id));
             verify(repository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("senha do INSS")
+    class SenhaDoInss {
+
+        @Test
+        @DisplayName("revela a senha E registra quem leu na auditoria")
+        void revealsAndAudits() {
+            authenticate();
+            Client client = TestFixtures.client();
+            client.setInssPassword("senha-do-portal");
+            when(repository.findById(TestFixtures.CLIENT_ID)).thenReturn(Optional.of(client));
+
+            ClientInssPasswordDTO dto = service.revealInssPassword(TestFixtures.CLIENT_ID);
+
+            assertEquals("senha-do-portal", dto.inssPassword());
+
+            // O registro é o ponto do endpoint, não um detalhe: devolver a senha sem rastro
+            // tornaria a criptografia em repouso meia medida — protegeria contra quem lê o
+            // banco e não contra quem tem login.
+            ArgumentCaptor<AuditLog> auditoria = ArgumentCaptor.forClass(AuditLog.class);
+            verify(auditRepository).save(auditoria.capture());
+            AuditLog registro = auditoria.getValue();
+            assertEquals(AuditAction.READ, registro.getAction());
+            assertEquals("Client", registro.getEntityName());
+            assertEquals(TestFixtures.CLIENT_ID, registro.getEntityId());
+            assertEquals(TestFixtures.USER_ID, registro.getPerformedBy());
+        }
+
+        @Test
+        @DisplayName("cliente inexistente estoura 404 sem registrar leitura")
+        void missingClientThrowsAndDoesNotAudit() {
+            UUID id = UUID.randomUUID();
+            when(repository.findById(id)).thenReturn(Optional.empty());
+
+            assertThrows(NotFoundException.class, () -> service.revealInssPassword(id));
+            verify(auditRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("editar a aba profissional sem enviar a senha NÃO a apaga")
+        void updateWithoutPasswordKeepsIt() {
+            // inss_password é NOT NULL, e desde que a senha saiu do GET quem edita a aba não a
+            // tem em mãos. Apagá-la aqui quebraria o acesso do escritório ao portal do INSS.
+            Client client = TestFixtures.client();
+            client.setInssPassword("senha-antiga");
+            when(repository.findById(TestFixtures.CLIENT_ID)).thenReturn(Optional.of(client));
+
+            ClientProfessionalDataRequestDTO dto = new ClientProfessionalDataRequestDTO();
+            dto.setProfession("Pedreiro");
+            service.updateProfessionalData(TestFixtures.CLIENT_ID, dto);
+
+            assertEquals("senha-antiga", client.getInssPassword());
+        }
+
+        @Test
+        @DisplayName("senha em branco também é tratada como ausente")
+        void blankPasswordIsTreatedAsAbsent() {
+            Client client = TestFixtures.client();
+            client.setInssPassword("senha-antiga");
+            when(repository.findById(TestFixtures.CLIENT_ID)).thenReturn(Optional.of(client));
+
+            ClientProfessionalDataRequestDTO dto = new ClientProfessionalDataRequestDTO();
+            dto.setInssPassword("   ");
+            service.updateProfessionalData(TestFixtures.CLIENT_ID, dto);
+
+            assertEquals("senha-antiga", client.getInssPassword());
         }
     }
 
@@ -748,7 +822,6 @@ class ClientServiceImplTest {
             assertEquals("Costureira", dto.getProfession());
             assertEquals("10 anos", dto.getContributionTime());
             assertEquals(120, dto.getContributionInMonths());
-            assertEquals("senha-inss", dto.getInssPassword());
         }
 
         @Test

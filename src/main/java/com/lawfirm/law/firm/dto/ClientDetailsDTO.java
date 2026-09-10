@@ -31,8 +31,6 @@ public class ClientDetailsDTO {
 
     private String mobilePhone;
 
-    private String inssPassword;
-
     private Gender gender;
 
     private String rg;
@@ -143,14 +141,6 @@ public class ClientDetailsDTO {
 
     public void setMobilePhone(String mobilePhone) {
         this.mobilePhone = mobilePhone;
-    }
-
-    public String getInssPassword() {
-        return inssPassword;
-    }
-
-    public void setInssPassword(String inssPassword) {
-        this.inssPassword = inssPassword;
     }
 
     public Gender getGender() {

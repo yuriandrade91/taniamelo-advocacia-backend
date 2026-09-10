@@ -1,7 +1,5 @@
 package com.lawfirm.law.firm.dto;
 
-import jakarta.validation.constraints.NotBlank;
-
 /**
  * Aba "Dados profissionais": profissão, vínculos e credenciais previdenciárias. contributionTime é
  * texto livre (ex.: "3 anos, 10 meses, 22 dias") - o total em meses é derivado no servidor
@@ -21,7 +19,14 @@ public class ClientProfessionalDataRequestDTO {
 
     private String beneficiaryNumber;
 
-    @NotBlank private String inssPassword;
+    /**
+     * Ausente significa "mantém a que está gravada".
+     *
+     * <p>Deixou de ser obrigatória na edição quando a senha saiu do {@code GET}: o cliente da API
+     * não a recebe mais, logo não tem como devolvê-la num PUT. Exigi-la aqui obrigaria a tela a
+     * pedir a senha de novo a cada correção de endereço.
+     */
+    private String inssPassword;
 
     public String getProfession() {
         return profession;

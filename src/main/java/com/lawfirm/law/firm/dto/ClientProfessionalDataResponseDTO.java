@@ -23,8 +23,6 @@ public class ClientProfessionalDataResponseDTO {
 
     private String beneficiaryNumber;
 
-    private String inssPassword;
-
     private UUID updatedBy;
 
     private Instant updatedAt;
@@ -91,14 +89,6 @@ public class ClientProfessionalDataResponseDTO {
 
     public void setBeneficiaryNumber(String beneficiaryNumber) {
         this.beneficiaryNumber = beneficiaryNumber;
-    }
-
-    public String getInssPassword() {
-        return inssPassword;
-    }
-
-    public void setInssPassword(String inssPassword) {
-        this.inssPassword = inssPassword;
     }
 
     public UUID getUpdatedBy() {

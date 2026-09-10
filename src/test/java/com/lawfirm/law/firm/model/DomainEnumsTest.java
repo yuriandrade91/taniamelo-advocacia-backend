@@ -82,10 +82,13 @@ class DomainEnumsTest {
         assertSame(FileKind.DOCUMENT, FileKind.valueOf("DOCUMENT"));
         assertSame(FileKind.SIMULATION, FileKind.valueOf("SIMULATION"));
 
-        assertEquals(3, AuditAction.values().length);
+        assertEquals(4, AuditAction.values().length);
         assertSame(AuditAction.CREATE, AuditAction.valueOf("CREATE"));
         assertSame(AuditAction.UPDATE, AuditAction.valueOf("UPDATE"));
         assertSame(AuditAction.DELETE, AuditAction.valueOf("DELETE"));
+        // READ é a exceção à regra "só mutação gera auditoria": existe para a leitura da
+        // senha do INSS, que precisa ter autor e data.
+        assertSame(AuditAction.READ, AuditAction.valueOf("READ"));
     }
 
     @Test

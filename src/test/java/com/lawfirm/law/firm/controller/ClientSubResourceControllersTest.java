@@ -503,19 +503,18 @@ class ClientSubResourceControllersTest {
         }
 
         @Test
-        @DisplayName("PUT de dados profissionais sem a senha do INSS vira 400")
-        void professionalDataWithoutInssPasswordReturns400() throws Exception {
+        @DisplayName("PUT de dados profissionais sem a senha do INSS é aceito")
+        void professionalDataWithoutInssPasswordIsAccepted() throws Exception {
+            // A senha deixou de ser obrigatória na edição quando saiu do GET: quem edita a aba não
+            // a recebe mais, logo não tem como devolvê-la. Ausente significa "mantém a gravada" -
+            // e o teste do service garante que ela não é apagada.
             MockMvc mockMvc = mvcFor(new ClientProfessionalDataController(clientService));
 
             mockMvc.perform(
                             put("/api/v1/clients/{id}/professional-data", CLIENT)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content("{\"profession\":\"Costureira\"}"))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors[0].field").value("inssPassword"))
-                    .andExpect(
-                            jsonPath("$.errors[0].message")
-                                    .value("Por favor, informe Senha do INSS."));
+                    .andExpect(status().isOk());
         }
 
         @Test

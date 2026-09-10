@@ -28,7 +28,14 @@ public class ClientUpdateRequestDTO implements ClientWritableFields {
 
     @NotBlank private String mobilePhone;
 
-    @NotBlank private String inssPassword;
+    /**
+     * Ausente significa "mantém a que está gravada".
+     *
+     * <p>Deixou de ser obrigatória na edição quando a senha saiu do {@code GET}: o cliente da API
+     * não a recebe mais, logo não tem como devolvê-la num PUT. Exigi-la aqui obrigaria a tela a
+     * pedir a senha de novo a cada correção de endereço.
+     */
+    private String inssPassword;
 
     @NotNull private Gender gender;
 

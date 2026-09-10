@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
+import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
@@ -391,6 +392,40 @@ class ClientControllerUnitTest {
                     .delete(TestFixtures.CLIENT_ID);
 
             mockMvc.perform(delete("/api/v1/clients/{id}", TestFixtures.CLIENT_ID))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("a ficha NÃO traz mais a senha do INSS")
+        void detailsNeverCarryTheInssPassword() throws Exception {
+            when(clientService.findById(TestFixtures.CLIENT_ID))
+                    .thenReturn(Optional.of(detailsDto()));
+
+            mockMvc.perform(get("/api/v1/clients/{id}", TestFixtures.CLIENT_ID))
+                    .andExpect(status().isOk())
+                    // Voltar em toda abertura de ficha levava a senha para log de acesso,
+                    // cache de navegador e print de tela.
+                    .andExpect(jsonPath("$.data.inssPassword").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("GET /inss-password devolve a senha pelo endpoint dedicado")
+        void revealsInssPasswordOnItsOwnRoute() throws Exception {
+            when(clientService.revealInssPassword(TestFixtures.CLIENT_ID))
+                    .thenReturn(new ClientInssPasswordDTO("senha-do-portal"));
+
+            mockMvc.perform(get("/api/v1/clients/{id}/inss-password", TestFixtures.CLIENT_ID))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.inssPassword").value("senha-do-portal"));
+        }
+
+        @Test
+        @DisplayName("GET /inss-password de cliente inexistente propaga 404")
+        void revealOfMissingClientReturns404() throws Exception {
+            when(clientService.revealInssPassword(TestFixtures.CLIENT_ID))
+                    .thenThrow(NotFoundException.of("Cliente", TestFixtures.CLIENT_ID));
+
+            mockMvc.perform(get("/api/v1/clients/{id}/inss-password", TestFixtures.CLIENT_ID))
                     .andExpect(status().isNotFound());
         }
 

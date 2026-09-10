@@ -1,7 +1,11 @@
 package com.lawfirm.law.firm.service;
 
+import com.lawfirm.law.firm.audit.AuditAction;
+import com.lawfirm.law.firm.audit.AuditLog;
+import com.lawfirm.law.firm.audit.AuditLogRepository;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
+import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientMapper;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
@@ -47,14 +51,17 @@ public class ClientServiceImpl implements ClientService {
     private final ClientRepository repository;
     private final ClientMapper mapper;
     private final ClientSituationHistoryRepository historyRepository;
+    private final AuditLogRepository auditRepository;
 
     public ClientServiceImpl(
             ClientRepository repository,
             ClientMapper mapper,
-            ClientSituationHistoryRepository historyRepository) {
+            ClientSituationHistoryRepository historyRepository,
+            AuditLogRepository auditRepository) {
         this.repository = repository;
         this.mapper = mapper;
         this.historyRepository = historyRepository;
+        this.auditRepository = auditRepository;
     }
 
     @Override
@@ -208,6 +215,31 @@ public class ClientServiceImpl implements ClientService {
         repository.save(existing);
     }
 
+    /**
+     * Devolve a senha do INSS e registra QUEM leu e QUANDO.
+     *
+     * <p>A auditoria é o ponto do endpoint, não um detalhe: a senha é criptografada em repouso, e
+     * devolvê-la sem rastro tornaria a criptografia meia medida - protegeria contra quem lê o banco
+     * e não contra quem tem login. Com o registro, o escritório consegue responder "quem abriu a
+     * senha da dona Maria em março?".
+     *
+     * <p>Grava em transação própria, como o {@link com.lawfirm.law.firm.audit.AuditLogListener}: o
+     * registro da leitura não pode depender de uma transação de escrita que pode nem existir aqui.
+     */
+    @Override
+    @Transactional
+    public ClientInssPasswordDTO revealInssPassword(UUID id) {
+        Client existing = findOrThrow(id);
+        auditRepository.save(
+                new AuditLog(
+                        "Client",
+                        existing.getId(),
+                        AuditAction.READ,
+                        CurrentUser.id(),
+                        "Senha do INSS consultada"));
+        return new ClientInssPasswordDTO(existing.getInssPassword());
+    }
+
     @Override
     public Page<ClientSituationHistoryDTO> historyByClientId(
             UUID clientId, int pageNumber, int pageSize) {
@@ -277,7 +309,10 @@ public class ClientServiceImpl implements ClientService {
         existing.setContributionTime(dto.getContributionTime());
         existing.setContributionInMonths(
                 ContributionTimeParser.toMonths(dto.getContributionTime()));
-        existing.setInssPassword(dto.getInssPassword());
+        // Ausente = mantém: a senha não volta no GET, então quem edita a aba não a tem em mãos.
+        if (dto.getInssPassword() != null && !dto.getInssPassword().isBlank()) {
+            existing.setInssPassword(dto.getInssPassword());
+        }
         existing.setUpdatedBy(CurrentUser.id());
 
         return toProfessionalDataDTO(repository.save(existing));
@@ -402,7 +437,6 @@ public class ClientServiceImpl implements ClientService {
         dto.setContributionTime(entity.getContributionTime());
         dto.setContributionInMonths(entity.getContributionInMonths());
         dto.setBeneficiaryNumber(entity.getBeneficiaryNumber());
-        dto.setInssPassword(entity.getInssPassword());
         dto.setUpdatedBy(entity.getUpdatedBy());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;

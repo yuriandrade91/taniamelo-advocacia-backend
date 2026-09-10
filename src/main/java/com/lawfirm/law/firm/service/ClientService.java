@@ -2,6 +2,7 @@ package com.lawfirm.law.firm.service;
 
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
+import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPersonalDataRequestDTO;
@@ -48,6 +49,9 @@ public interface ClientService {
 
     /** Desfaz a exclusão lógica. Idempotente em cliente já ativo. */
     void restore(UUID id);
+
+    /** Senha do INSS do cliente. Registra a leitura na auditoria. */
+    ClientInssPasswordDTO revealInssPassword(UUID id);
 
     Page<ClientSituationHistoryDTO> historyByClientId(UUID clientId, int pageNumber, int pageSize);
 

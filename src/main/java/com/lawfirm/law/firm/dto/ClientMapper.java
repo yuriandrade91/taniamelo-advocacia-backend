@@ -89,6 +89,11 @@ public interface ClientMapper {
         if (dto.getClientType() == null) {
             dto.setClientType(entity.getClientType());
         }
+        // inss_password também é NOT NULL, e desde que a senha saiu do GET o cliente da API não
+        // tem como devolvê-la: ausente aqui só pode significar "mantém".
+        if (dto.getInssPassword() == null || dto.getInssPassword().isBlank()) {
+            dto.setInssPassword(entity.getInssPassword());
+        }
     }
 
     // ── Response mapping ──
