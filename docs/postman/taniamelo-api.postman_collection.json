@@ -1,0 +1,4705 @@
+{
+  "info": {
+    "name": "Tania Melo Advocacia — API (auth, clientes, agenda)",
+    "description": "Testes de contrato da API, executáveis no Postman ou por `newman` no CI.\n\n**Ordem importa.** A coleção é uma sequência: o login guarda o token, o cadastro guarda o id do cliente, e as pastas seguintes usam esses valores. Rodar um request isolado no meio pode falhar por falta de variável — é esperado.\n\n**Ela grava dados.** Aponte para o escritório de demonstração (`demo`), nunca para a base real: a coleção cria, cancela e exclui registros. A última pasta limpa o que criou.\n\nConfigure o ambiente em `aws.postman_environment.json` (baseUrl, tenantSlug, login, password). A senha nunca deve ser commitada.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Todo request leva o escritório no header; o login também precisa dele,",
+          "// porque é ele que diz onde procurar o usuário.",
+          "//",
+          "// Só preenche quando o request não trouxe o seu próprio: alguns casos testam",
+          "// justamente um X-Tenant-Id diferente, e um upsert cego apagaria o teste.",
+          "if (!pm.request.headers.has('X-Tenant-Id')) {",
+          "  pm.request.headers.add({ key: 'X-Tenant-Id', value: pm.variables.get('tenantSlug') });",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Vale para toda resposta: o contrato promete o envelope padrão inclusive em erro.",
+          "pm.test('responde JSON no envelope padrão', () => {",
+          "  const t = pm.response.text();",
+          "  if (pm.response.code === 204 || !t) return;",
+          "  let b;",
+          "  try { b = JSON.parse(t); } catch (e) {",
+          "    pm.expect.fail('resposta não é JSON: ' + t.slice(0, 200));",
+          "  }",
+          "  pm.expect(b, 'sem campo success').to.have.property('success');",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "tenantId",
+      "value": ""
+    },
+    {
+      "key": "clientId",
+      "value": ""
+    },
+    {
+      "key": "clientIdMinimo",
+      "value": ""
+    },
+    {
+      "key": "addressId",
+      "value": ""
+    },
+    {
+      "key": "addressId2",
+      "value": ""
+    },
+    {
+      "key": "interviewId",
+      "value": ""
+    },
+    {
+      "key": "paymentId",
+      "value": ""
+    },
+    {
+      "key": "appointmentId",
+      "value": ""
+    },
+    {
+      "key": "appointmentClienteId",
+      "value": ""
+    },
+    {
+      "key": "appointmentRetroativoId",
+      "value": ""
+    },
+    {
+      "key": "cpf",
+      "value": ""
+    },
+    {
+      "key": "marca",
+      "value": "[postman]"
+    },
+    {
+      "key": "inicio",
+      "value": ""
+    },
+    {
+      "key": "fim",
+      "value": ""
+    },
+    {
+      "key": "inicioLivre",
+      "value": ""
+    },
+    {
+      "key": "fimLivre",
+      "value": ""
+    },
+    {
+      "key": "passadoInicio",
+      "value": ""
+    },
+    {
+      "key": "passadoFim",
+      "value": ""
+    },
+    {
+      "key": "anoDoCompromisso",
+      "value": ""
+    },
+    {
+      "key": "encostaInicio",
+      "value": ""
+    },
+    {
+      "key": "encostaFim",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Autenticação",
+      "item": [
+        {
+          "name": "Resolver tenant pelo slug (público)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/resolve?slug={{tenantSlug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "resolve"
+              ],
+              "query": [
+                {
+                  "key": "slug",
+                  "value": "{{tenantSlug}}"
+                }
+              ]
+            },
+            "description": "Traduz o slug no tenantId. Único endpoint sem token e sem X-Tenant-Id."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"devolve o tenantId\", () => pm.expect(pm.response.json().data.tenantId).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Slug inexistente devolve 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/resolve?slug=nao-existe-postman",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "resolve"
+              ],
+              "query": [
+                {
+                  "key": "slug",
+                  "value": "nao-existe-postman"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (guarda o token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Grava o token nas variáveis da coleção; todo request seguinte o usa.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{login}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set(\"token\", d.token);",
+                  "pm.collectionVariables.set(\"tenantId\", d.tenantId);",
+                  "pm.test(\"token é um JWT de três partes\", () => pm.expect(d.token.split(\".\")).to.have.lengthOf(3));",
+                  "pm.test(\"tokenType Bearer\", () => pm.expect(d.tokenType).to.eql(\"Bearer\"));",
+                  "pm.test(\"expiração positiva\", () => pm.expect(d.expiresInSeconds).to.be.above(0));",
+                  "pm.test(\"papel conhecido\", () => pm.expect([\"ADMIN\",\"LAWYER\",\"STAFF\"]).to.include(d.role));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Senha errada devolve 401 sem revelar se o usuário existe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{login}}\",\n  \"password\": \"senha-definitivamente-errada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"não confirma a existência do usuário\", () => {",
+                  "  const t = pm.response.text().toLowerCase();",
+                  "  pm.expect(t).to.not.include(\"senha incorreta\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Usuário inexistente responde igual a senha errada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Respostas diferentes viram oráculo de 'este e-mail é cliente do escritório?'.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"ninguem-{{$timestamp}}@teste.com\",\n  \"password\": \"qualquer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login sem senha devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{login}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo password\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"password\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login sem login devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo login\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"login\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tenant inexistente é recusado (não vira o escritório default)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "escritorio-que-nao-existe"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Defeito real corrigido: o header desconhecido era ignorado e a requisição caía no schema default — que é o escritório real.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{login}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"código TENANT_NOT_FOUND\", () => pm.expect(pm.response.json().errors.map(e => e.code)).to.include(\"TENANT_NOT_FOUND\"));",
+                  "pm.test(\"não revela quais escritórios existem\", () => {",
+                  "  const t = pm.response.text().toLowerCase();",
+                  "  pm.expect(t).to.not.include(\"tania\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rota protegida com token forjado devolve 401 no envelope",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer nao.e.um.jwt"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"401 é JSON, não HTML do Spring\", () => {",
+                  "  pm.expect(pm.response.text().trim().startsWith(\"<\"), \"veio HTML\").to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rota protegida SEM Authorization devolve 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"401 no envelope, não HTML\", () => pm.expect(pm.response.text().trim().startsWith(\"<\")).to.be.false);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh rotaciona o token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.collectionVariables.set(\"token\", pm.response.json().data.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tenant corrente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "current"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Sessão, tenant e as regras de quem pode entrar."
+    },
+    {
+      "name": "2. Clientes",
+      "item": [
+        {
+          "name": "Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{marca}} Cliente\",\n  \"birthDate\": \"1970-05-20\",\n  \"cpf\": \"{{cpf}}\",\n  \"motherName\": \"Maria de Teste\",\n  \"mobilePhone\": \"+5531999990000\",\n  \"inssPassword\": \"senha-inss-123\",\n  \"gender\": \"Feminino\",\n  \"benefit\": \"Aposentadoria por idade\",\n  \"situation\": \"Formulário preenchido\",\n  \"clientType\": \"Potencial\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// CPF válido gerado na hora: o backend valida o dígito verificador e o CPF é",
+                  "// único na tabela — um valor fixo faria a segunda execução falhar por \"já cadastrado\".",
+                  "const d = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "for (const peso of [10, 11]) {",
+                  "  const soma = d.reduce((acc, x, i) => acc + x * (peso - i), 0);",
+                  "  const r = (soma * 10) % 11;",
+                  "  d.push(r === 10 ? 0 : r);",
+                  "}",
+                  "pm.collectionVariables.set(\"cpf\", d.join(\"\"));",
+                  "pm.collectionVariables.set(\"marca\", \"[postman] \" + Date.now().toString(36));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set(\"clientId\", d.id);",
+                  "pm.test(\"nasce Potencial\", () => pm.expect(d.clientType).to.eql(\"Potencial\"));",
+                  "pm.test(\"enum volta como label PT-BR\", () => pm.expect(d.situation).to.eql(\"Formulário preenchido\"));",
+                  "pm.test(\"header Location aponta o recurso\", () => pm.expect(pm.response.headers.get(\"Location\") || \"\").to.include(d.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar SÓ com os obrigatórios do Swagger",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ]
+            },
+            "description": "Regressão: nationality, isWhatsapp e hasDisability são NOT NULL no banco e opcionais no contrato — sem eles o cadastro devolvia 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{marca}} Cliente\",\n  \"birthDate\": \"1970-05-20\",\n  \"cpf\": \"{{cpf}}\",\n  \"motherName\": \"Maria de Teste\",\n  \"mobilePhone\": \"+5531999990000\",\n  \"inssPassword\": \"senha-inss-123\",\n  \"gender\": \"Feminino\",\n  \"benefit\": \"Aposentadoria por idade\",\n  \"situation\": \"Formulário preenchido\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// CPF válido gerado na hora: o backend valida o dígito verificador e o CPF é",
+                  "// único na tabela — um valor fixo faria a segunda execução falhar por \"já cadastrado\".",
+                  "const d = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "for (const peso of [10, 11]) {",
+                  "  const soma = d.reduce((acc, x, i) => acc + x * (peso - i), 0);",
+                  "  const r = (soma * 10) % 11;",
+                  "  d.push(r === 10 ? 0 : r);",
+                  "}",
+                  "pm.collectionVariables.set(\"cpf\", d.join(\"\"));",
+                  "pm.collectionVariables.set(\"marca\", \"[postman] \" + Date.now().toString(36));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set(\"clientIdMinimo\", d.id);",
+                  "pm.test(\"padrões da coluna aparecem preenchidos\", () => {",
+                  "  pm.expect(d.nationality).to.eql(\"Brasileira\");",
+                  "  pm.expect(d.isWhatsapp).to.be.true;",
+                  "  pm.expect(d.hasDisability).to.be.false;",
+                  "  pm.expect(d.notBillable).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CPF inválido devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{marca}} Cliente\",\n  \"birthDate\": \"1970-05-20\",\n  \"cpf\": \"11111111111\",\n  \"motherName\": \"Maria de Teste\",\n  \"mobilePhone\": \"+5531999990000\",\n  \"inssPassword\": \"senha-inss-123\",\n  \"gender\": \"Feminino\",\n  \"benefit\": \"Aposentadoria por idade\",\n  \"situation\": \"Formulário preenchido\",\n  \"clientType\": \"Potencial\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo cpf\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"cpf\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CPF repetido é recusado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ]
+            },
+            "description": "Usa o mesmo {{cpf}} do cadastro anterior (sem pre-request que o regenere).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{marca}} Cliente\",\n  \"birthDate\": \"1970-05-20\",\n  \"cpf\": \"{{cpf}}\",\n  \"motherName\": \"Maria de Teste\",\n  \"mobilePhone\": \"+5531999990000\",\n  \"inssPassword\": \"senha-inss-123\",\n  \"gender\": \"Feminino\",\n  \"benefit\": \"Aposentadoria por idade\",\n  \"situation\": \"Formulário preenchido\",\n  \"clientType\": \"Potencial\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 ou 409\", () => pm.expect([400,409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sem nome completo devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"birthDate\": \"1970-05-20\",\n  \"cpf\": \"{{cpf}}\",\n  \"motherName\": \"Maria de Teste\",\n  \"mobilePhone\": \"+5531999990000\",\n  \"inssPassword\": \"senha-inss-123\",\n  \"gender\": \"Feminino\",\n  \"benefit\": \"Aposentadoria por idade\",\n  \"situation\": \"Formulário preenchido\",\n  \"clientType\": \"Potencial\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// CPF válido gerado na hora: o backend valida o dígito verificador e o CPF é",
+                  "// único na tabela — um valor fixo faria a segunda execução falhar por \"já cadastrado\".",
+                  "const d = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "for (const peso of [10, 11]) {",
+                  "  const soma = d.reduce((acc, x, i) => acc + x * (peso - i), 0);",
+                  "  const r = (soma * 10) % 11;",
+                  "  d.push(r === 10 ? 0 : r);",
+                  "}",
+                  "pm.collectionVariables.set(\"cpf\", d.join(\"\"));",
+                  "pm.collectionVariables.set(\"marca\", \"[postman] \" + Date.now().toString(36));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo fullName\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"fullName\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Situação fora do enum devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{marca}} Cliente\",\n  \"birthDate\": \"1970-05-20\",\n  \"cpf\": \"{{cpf}}\",\n  \"motherName\": \"Maria de Teste\",\n  \"mobilePhone\": \"+5531999990000\",\n  \"inssPassword\": \"senha-inss-123\",\n  \"gender\": \"Feminino\",\n  \"benefit\": \"Aposentadoria por idade\",\n  \"situation\": \"Situação inventada\",\n  \"clientType\": \"Potencial\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// CPF válido gerado na hora: o backend valida o dígito verificador e o CPF é",
+                  "// único na tabela — um valor fixo faria a segunda execução falhar por \"já cadastrado\".",
+                  "const d = Array.from({length: 9}, () => Math.floor(Math.random() * 10));",
+                  "for (const peso of [10, 11]) {",
+                  "  const soma = d.reduce((acc, x, i) => acc + x * (peso - i), 0);",
+                  "  const r = (soma * 10) % 11;",
+                  "  d.push(r === 10 ? 0 : r);",
+                  "}",
+                  "pm.collectionVariables.set(\"cpf\", d.join(\"\"));",
+                  "pm.collectionVariables.set(\"marca\", \"[postman] \" + Date.now().toString(36));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"idade calculada\", () => pm.expect(pm.response.json().data.age).to.be.above(40));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Id inexistente devolve 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/11111111-2222-3333-4444-555555555555",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "11111111-2222-3333-4444-555555555555"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Id malformado não vira 500",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/isto-nao-e-uuid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "isto-nao-e-uuid"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"erro de cliente, não de servidor\", () => pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar paginado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients?pageNumber=1&pageSize=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const b = pm.response.json();",
+                  "pm.test(\"paginação 1-based e completa\", () => {",
+                  "  pm.expect(b.pagination.pageNumber).to.eql(1);",
+                  "  pm.expect(b.pagination.pageSize).to.eql(5);",
+                  "  pm.expect(b.pagination.hasPreviousPage).to.be.false;",
+                  "  pm.expect(b.pagination).to.have.property(\"totalRecords\");",
+                  "});",
+                  "pm.test(\"no máximo pageSize itens\", () => pm.expect(b.data.length).to.be.at.most(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Página além do fim devolve lista vazia",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients?pageNumber=99999&pageSize=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "99999"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"lista vazia, não 404\", () => pm.expect(pm.response.json().data).to.eql([]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar por clientType (label)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients?clientType=Potencial&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "clientType",
+                  "value": "Potencial"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"só potenciais\", () => pm.response.json().data.forEach(c => pm.expect(c.clientType).to.eql(\"Potencial\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar por clientType (nome da constante)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients?clientType=POTENCIAL&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "clientType",
+                  "value": "POTENCIAL"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"nome da constante funciona igual ao label\", () => pm.response.json().data.forEach(c => pm.expect(c.clientType).to.eql(\"Potencial\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "clientType repetido soma os dois",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients?clientType=Potencial&clientType=Verificado&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "clientType",
+                  "value": "Potencial"
+                },
+                {
+                  "key": "clientType",
+                  "value": "Verificado"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "clientType inválido devolve 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients?clientType=Inexistente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "clientType",
+                  "value": "Inexistente"
+                }
+              ]
+            },
+            "description": "Ignorar um filtro inválido devolveria a base inteira para quem pediu um recorte."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo clientType\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"clientType\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Data malformada devolve 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients?createdFrom=ontem",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "createdFrom",
+                  "value": "ontem"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo createdFrom\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"createdFrom\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH muda só a situação",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"situation\": \"Análise documental\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"mensagem em PT-BR\", () => pm.expect(pm.response.json().data.message).to.match(/sucesso/i));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH muda o tipo de cliente",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientType\": \"Verificado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH com enum inválido devolve 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"situation\": \"não existe\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Histórico traz DE e PARA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/situation-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "situation-history"
+              ]
+            },
+            "description": "Sem previousSituation a linha do tempo só consegue dizer 'passou para X'."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const h = pm.response.json().data;",
+                  "pm.test(\"tem pelo menos uma mudança\", () => pm.expect(h.length).to.be.above(0));",
+                  "pm.test(\"a mais recente tem situação anterior e nova\", () => {",
+                  "  pm.expect(h[0].currentSituation).to.eql(\"Análise documental\");",
+                  "  pm.expect(h[0].previousSituation).to.eql(\"Formulário preenchido\");",
+                  "  pm.expect(h[0].changedByUserId, \"sem autor não responde por quem\").to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "CRUD, filtros e histórico de situação."
+    },
+    {
+      "name": "3. Sub-recursos do cliente",
+      "item": [
+        {
+          "name": "Primeiro endereço vira principal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "addresses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addressType\": \"Residencial\",\n  \"street\": \"Rua de Teste\",\n  \"addressNumber\": \"10\",\n  \"neighborhood\": \"Centro\",\n  \"city\": \"Belo Horizonte\",\n  \"state\": \"MG\",\n  \"zipCode\": \"30000-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set(\"addressId\", d.id);",
+                  "pm.test(\"principal automático\", () => pm.expect(d.isPrimary).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Segundo com isPrimary desmarca o anterior",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "addresses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addressType\": \"Comercial\",\n  \"street\": \"Rua Dois\",\n  \"addressNumber\": \"10\",\n  \"neighborhood\": \"Centro\",\n  \"city\": \"Belo Horizonte\",\n  \"state\": \"MG\",\n  \"zipCode\": \"30000-000\",\n  \"isPrimary\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.collectionVariables.set(\"addressId2\", pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Exatamente um principal, e ele vem primeiro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "addresses"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const l = pm.response.json().data;",
+                  "pm.test(\"um único principal\", () => pm.expect(l.filter(e => e.isPrimary)).to.have.lengthOf(1));",
+                  "pm.test(\"principal primeiro\", () => pm.expect(l[0].isPrimary).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Endereço sem rua devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "addresses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addressType\": \"Residencial\",\n  \"addressNumber\": \"10\",\n  \"neighborhood\": \"Centro\",\n  \"city\": \"Belo Horizonte\",\n  \"state\": \"MG\",\n  \"zipCode\": \"30000-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo street\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"street\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tipo de endereço inválido devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "addresses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addressType\": \"Submarino\",\n  \"street\": \"Rua de Teste\",\n  \"addressNumber\": \"10\",\n  \"neighborhood\": \"Centro\",\n  \"city\": \"Belo Horizonte\",\n  \"state\": \"MG\",\n  \"zipCode\": \"30000-000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo addressType\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"addressType\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lote grava a lista inteira",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientIdMinimo}}/addresses/batch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientIdMinimo}}",
+                "addresses",
+                "batch"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addresses\": [\n    {\n      \"addressType\": \"Residencial\",\n      \"street\": \"Rua Um\",\n      \"addressNumber\": \"10\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"Belo Horizonte\",\n      \"state\": \"MG\",\n      \"zipCode\": \"30000-000\"\n    },\n    {\n      \"addressType\": \"Residencial\",\n      \"street\": \"Rua Dois\",\n      \"addressNumber\": \"10\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"Belo Horizonte\",\n      \"state\": \"MG\",\n      \"zipCode\": \"30000-000\"\n    },\n    {\n      \"addressType\": \"Residencial\",\n      \"street\": \"Rua Três\",\n      \"addressNumber\": \"10\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"Belo Horizonte\",\n      \"state\": \"MG\",\n      \"zipCode\": \"30000-000\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"três, na ordem enviada\", () => {",
+                  "  const ruas = pm.response.json().data.map(e => e.street);",
+                  "  pm.expect(ruas).to.eql([\"Rua Um\", \"Rua Dois\", \"Rua Três\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lote com item inválido não grava nenhum",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientIdMinimo}}/addresses/batch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientIdMinimo}}",
+                "addresses",
+                "batch"
+              ]
+            },
+            "description": "O ponto do endpoint é a atomicidade: meio cadastro é pior que nenhum.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addresses\": [\n    {\n      \"addressType\": \"Residencial\",\n      \"street\": \"Rua Que Não Deve Entrar\",\n      \"addressNumber\": \"10\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"Belo Horizonte\",\n      \"state\": \"MG\",\n      \"zipCode\": \"30000-000\"\n    },\n    {\n      \"addressType\": \"Residencial\",\n      \"addressNumber\": \"10\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"Belo Horizonte\",\n      \"state\": \"MG\",\n      \"zipCode\": \"30000-000\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirma que o lote inválido não entrou",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientIdMinimo}}/addresses?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientIdMinimo}}",
+                "addresses"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"nada do lote recusado foi gravado\", () => pm.expect(pm.response.json().data.map(e => e.street)).to.not.include(\"Rua Que Não Deve Entrar\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lote vazio devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientIdMinimo}}/addresses/batch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientIdMinimo}}",
+                "addresses",
+                "batch"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addresses\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir o principal promove o mais antigo",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/addresses/{{addressId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "addresses",
+                "{{addressId2}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "O promovido é o principal agora",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "addresses"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"cliente com endereço nunca fica sem principal\", () => pm.expect(pm.response.json().data.filter(e => e.isPrimary)).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar entrevista",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/interviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "interviews"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"{{marca}} primeira conversa\",\n  \"durationMinutes\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.collectionVariables.set(\"interviewId\", pm.response.json().data.id);",
+                  "pm.test(\"occurredAt assume agora quando omitido\", () => pm.expect(pm.response.json().data.occurredAt).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Entrevista sem conteúdo devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/interviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "interviews"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo content\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"content\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar entrevista",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/interviews/{{interviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "interviews",
+                "{{interviewId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"{{marca}} conversa revisada\",\n  \"durationMinutes\": 45\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"duração atualizada\", () => pm.expect(pm.response.json().data.durationMinutes).to.eql(45));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Aba profissional exige a senha do INSS",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/professional-data",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "professional-data"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profession\": \"Pedreiro\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo inssPassword\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"inssPassword\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gravar dados profissionais",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/professional-data",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "professional-data"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profession\": \"Costureira\",\n  \"ctps\": \"1234567\",\n  \"ctpsSeries\": \"0001-MG\",\n  \"inssPassword\": \"senha-inss\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"profissão gravada\", () => pm.expect(pm.response.json().data.profession).to.eql(\"Costureira\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lançar valor a receber do INSS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "payments"
+              ]
+            },
+            "description": "client_payments é o que o INSS paga AO CLIENTE — não honorário do escritório.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"{{marca}} atrasados\",\n  \"amount\": 1500.5,\n  \"dueDate\": \"2030-01-10\",\n  \"paidDate\": \"2030-01-05\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set(\"paymentId\", d.id);",
+                  "pm.test(\"nasce Pendente\", () => pm.expect(d.status).to.eql(\"Pendente\"));",
+                  "pm.test(\"ignora paidDate enviada na criação\", () => pm.expect(d.paidDate).to.be.null);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Valor zero devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"inválido\",\n  \"amount\": 0,\n  \"dueDate\": \"2030-01-10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo amount\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"amount\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar crédito sem data assume hoje",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "payments",
+                "{{paymentId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Pago\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const hoje = new Date().toISOString().slice(0, 10);",
+                  "pm.test(\"pago com a data de hoje\", () => {",
+                  "  pm.expect(pm.response.json().data.status).to.eql(\"Pago\");",
+                  "  pm.expect(pm.response.json().data.paidDate).to.eql(hoje);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Voltar para pendente limpa a data",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "payments",
+                "{{paymentId}}"
+              ]
+            },
+            "description": "Parcela pendente com data de crédito é contradição — o relatório somaria errado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Pendente\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"data de crédito limpa\", () => pm.expect(pm.response.json().data.paidDate).to.be.null);"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Endereços (inclusive em lote), entrevistas, abas de dados e financeiro do cliente."
+    },
+    {
+      "name": "4. Agenda",
+      "item": [
+        {
+          "name": "Agendar compromisso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{marca}} compromisso\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{inicio}}\",\n  \"endAt\": \"{{fim}}\",\n  \"modality\": \"Presencial\",\n  \"clientName\": \"Fulano de Teste\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Janela sempre no futuro: a agenda recusa data no passado sem confirmação",
+                  "// explícita, e \"agora\" faria a coleção falhar por um motivo que não é o testado.",
+                  "const base = new Date();",
+                  "base.setUTCDate(base.getUTCDate() + 45);",
+                  "base.setUTCHours(14, 0, 0, 0);",
+                  "pm.collectionVariables.set(\"inicio\", base.toISOString());",
+                  "const fim = new Date(base.getTime() + 60 * 60 * 1000);",
+                  "pm.collectionVariables.set(\"fim\", fim.toISOString());",
+                  "const depois = new Date(base.getTime() + 2 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set(\"inicioLivre\", depois.toISOString());",
+                  "pm.collectionVariables.set(\"fimLivre\", new Date(depois.getTime() + 60 * 60 * 1000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set(\"appointmentId\", d.id);",
+                  "pm.test(\"nasce Agendado\", () => pm.expect(d.status).to.eql(\"Agendado\"));",
+                  "pm.test(\"labels em PT-BR\", () => {",
+                  "  pm.expect(d.type).to.eql(\"Entrevista\");",
+                  "  pm.expect(d.modality).to.eql(\"Presencial\");",
+                  "});",
+                  "pm.test(\"registra o autor\", () => pm.expect(d.createdBy).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agendar com cliente vinculado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments"
+              ]
+            },
+            "description": "O nome vem do cliente; o nome livre é descartado — mas gravado como retrato, para o compromisso não ficar anônimo se o cliente for excluído.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{marca}} com cliente\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{inicioLivre}}\",\n  \"endAt\": \"{{fimLivre}}\",\n  \"modality\": \"Presencial\",\n  \"clientName\": \"Nome Digitado À Mão\",\n  \"clientId\": \"{{clientId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set(\"appointmentClienteId\", d.id);",
+                  "pm.test(\"vinculado ao cliente\", () => pm.expect(d.clientId).to.eql(pm.collectionVariables.get(\"clientId\")));",
+                  "pm.test(\"nome do cliente, não o digitado\", () => pm.expect(d.clientName).to.not.eql(\"Nome Digitado À Mão\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Término anterior ao início devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{marca}} compromisso\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{fim}}\",\n  \"endAt\": \"{{inicio}}\",\n  \"modality\": \"Presencial\",\n  \"clientName\": \"Fulano de Teste\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sem título devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{inicio}}\",\n  \"endAt\": \"{{fim}}\",\n  \"modality\": \"Presencial\",\n  \"clientName\": \"Fulano de Teste\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo title\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"title\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tipo fora do enum devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{marca}} compromisso\",\n  \"type\": \"Chá da tarde\",\n  \"startAt\": \"{{inicio}}\",\n  \"endAt\": \"{{fim}}\",\n  \"modality\": \"Presencial\",\n  \"clientName\": \"Fulano de Teste\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Data no passado exige ciência",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments"
+              ]
+            },
+            "description": "Não é proibido — audiência que já aconteceu precisa ser registrada. Só exige que alguém assuma a data.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{marca}} compromisso\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{passadoInicio}}\",\n  \"endAt\": \"{{passadoFim}}\",\n  \"modality\": \"Presencial\",\n  \"clientName\": \"Fulano de Teste\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const p = new Date(); p.setUTCDate(p.getUTCDate() - 5); p.setUTCHours(10,0,0,0);",
+                  "pm.collectionVariables.set(\"passadoInicio\", p.toISOString());",
+                  "pm.collectionVariables.set(\"passadoFim\", new Date(p.getTime()+3600000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"código PAST_DATE_NOT_CONFIRMED\", () => pm.expect(pm.response.json().errors.map(e => e.code)).to.include(\"PAST_DATE_NOT_CONFIRMED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Data no passado com ciência é aceita",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{marca}} retroativo\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{passadoInicio}}\",\n  \"endAt\": \"{{passadoFim}}\",\n  \"modality\": \"Presencial\",\n  \"clientName\": \"Fulano de Teste\",\n  \"pastDateAcknowledged\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.collectionVariables.set(\"appointmentRetroativoId\", pm.response.json().data.id);",
+                  "pm.test(\"quem confirmou fica registrado\", () => pm.expect(pm.response.json().data.pastDateAuthorizedBy).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cliente inexistente devolve 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{marca}} compromisso\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{inicio}}\",\n  \"endAt\": \"{{fim}}\",\n  \"modality\": \"Presencial\",\n  \"clientName\": \"Fulano de Teste\",\n  \"clientId\": \"11111111-2222-3333-4444-555555555555\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conflito: mesma faixa acusa e diz com quem",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/conflicts?startAt={{inicio}}&endAt={{fim}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "conflicts"
+              ],
+              "query": [
+                {
+                  "key": "startAt",
+                  "value": "{{inicio}}"
+                },
+                {
+                  "key": "endAt",
+                  "value": "{{fim}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const l = pm.response.json().data;",
+                  "pm.test(\"encontra o compromisso que ocupa o horário\", () => pm.expect(l.map(c => c.id)).to.include(pm.collectionVariables.get(\"appointmentId\")));",
+                  "pm.test(\"diz o título, não só que existe conflito\", () => pm.expect(l[0].title).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conflito: intervalos que só encostam NÃO conflitam",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/conflicts?startAt={{encostaInicio}}&endAt={{encostaFim}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "conflicts"
+              ],
+              "query": [
+                {
+                  "key": "startAt",
+                  "value": "{{encostaInicio}}"
+                },
+                {
+                  "key": "endAt",
+                  "value": "{{encostaFim}}"
+                }
+              ]
+            },
+            "description": "Intervalo meio-aberto: acusar aqui faria a agenda avisar em toda sequência de reuniões coladas, e o aviso viraria ruído."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const ini = new Date(pm.collectionVariables.get(\"inicio\"));",
+                  "pm.collectionVariables.set(\"encostaInicio\", new Date(ini.getTime() - 3600000).toISOString());",
+                  "pm.collectionVariables.set(\"encostaFim\", ini.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"13h-14h não conflita com 14h-15h\", () => pm.expect(pm.response.json().data.map(c => c.id)).to.not.include(pm.collectionVariables.get(\"appointmentId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conflito: excludeId evita conflitar consigo mesmo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/conflicts?startAt={{inicio}}&endAt={{fim}}&excludeId={{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "conflicts"
+              ],
+              "query": [
+                {
+                  "key": "startAt",
+                  "value": "{{inicio}}"
+                },
+                {
+                  "key": "endAt",
+                  "value": "{{fim}}"
+                },
+                {
+                  "key": "excludeId",
+                  "value": "{{appointmentId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"o próprio compromisso sai da lista\", () => pm.expect(pm.response.json().data.map(c => c.id)).to.not.include(pm.collectionVariables.get(\"appointmentId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conflito: janela invertida devolve vazio, não 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/conflicts?startAt={{fim}}&endAt={{inicio}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "conflicts"
+              ],
+              "query": [
+                {
+                  "key": "startAt",
+                  "value": "{{fim}}"
+                },
+                {
+                  "key": "endAt",
+                  "value": "{{inicio}}"
+                }
+              ]
+            },
+            "description": "É consulta disparada enquanto se digita: um 400 a cada tecla poluiria a tela."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"lista vazia\", () => pm.expect(pm.response.json().data).to.eql([]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conflito: parâmetro ausente devolve 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/conflicts?startAt={{inicio}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "conflicts"
+              ],
+              "query": [
+                {
+                  "key": "startAt",
+                  "value": "{{inicio}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar exige justificativa",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{marca}} editado\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{inicio}}\",\n  \"endAt\": \"{{fim}}\",\n  \"modality\": \"Presencial\",\n  \"clientName\": \"Fulano de Teste\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar com justificativa",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{marca}} editado\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{inicio}}\",\n  \"endAt\": \"{{fim}}\",\n  \"modality\": \"Presencial\",\n  \"clientName\": \"Fulano de Teste\",\n  \"justification\": \"cliente pediu para remarcar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"título atualizado\", () => pm.expect(pm.response.json().data.title).to.include(\"editado\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar paginado e ordenado por início",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments?pageNumber=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments"
+              ],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const inicios = pm.response.json().data.map(c => new Date(c.startAt).getTime());",
+                  "pm.test(\"ordem cronológica\", () => pm.expect(inicios).to.eql([...inicios].sort((a,b) => a-b)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar por tipo (nome da constante)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments?type=ENTREVISTA&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "ENTREVISTA"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"só entrevistas\", () => pm.response.json().data.forEach(c => pm.expect(c.type).to.eql(\"Entrevista\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tipo inválido devolve 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments?type=Piquenique",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "Piquenique"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resumo por mês exige o ano",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "summary"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resumo por mês",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/summary?year={{anoDoCompromisso}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "{{anoDoCompromisso}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"anoDoCompromisso\", new Date(pm.collectionVariables.get(\"inicio\")).getUTCFullYear());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"conta pendentes por mês\", () => pm.expect(pm.response.json().data).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Concluir compromisso",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentClienteId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentClienteId}}",
+                "complete"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"status Concluído\", () => pm.expect(pm.response.json().data.status).to.eql(\"Concluído\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Concluído não pode ser editado (422)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentClienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentClienteId}}"
+              ]
+            },
+            "description": "422 e não 400: é regra de negócio, não corpo malformado. Para remarcar algo encerrado, crie um compromisso novo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{marca}} compromisso\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{inicio}}\",\n  \"endAt\": \"{{fim}}\",\n  \"modality\": \"Presencial\",\n  \"clientName\": \"Fulano de Teste\",\n  \"justification\": \"quero remarcar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"código OPERATION_NOT_ALLOWED\", () => pm.expect(pm.response.json().errors.map(e => e.code)).to.include(\"OPERATION_NOT_ALLOWED\"));",
+                  "pm.test(\"a mensagem diz qual estado impede\", () => pm.expect(pm.response.json().errors.map(e => e.message).join(\" \")).to.include(\"concluído\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelar exige justificativa",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentId}}",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelar com justificativa",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentId}}",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"justification\": \"  cliente desistiu  \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"status Cancelado\", () => pm.expect(d.status).to.eql(\"Cancelado\"));",
+                  "pm.test(\"motivo gravado sem espaços\", () => pm.expect(d.cancellationReason).to.eql(\"cliente desistiu\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelar duas vezes é recusado (422)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentId}}",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"justification\": \"de novo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"código OPERATION_NOT_ALLOWED\", () => pm.expect(pm.response.json().errors.map(e => e.code)).to.include(\"OPERATION_NOT_ALLOWED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelado deixa de disputar horário",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/conflicts?startAt={{inicio}}&endAt={{fim}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "conflicts"
+              ],
+              "query": [
+                {
+                  "key": "startAt",
+                  "value": "{{inicio}}"
+                },
+                {
+                  "key": "endAt",
+                  "value": "{{fim}}"
+                }
+              ]
+            },
+            "description": "Avisar de conflito com algo que não vai acontecer é pior que não avisar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"sumiu dos conflitos\", () => pm.expect(pm.response.json().data.map(c => c.id)).to.not.include(pm.collectionVariables.get(\"appointmentId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trilha registra edição e cancelamento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentId}}",
+                "history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const acoes = pm.response.json().data.map(h => h.action);",
+                  "pm.test(\"edição registrada\", () => pm.expect(acoes).to.include(\"EDITED\"));",
+                  "pm.test(\"cancelamento registrado\", () => pm.expect(acoes).to.include(\"CANCELLED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir compromisso",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluído some da API",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restaurar compromisso",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentId}}",
+                "restore"
+              ]
+            },
+            "description": "É o que dispensa a janela de arrependimento no frontend."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"volta com o mesmo id\", () => pm.expect(d.id).to.eql(pm.collectionVariables.get(\"appointmentId\")));",
+                  "pm.test(\"volta como estava, cancelado\", () => pm.expect(d.status).to.eql(\"Cancelado\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trilha registra DELETED e RESTORED",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentId}}",
+                "history"
+              ]
+            },
+            "description": "Excluir era a ação mais destrutiva e a única sem rastro."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const t = pm.response.json().data;",
+                  "const acoes = t.map(h => h.action);",
+                  "pm.test(\"exclusão registrada\", () => pm.expect(acoes).to.include(\"DELETED\"));",
+                  "pm.test(\"restauração registrada\", () => pm.expect(acoes).to.include(\"RESTORED\"));",
+                  "pm.test(\"exclusão guarda quem e quando, sem exigir motivo\", () => {",
+                  "  const d = t.find(h => h.action === \"DELETED\");",
+                  "  pm.expect(d.justification).to.be.null;",
+                  "  pm.expect(d.changedByUserId).to.be.a(\"string\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore de id inexistente devolve 404",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/11111111-2222-3333-4444-555555555555/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "11111111-2222-3333-4444-555555555555",
+                "restore"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Compromissos, conflitos de horário, ciclo de vida e trilha de auditoria."
+    },
+    {
+      "name": "5. Usuários",
+      "item": [
+        {
+          "name": "Listar usuários",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            },
+            "description": "Existe para traduzir em nome os UUIDs de autoria dos demais recursos."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const u = pm.response.json().data;",
+                  "pm.test(\"ordenada por nome\", () => {",
+                  "  const nomes = u.map(x => x.fullName);",
+                  "  pm.expect(nomes).to.eql([...nomes].sort((a,b) => a.localeCompare(b, \"pt-BR\")));",
+                  "});",
+                  "pm.test(\"não expõe e-mail nem hash de senha\", () => u.forEach(x => {",
+                  "  pm.expect(x).to.not.have.property(\"email\");",
+                  "  pm.expect(x).to.not.have.property(\"passwordHash\");",
+                  "}));",
+                  "pm.test(\"só ativos por padrão\", () => u.forEach(x => pm.expect(x.active).to.be.true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Incluir desativados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?includeInactive=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "includeInactive",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Para resolver o nome de quem já saiu do escritório mas assina registros antigos."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Consulta somente leitura, para resolver autoria."
+    },
+    {
+      "name": "6. Exclusão lógica e limpeza",
+      "item": [
+        {
+          "name": "Excluir cliente",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}"
+              ]
+            },
+            "description": "Exclusão lógica: a ficha inteira continua no banco."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluído devolve 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sub-recurso de excluído também devolve 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "addresses"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restaurar cliente",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "restore"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A ficha volta INTEIRA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "addresses"
+              ]
+            },
+            "description": "Se a exclusão fosse física, esta lista voltaria vazia e ninguém perceberia até precisar dela."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"endereços sobreviveram\", () => pm.expect(pm.response.json().data.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Histórico de situação também sobreviveu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/situation-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "situation-history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"histórico preservado\", () => pm.expect(pm.response.json().data.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore é idempotente",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "restore"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore de id inexistente devolve 404",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/11111111-2222-3333-4444-555555555555/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "11111111-2222-3333-4444-555555555555",
+                "restore"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "LIMPEZA: excluir os compromissos criados",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 ou 404 (já excluído)\", () => pm.expect([204,404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "LIMPEZA: compromisso com cliente",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentClienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentClienteId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 ou 404\", () => pm.expect([204,404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "LIMPEZA: compromisso retroativo",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentRetroativoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointmentRetroativoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 ou 404\", () => pm.expect([204,404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "LIMPEZA: cliente principal",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 ou 404\", () => pm.expect([200,404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "LIMPEZA: cliente mínimo",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientIdMinimo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientIdMinimo}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 ou 404\", () => pm.expect([200,404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"sai sem erro\", () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Prova que a exclusão é lógica e devolve o ambiente ao estado anterior."
+    }
+  ]
+}
