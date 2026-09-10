@@ -19,6 +19,7 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("ClientMapper (MapStruct): DTO <-> entidade e a idade derivada")
@@ -88,22 +89,17 @@ class ClientMapperTest {
     }
 
     @Test
-    @DisplayName("REGRESSÃO: campos omitidos no DTO zeram os defaults da entidade")
-    void entityDefaultsAreOverwrittenByNull() {
+    @DisplayName("campos omitidos no DTO recebem o padrão da coluna, não null")
+    void omittedFieldsGetColumnDefaults() {
         // nationality, is_whatsapp e has_disability são NOT NULL DEFAULT no banco
-        // (V2__clients.sql) e a entidade Client repete esses defaults em Java. O mapper,
-        // porém, copia o campo do DTO mesmo quando é null, apagando o default - e o INSERT
-        // falha com violação de NOT NULL (409 DATABASE_INTEGRITY_ERROR na API).
+        // (V2__clients.sql) e opcionais no contrato. O mapper copiava o campo do DTO
+        // mesmo quando null, apagando o default da entidade - e o INSERT falhava com
+        // violação de NOT NULL, que a API devolvia como 409 DATABASE_INTEGRITY_ERROR.
+        // Quem seguia o Swagger à risca não conseguia cadastrar cliente.
         //
-        // Este teste FIXA O COMPORTAMENTO ATUAL (defeituoso). A correção é anotar os três
-        // campos no ClientMapper com
-        //   @Mapping(target = "<campo>", nullValuePropertyMappingStrategy = IGNORE)
-        // Quando isso for feito, este teste falha e deve passar a esperar os defaults.
-        Client fresh = new Client();
-        assertEquals("Brasileira", fresh.getNationality(), "default da entidade");
-        assertTrue(fresh.getIsWhatsapp(), "default da entidade");
-        assertFalse(fresh.getHasDisability(), "default da entidade");
-
+        // A correção é o @AfterMapping do ClientMapper. A sugestão antiga
+        // (nullValuePropertyMappingStrategy = IGNORE) não serve: ela vale para métodos
+        // de atualização com @MappingTarget, e toEntity cria a entidade.
         ClientCreateRequestDTO dto = createDto();
         assertNull(dto.getNationality());
         assertNull(dto.getIsWhatsapp());
@@ -111,9 +107,11 @@ class ClientMapperTest {
 
         Client mapped = mapper.toEntity(dto);
 
-        assertNull(mapped.getNationality(), "default perdido");
-        assertNull(mapped.getIsWhatsapp(), "default perdido");
-        assertNull(mapped.getHasDisability(), "default perdido");
+        assertEquals("Brasileira", mapped.getNationality());
+        assertTrue(mapped.getIsWhatsapp());
+        assertFalse(mapped.getHasDisability());
+        assertFalse(mapped.getNotBillable());
+        assertEquals(ClientType.POTENCIAL, mapped.getClientType());
     }
 
     @Test
@@ -250,6 +248,68 @@ class ClientMapperTest {
         assertEquals(TestFixtures.CLIENT_ID, dto.getId());
         assertEquals("Maria da Silva", dto.getFullName());
         assertEquals("529.982.247-25", dto.getCpf());
+    }
+
+    @Nested
+    @DisplayName("edição preserva as colunas NOT NULL que o contrato deixa opcionais")
+    class PadroesObrigatoriosNaEdicao {
+
+        @Test
+        @DisplayName("update sem os opcionais MANTÉM o que está gravado, não volta ao padrão")
+        void updateKeepsExistingValues() {
+            Client existente = TestFixtures.client();
+            existente.setNationality("Portuguesa");
+            existente.setIsWhatsapp(false);
+            existente.setHasDisability(true);
+            existente.setNotBillable(true);
+            existente.setClientType(ClientType.VERIFICADO);
+
+            ClientUpdateRequestDTO dto = new ClientUpdateRequestDTO();
+            dto.setFullName("Maria da Silva");
+            dto.setBirthDate(LocalDate.of(1970, 5, 20));
+            dto.setCpf("529.982.247-25");
+            dto.setMotherName("Mãe");
+            dto.setMobilePhone("+5531999990000");
+            dto.setInssPassword("senha");
+            dto.setGender(Gender.FEMININO);
+            dto.setBenefit(BenefitType.APOSENTADORIA_POR_IDADE);
+            dto.setSituation(Situation.FORMULARIO_PREENCHIDO);
+
+            mapper.updateEntityFromDto(dto, existente);
+
+            // notBillable e clientType são decisões de gestão do caso: resetá-las numa
+            // edição de endereço seria perda silenciosa.
+            assertEquals("Portuguesa", existente.getNationality());
+            assertEquals(Boolean.FALSE, existente.getIsWhatsapp());
+            assertEquals(Boolean.TRUE, existente.getHasDisability());
+            assertEquals(Boolean.TRUE, existente.getNotBillable());
+            assertEquals(ClientType.VERIFICADO, existente.getClientType());
+        }
+
+        @Test
+        @DisplayName("update com valor explícito sobrescreve")
+        void updateOverwritesWhenSent() {
+            Client existente = TestFixtures.client();
+            existente.setClientType(ClientType.POTENCIAL);
+
+            ClientUpdateRequestDTO dto = new ClientUpdateRequestDTO();
+            dto.setFullName("Maria da Silva");
+            dto.setBirthDate(LocalDate.of(1970, 5, 20));
+            dto.setCpf("529.982.247-25");
+            dto.setMotherName("Mãe");
+            dto.setMobilePhone("+5531999990000");
+            dto.setInssPassword("senha");
+            dto.setGender(Gender.FEMININO);
+            dto.setBenefit(BenefitType.APOSENTADORIA_POR_IDADE);
+            dto.setSituation(Situation.FORMULARIO_PREENCHIDO);
+            dto.setClientType(ClientType.VERIFICADO);
+            dto.setNationality("Italiana");
+
+            mapper.updateEntityFromDto(dto, existente);
+
+            assertEquals(ClientType.VERIFICADO, existente.getClientType());
+            assertEquals("Italiana", existente.getNationality());
+        }
     }
 
     @Test

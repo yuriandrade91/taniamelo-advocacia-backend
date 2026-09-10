@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.Period;
 import java.time.ZoneOffset;
 import org.mapstruct.AfterMapping;
+import org.mapstruct.BeforeMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -18,13 +19,7 @@ public interface ClientMapper {
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "contributionInMonths", ignore = true)
-    @Mapping(
-            target = "notBillable",
-            expression = "java(dto.getNotBillable() != null ? dto.getNotBillable() : false)")
-    @Mapping(
-            target = "clientType",
-            expression =
-                    "java(dto.getClientType() != null ? dto.getClientType() : com.lawfirm.law.firm.model.ClientType.POTENCIAL)")
+    @Mapping(target = "deletedAt", ignore = true)
     Client toEntity(ClientCreateRequestDTO dto);
 
     // ── Update: request DTO -> existing entity (in place) ──
@@ -33,15 +28,68 @@ public interface ClientMapper {
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "contributionInMonths", ignore = true)
-    @Mapping(
-            target = "notBillable",
-            expression =
-                    "java(dto.getNotBillable() != null ? dto.getNotBillable() : entity.getNotBillable())")
-    @Mapping(
-            target = "clientType",
-            expression =
-                    "java(dto.getClientType() != null ? dto.getClientType() : entity.getClientType())")
+    @Mapping(target = "deletedAt", ignore = true)
     void updateEntityFromDto(ClientUpdateRequestDTO dto, @MappingTarget Client entity);
+
+    /**
+     * Preenche os campos que o banco exige e o contrato deixa opcional.
+     *
+     * <p>A entidade já nasce com esses valores nos inicializadores de campo, mas o MapStruct copia
+     * o DTO por cima e um campo ausente vira {@code null} — que a coluna {@code NOT NULL} recusa. O
+     * resultado era um cadastro que seguia o Swagger à risca e recebia 409 {@code
+     * DATABASE_INTEGRITY_ERROR}, sem dizer qual campo faltava.
+     *
+     * <p>Uma lista só, e não uma expressão por campo no {@code @Mapping}: o problema já tinha sido
+     * remendado assim duas vezes ({@code notBillable} e {@code clientType}) e as três colunas
+     * seguintes ficaram de fora. Coluna nova com {@code NOT NULL DEFAULT} entra aqui.
+     */
+    @AfterMapping
+    default void aplicarPadroesDeColunaObrigatoria(@MappingTarget Client entity) {
+        if (entity.getNationality() == null) {
+            entity.setNationality("Brasileira");
+        }
+        if (entity.getIsWhatsapp() == null) {
+            entity.setIsWhatsapp(true);
+        }
+        if (entity.getHasDisability() == null) {
+            entity.setHasDisability(false);
+        }
+        if (entity.getNotBillable() == null) {
+            entity.setNotBillable(false);
+        }
+        if (entity.getClientType() == null) {
+            entity.setClientType(com.lawfirm.law.firm.model.ClientType.POTENCIAL);
+        }
+    }
+
+    /**
+     * No PUT, campo ausente nesses cinco significa "mantém o que está gravado", não "volta ao
+     * padrão": {@code notBillable} e {@code clientType} são decisões de gestão do caso, e
+     * resetá-las numa edição de endereço seria perda silenciosa.
+     *
+     * <p>Copiar o valor atual para o DTO antes do mapeamento resolve isso num lugar só. O DTO é
+     * objeto de requisição, vive uma chamada e não é reaproveitado — por isso escrever nele aqui é
+     * seguro, e é o que evita cinco expressões inline que a próxima coluna esqueceria de ganhar.
+     */
+    @BeforeMapping
+    default void preservarObrigatoriosNaEdicao(
+            ClientUpdateRequestDTO dto, @MappingTarget Client entity) {
+        if (dto.getNationality() == null) {
+            dto.setNationality(entity.getNationality());
+        }
+        if (dto.getIsWhatsapp() == null) {
+            dto.setIsWhatsapp(entity.getIsWhatsapp());
+        }
+        if (dto.getHasDisability() == null) {
+            dto.setHasDisability(entity.getHasDisability());
+        }
+        if (dto.getNotBillable() == null) {
+            dto.setNotBillable(entity.getNotBillable());
+        }
+        if (dto.getClientType() == null) {
+            dto.setClientType(entity.getClientType());
+        }
+    }
 
     // ── Response mapping ──
     ClientDetailsDTO toDTO(Client entity);
