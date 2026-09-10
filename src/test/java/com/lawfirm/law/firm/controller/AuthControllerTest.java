@@ -14,7 +14,9 @@ import com.lawfirm.law.firm.exception.GlobalExceptionHandler;
 import com.lawfirm.law.firm.model.User;
 import com.lawfirm.law.firm.repository.TenantRepository;
 import com.lawfirm.law.firm.repository.UserRepository;
+import com.lawfirm.law.firm.security.AccountLockService;
 import com.lawfirm.law.firm.security.JwtService;
+import com.lawfirm.law.firm.security.LoginThrottleService;
 import com.lawfirm.law.firm.service.RefreshTokenService;
 import com.lawfirm.law.firm.support.TestFixtures;
 import com.lawfirm.law.firm.tenant.TenancyProperties;
@@ -51,6 +53,13 @@ class AuthControllerTest {
     @Mock private UserRepository userRepository;
     @Mock private TenantRepository tenantRepository;
     @Mock private RefreshTokenService refreshTokenService;
+    @Mock private AccountLockService accountLock;
+
+    /**
+     * Real, não mock: o limite de tentativas é lógica de verdade e o teste de rajada abaixo precisa
+     * dela funcionando. O bloqueio de conta é mock porque depende do banco.
+     */
+    private final LoginThrottleService loginThrottle = new LoginThrottleService();
 
     private MockMvc mockMvc;
     private TenancyProperties tenancyProperties;
@@ -69,6 +78,8 @@ class AuthControllerTest {
                         tenantRepository,
                         refreshTokenService,
                         tenancyProperties,
+                        loginThrottle,
+                        accountLock,
                         "refreshToken",
                         "/api/v1/auth",
                         false,
@@ -391,6 +402,57 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("rajada de senhas erradas passa a devolver 429 com Retry-After")
+    void bruteForceIsThrottled() throws Exception {
+        when(authenticationManager.authenticate(any()))
+                .thenThrow(new BadCredentialsException("credenciais inválidas"));
+
+        // As cinco primeiras respondem 401: é o comportamento normal de senha errada.
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(
+                            post("/api/v1/auth/login")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"login\":\"dra.tania\",\"password\":\"errada\"}"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        // A sexta nem chega a verificar a senha - que é o ponto: um ataque quer justamente
+        // forçar o custo de hashing a cada tentativa.
+        mockMvc.perform(
+                        post("/api/v1/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"login\":\"dra.tania\",\"password\":\"errada\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists("Retry-After"))
+                .andExpect(jsonPath("$.errors[0].code").value("TOO_MANY_ATTEMPTS"));
+    }
+
+    @Test
+    @DisplayName("a resposta do limite não distingue conta bloqueada de IP throttled")
+    void throttleResponseDoesNotLeakAccountExistence() throws Exception {
+        when(authenticationManager.authenticate(any()))
+                .thenThrow(new BadCredentialsException("credenciais inválidas"));
+
+        for (int i = 0; i < 6; i++) {
+            mockMvc.perform(
+                    post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"login\":\"existe-ou-nao\",\"password\":\"x\"}"));
+        }
+
+        // Mensagem genérica: se ela dissesse "conta bloqueada", bastaria errar a senha seis
+        // vezes para descobrir que aquele login existe.
+        mockMvc.perform(
+                        post("/api/v1/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"login\":\"existe-ou-nao\",\"password\":\"x\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(
+                        jsonPath("$.errors[0].message")
+                                .value("Muitas tentativas. Tente novamente em alguns minutos."));
+    }
+
+    @Test
     @DisplayName("cookie seguro/SameSite=None é aplicado quando configurado (produção)")
     void secureCookieConfiguration() throws Exception {
         AuthController secureController =
@@ -401,6 +463,8 @@ class AuthControllerTest {
                         tenantRepository,
                         refreshTokenService,
                         tenancyProperties,
+                        loginThrottle,
+                        accountLock,
                         "rt",
                         "/api/v1/auth",
                         true,
@@ -435,6 +499,8 @@ class AuthControllerTest {
                         tenantRepository,
                         refreshTokenService,
                         tenancyProperties,
+                        loginThrottle,
+                        accountLock,
                         "meu_refresh",
                         "/api/v1/auth",
                         false,

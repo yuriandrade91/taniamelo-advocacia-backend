@@ -47,6 +47,19 @@ public class User {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    /** Falhas consecutivas de login. Zera a cada acerto. */
+    @Column(name = "failed_login_attempts", nullable = false)
+    private Integer failedLoginAttempts = 0;
+
+    /**
+     * Até quando a conta está bloqueada. Nulo = liberada.
+     *
+     * <p>Guardar o instante, e não um booleano, faz o desbloqueio acontecer sozinho com a passagem
+     * do tempo: não há job para rodar nem ninguém para lembrar de destravar.
+     */
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) this.createdAt = Instant.now();
@@ -128,5 +141,21 @@ public class User {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Integer getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public void setFailedLoginAttempts(Integer failedLoginAttempts) {
+        this.failedLoginAttempts = failedLoginAttempts;
+    }
+
+    public Instant getLockedUntil() {
+        return lockedUntil;
+    }
+
+    public void setLockedUntil(Instant lockedUntil) {
+        this.lockedUntil = lockedUntil;
     }
 }

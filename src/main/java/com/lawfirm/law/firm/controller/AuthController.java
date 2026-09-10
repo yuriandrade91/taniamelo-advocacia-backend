@@ -7,7 +7,9 @@ import com.lawfirm.law.firm.model.Tenant;
 import com.lawfirm.law.firm.model.User;
 import com.lawfirm.law.firm.repository.TenantRepository;
 import com.lawfirm.law.firm.repository.UserRepository;
+import com.lawfirm.law.firm.security.AccountLockService;
 import com.lawfirm.law.firm.security.JwtService;
+import com.lawfirm.law.firm.security.LoginThrottleService;
 import com.lawfirm.law.firm.service.RefreshTokenService;
 import com.lawfirm.law.firm.tenant.TenancyProperties;
 import com.lawfirm.law.firm.tenant.TenantContext;
@@ -29,6 +31,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -47,6 +50,8 @@ public class AuthController {
     private final TenantRepository tenantRepository;
     private final RefreshTokenService refreshTokenService;
     private final TenancyProperties tenancyProperties;
+    private final LoginThrottleService loginThrottle;
+    private final AccountLockService accountLock;
 
     private final String cookieName;
     private final String cookiePath;
@@ -60,11 +65,15 @@ public class AuthController {
             TenantRepository tenantRepository,
             RefreshTokenService refreshTokenService,
             TenancyProperties tenancyProperties,
+            LoginThrottleService loginThrottle,
+            AccountLockService accountLock,
             @Value("${app.auth.refresh-cookie.name:refreshToken}") String cookieName,
             @Value("${app.auth.refresh-cookie.path:/api/v1/auth}") String cookiePath,
             @Value("${app.auth.refresh-cookie.secure:false}") boolean cookieSecure,
             @Value("${app.auth.refresh-cookie.same-site:Lax}") String cookieSameSite) {
         this.authenticationManager = authenticationManager;
+        this.loginThrottle = loginThrottle;
+        this.accountLock = accountLock;
         this.jwtService = jwtService;
         this.userRepository = userRepository;
         this.tenantRepository = tenantRepository;
@@ -149,8 +158,23 @@ public class AuthController {
                     @RequestBody
                     LoginRequestDTO request,
             HttpServletRequest httpRequest) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getLogin(), request.getPassword()));
+        String ip = clientIp(httpRequest);
+        // As duas checagens antes de verificar a senha: quem já estourou o limite não deve
+        // gastar CPU de hashing, que é exatamente o que um ataque quer forçar.
+        loginThrottle.ensureAllowed(ip, request.getLogin());
+        accountLock.ensureNotLocked(request.getLogin());
+
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getLogin(), request.getPassword()));
+        } catch (AuthenticationException ex) {
+            loginThrottle.registerFailure(ip, request.getLogin());
+            accountLock.registerFailure(request.getLogin());
+            throw ex;
+        }
+        loginThrottle.registerSuccess(request.getLogin());
+        accountLock.registerSuccess(request.getLogin());
 
         User user =
                 userRepository
@@ -287,5 +311,23 @@ public class AuthController {
             }
         }
         return null;
+    }
+
+    /**
+     * IP de quem chamou.
+     *
+     * <p>Usa {@code X-Forwarded-For} quando presente porque a instância pode ficar atrás de proxy;
+     * sem isso, todo mundo apareceria com o IP do proxy e o limite por IP viraria um limite global,
+     * derrubando o escritório inteiro no primeiro ataque.
+     *
+     * <p>O cabeçalho é forjável por quem chama direto na instância - por isso ele é uma das duas
+     * chaves, nunca a única: o limite por login não depende dele.
+     */
+    private static String clientIp(HttpServletRequest request) {
+        String encaminhado = request.getHeader("X-Forwarded-For");
+        if (encaminhado != null && !encaminhado.isBlank()) {
+            return encaminhado.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

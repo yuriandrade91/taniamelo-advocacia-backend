@@ -44,6 +44,7 @@
 		     o BOM abaixo só estende esse alinhamento aos módulos (postgresql), que o
 		     parent do Boot não gerencia. -->
 		<testcontainers.version>2.0.5</testcontainers.version>
+		<bucket4j.version>8.19.0</bucket4j.version>
 		<sonar.projectKey>taniamelo-advocacia-backend</sonar.projectKey>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
 		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
@@ -114,6 +115,23 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+
+		<!-- Limite de tentativas de login. Biblioteca, e não contador próprio: contar
+		     é fácil, mas janela deslizante, expiração e concorrência são o tipo de
+		     detalhe que se erra em silêncio. Só o backend em memória é usado - a
+		     aplicação roda numa instância. -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-core</artifactId>
+			<version>${bucket4j.version}</version>
+		</dependency>
+
+		<!-- Guarda os buckets com expiração: sem isso, cada IP e cada login tentado
+		     ficaria na memória para sempre, e um ataque viraria vazamento de memória. -->
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
 		</dependency>
 
 		<!-- Validation annotations -->

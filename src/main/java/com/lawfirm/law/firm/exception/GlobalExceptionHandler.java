@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -317,6 +318,22 @@ public class GlobalExceptionHandler {
         return respond(
                 HttpStatus.UNAUTHORIZED,
                 List.of(new ApiError(null, "Credenciais inválidas", "INVALID_CREDENTIALS")));
+    }
+
+    /**
+     * Tentativas demais de login.
+     *
+     * <p>429 com {@code Retry-After}: o cabeçalho é o que permite a uma tela dizer "tente em 3
+     * minutos" em vez de deixar a pessoa insistindo. O corpo NÃO distingue limite por IP de conta
+     * bloqueada - a diferença revelaria quais logins existem.
+     */
+    @ExceptionHandler(TooManyAttemptsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTooManyAttempts(TooManyAttemptsException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(
+                        ApiResponse.error(
+                                List.of(new ApiError(null, ex.getMessage(), "TOO_MANY_ATTEMPTS"))));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
