@@ -31,6 +31,12 @@ public final class ClientSpecification {
      *
      * <p>CPF: comparação por dígitos dos dois lados ({@code regexp_replace(cpf, '[^0-9]', '')}),
      * então "52998224725" encontra "529.982.247-25" e vice-versa, independente da formatação.
+     *
+     * <p>O ramo do CPF só entra quando o termo é <b>só número</b> (com pontuação de CPF) e tem ao
+     * menos {@value #DIGITOS_MINIMOS_CPF} dígitos. Sem essas duas condições, buscar por um nome que
+     * tenha qualquer algarismo — "Maria 2ª" — extraía o dígito e virava {@code cpf LIKE '%2%'}, que
+     * casa com quase toda a base. Quem procura CPF não digita letra junto, e ninguém procura uma
+     * pessoa por um dígito só.
      */
     public static Specification<Client> searchTerm(String searchTerm) {
         return (root, query, cb) -> {
@@ -45,7 +51,7 @@ public final class ClientSpecification {
             Predicate nameLike = cb.like(fullNameExpr, "%" + folded + "%");
 
             String digits = folded.replaceAll("\\D", "");
-            if (digits.isEmpty()) {
+            if (!buscaPorCpf(folded, digits)) {
                 return nameLike;
             }
 
@@ -61,6 +67,15 @@ public final class ClientSpecification {
 
             return cb.or(nameLike, cpfLike);
         };
+    }
+
+    /** Menos que isto num CPF parcial casa com meia base e não ajuda ninguém a achar ninguém. */
+    private static final int DIGITOS_MINIMOS_CPF = 3;
+
+    /** Termo com letra é nome, não CPF - mesmo que tenha algarismo no meio. */
+    private static boolean buscaPorCpf(String termo, String digitos) {
+        if (digitos.length() < DIGITOS_MINIMOS_CPF) return false;
+        return termo.chars().noneMatch(Character::isLetter);
     }
 
     public static Specification<Client> benefitIn(List<BenefitType> benefits) {

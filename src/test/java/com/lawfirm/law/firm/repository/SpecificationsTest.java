@@ -128,6 +128,38 @@ class SpecificationsTest {
         }
 
         @Test
+        @DisplayName("nome com algarismo no meio continua sendo busca por nome")
+        void nameWithADigitIsNotACpfSearch() {
+            // Defeito real, encontrado pela suíte de fora: o termo "Maria 2ª" tinha o
+            // dígito extraído e virava `cpf LIKE '%2%'`, que casa com quase toda a
+            // base. Quem procura CPF não digita letra junto.
+            for (String termo : new String[] {"Maria 2", "Cliente 42 Silva", "Joao 3o andar"}) {
+                apply(ClientSpecification.searchTerm(termo), root);
+                verify(cb, org.mockito.Mockito.never())
+                        .or(any(Predicate.class), any(Predicate.class));
+            }
+        }
+
+        @Test
+        @DisplayName("um ou dois dígitos soltos não viram busca por CPF")
+        void tooFewDigitsIsNotACpfSearch() {
+            for (String termo : new String[] {"2", "42", "1-2"}) {
+                apply(ClientSpecification.searchTerm(termo), root);
+                verify(cb, org.mockito.Mockito.never())
+                        .or(any(Predicate.class), any(Predicate.class));
+            }
+        }
+
+        @Test
+        @DisplayName("CPF parcial, só com números e pontuação, ainda procura no CPF")
+        void partialCpfStillSearchesCpf() {
+            // O par dos dois acima: apertar demais tornaria inútil a busca por
+            // pedaço de CPF, que é como a recepção acha cliente ao telefone.
+            assertSame(predicate, apply(ClientSpecification.searchTerm("529.982"), root));
+            verify(cb).or(any(Predicate.class), any(Predicate.class));
+        }
+
+        @Test
         @DisplayName("listas de benefício/situação vazias, nulas ou só com null são ignoradas")
         void emptyEnumFiltersAreIgnored() {
             assertNull(apply(ClientSpecification.benefitIn(null), root));
