@@ -4,6 +4,7 @@ import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.dto.ClientPaymentRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentUpdateRequestDTO;
+import com.lawfirm.law.firm.security.RequerAdvogado;
 import com.lawfirm.law.firm.service.ClientPaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -73,6 +74,7 @@ public class ClientPaymentController {
     @Operation(
             summary = "Excluir parcela",
             description = "Soft delete - preservada para auditoria financeira.")
+    @RequerAdvogado
     @DeleteMapping("/{paymentId}")
     public ResponseEntity<Void> delete(@PathVariable UUID clientId, @PathVariable UUID paymentId) {
         service.delete(clientId, paymentId);

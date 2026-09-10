@@ -8,6 +8,7 @@ import com.lawfirm.law.firm.dto.AppointmentResponseDTO;
 import com.lawfirm.law.firm.dto.AppointmentSearchParams;
 import com.lawfirm.law.firm.dto.AppointmentSummaryDTO;
 import com.lawfirm.law.firm.dto.Pagination;
+import com.lawfirm.law.firm.security.RequerAdvogado;
 import com.lawfirm.law.firm.service.AppointmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -174,6 +175,7 @@ public class AppointmentController {
 
                     Excluir um compromisso já excluído devolve 404 - para a API ele não existe \
                     mais.""")
+    @RequerAdvogado
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
@@ -189,6 +191,7 @@ public class AppointmentController {
 
                     Idempotente: restaurar um compromisso ativo devolve 200 com o compromisso, sem \
                     alterar nada e sem gerar registro na trilha. Id inexistente devolve 404.""")
+    @RequerAdvogado
     @PatchMapping("/{id}/restore")
     public ResponseEntity<ApiResponse<AppointmentResponseDTO>> restore(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.successObject(service.restore(id)));

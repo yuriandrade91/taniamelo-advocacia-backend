@@ -4,6 +4,7 @@ import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.dto.UserSummaryDTO;
 import com.lawfirm.law.firm.model.User;
 import com.lawfirm.law.firm.repository.UserRepository;
+import com.lawfirm.law.firm.security.RequerAdvogado;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -61,6 +62,7 @@ public class UserController {
                     quem já saiu do escritório mas assina registros antigos.
 
                     Nenhuma credencial ou e-mail é exposto.""")
+    @RequerAdvogado
     @GetMapping
     public ResponseEntity<ApiResponse<UserSummaryDTO>> list(
             @Parameter(description = "Inclui usuários desativados (para resolver autoria antiga)")

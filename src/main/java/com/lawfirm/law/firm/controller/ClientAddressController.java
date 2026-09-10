@@ -4,6 +4,7 @@ import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.dto.ClientAddressBatchRequestDTO;
 import com.lawfirm.law.firm.dto.ClientAddressRequestDTO;
 import com.lawfirm.law.firm.dto.ClientAddressResponseDTO;
+import com.lawfirm.law.firm.security.RequerAdvogado;
 import com.lawfirm.law.firm.service.ClientAddressService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -110,6 +111,7 @@ public class ClientAddressController {
             summary = "Excluir endereço",
             description =
                     "Se o endereço excluído era o principal e restarem outros, o mais antigo vira o novo principal automaticamente.")
+    @RequerAdvogado
     @DeleteMapping("/{addressId}")
     public ResponseEntity<Void> delete(@PathVariable UUID clientId, @PathVariable UUID addressId) {
         service.delete(clientId, addressId);

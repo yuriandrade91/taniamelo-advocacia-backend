@@ -213,6 +213,14 @@
 		     multi-tenancy por schema (search_path), extensao unaccent e Flyway aplicado
 		     por schema pelo MultiTenantFlywayMigrator - nada disso e reproduzivel em H2.
 		     Versoes gerenciadas pelo BOM do Spring Boot. -->
+		<!-- @WithMockUser: prova que a autorização por papel recusa de verdade, e não
+		     apenas que a anotação está no código. -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-testcontainers</artifactId>

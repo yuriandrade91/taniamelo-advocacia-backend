@@ -8,6 +8,7 @@ import com.lawfirm.law.firm.dto.ClientFileSimulationResponseDTO;
 import com.lawfirm.law.firm.dto.ClientFileSimulationUpdateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientFileSimulationUploadMetadataDTO;
 import com.lawfirm.law.firm.dto.Pagination;
+import com.lawfirm.law.firm.security.RequerAdvogado;
 import com.lawfirm.law.firm.service.ClientFileService;
 import com.lawfirm.law.firm.storage.FileDownload;
 import io.swagger.v3.oas.annotations.Operation;
@@ -192,6 +193,7 @@ public class ClientFileController {
                     "Soft delete - o arquivo é preservado como evidência. Funciona tanto para "
                             + "documento quanto para simulação; se a simulação excluída era a "
                             + "principal, a mais recente restante é promovida.")
+    @RequerAdvogado
     @DeleteMapping("/{fileId}")
     public ResponseEntity<Void> delete(@PathVariable UUID clientId, @PathVariable UUID fileId) {
         service.deleteFile(clientId, fileId);

@@ -15,6 +15,7 @@ import com.lawfirm.law.firm.exception.ValidationException;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.Situation;
+import com.lawfirm.law.firm.security.RequerAdvogado;
 import com.lawfirm.law.firm.service.ClientPatchOutcome;
 import com.lawfirm.law.firm.service.ClientService;
 import com.lawfirm.law.firm.util.RequestDates;
@@ -254,6 +255,7 @@ public class ClientController {
 
                     Buscar, editar ou listar sub-recursos de um cliente excluído devolve 404 - do \
                     ponto de vista da API ele não existe mais.""")
+    @RequerAdvogado
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> delete(@PathVariable UUID id) {
         clientService.delete(id);
@@ -272,6 +274,7 @@ public class ClientController {
 
                     Idempotente: restaurar um cliente que já está ativo devolve 200 sem alterar \
                     nada. Id inexistente devolve 404.""")
+    @RequerAdvogado
     @PatchMapping("/{id}/restore")
     public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> restore(@PathVariable UUID id) {
         clientService.restore(id);

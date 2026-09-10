@@ -4,6 +4,7 @@ import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.dto.ClientInterviewRequestDTO;
 import com.lawfirm.law.firm.dto.ClientInterviewResponseDTO;
 import com.lawfirm.law.firm.dto.Pagination;
+import com.lawfirm.law.firm.security.RequerAdvogado;
 import com.lawfirm.law.firm.service.ClientInterviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -73,6 +74,7 @@ public class ClientInterviewController {
     @Operation(
             summary = "Excluir entrevista",
             description = "Soft delete - preservada para eventual auditoria.")
+    @RequerAdvogado
     @DeleteMapping("/{interviewId}")
     public ResponseEntity<Void> delete(
             @PathVariable UUID clientId, @PathVariable UUID interviewId) {
