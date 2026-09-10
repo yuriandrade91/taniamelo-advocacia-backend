@@ -3,6 +3,29 @@
 Levantamento de 10/09/2026, feito sobre o código e sobre a instância em execução,
 não sobre a memória de quem escreveu.
 
+## Fechado depois deste levantamento
+
+Quatro lacunas de maturidade que não estavam nesta lista — apareceram ao avaliar
+se o caminho estava certo, e foram fechadas antes de seguir. Ficam registradas
+porque mudam o contrato da API:
+
+| O que era | O que é agora |
+|---|---|
+| `pageSize` sem teto: `pageSize=100000` montava a base inteira em memória | teto de **100**, cortado no valor em vez de recusado com 400 |
+| Autenticado era autorizado: qualquer token excluía, restaurava e listava usuários | **STAFF opera, só ADMIN/LAWYER destrói** (`@RequerAdvogado` + `@EnableMethodSecurity`) |
+| Senha do INSS voltava em toda abertura de ficha | saiu do `GET /clients/{id}`; sai por `GET /clients/{id}/inss-password`, restrita e **auditada**. Na edição, ausente = mantém |
+| `POST /auth/login` sem limite de tentativas | freio por IP e por login (memória) **+** bloqueio de conta por 15 min (banco); 429 com `Retry-After` |
+
+E um defeito encontrado ao validar as quatro: **busca por nome com algarismo
+virava busca por CPF** — o termo tinha os dígitos extraídos e virava
+`cpf LIKE '%2%'`, que casa com quase toda a base. Procurar "Maria 2ª" trazia meio
+escritório. O ramo do CPF agora só entra em termo sem letra e com pelo menos 3
+dígitos.
+
+Item 16 abaixo (`.claude/` sem `.gitignore`) também está fechado.
+
+---
+
 ## Como ler
 
 **Severidade** é o custo de deixar como está, não a dificuldade de arrumar:
@@ -145,8 +168,7 @@ entrou. A agenda já resolveu isso com `AppointmentSearchParams` +
     máquina: não é do escritório, é de quem colou.
 15. **Camadas 2 e 3 do plano de testes não começaram.** A Fase 0 destravou o CI;
     as fases por feature (integração e E2E com Rest-assured) continuam no papel.
-16. **`.claude/` sem `.gitignore`.** Configuração de ferramenta aparecendo como
-    arquivo novo em todo `git status`.
+16. ~~**`.claude/` sem `.gitignore`.**~~ Fechado.
 
 ---
 
