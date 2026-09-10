@@ -137,8 +137,9 @@ public class AppointmentController {
                     Substituição completa. Exige `justification`, registrada no histórico.
 
                     Só compromisso **agendado** pode ser editado: cancelado ou concluído devolve \
-                    400 `OPERATION_NOT_ALLOWED`. Para remarcar algo já encerrado, crie um \
-                    compromisso novo - assim a trilha guarda os dois fatos separados.""")
+                    422 `OPERATION_NOT_ALLOWED` (regra de negócio, não corpo malformado). Para \
+                    remarcar algo já encerrado, crie um compromisso novo - assim a trilha guarda \
+                    os dois fatos separados.""")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<AppointmentResponseDTO>> update(
             @PathVariable UUID id, @Valid @RequestBody AppointmentRequestDTO dto) {

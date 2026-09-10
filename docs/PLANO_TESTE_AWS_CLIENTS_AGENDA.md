@@ -137,9 +137,9 @@ O passo **1.3 é o mais importante do roteiro inteiro**. Vazamento entre tenants
 | 4.13 | `PUT /{id}` com justificativa | 200; `EDITED` no histórico |
 | 4.14 | `PATCH /{id}/cancel` sem justificativa | 400 |
 | 4.15 | `PATCH /{id}/cancel` com justificativa | 200; `CANCELLED` no histórico |
-| 4.16 | **`PUT /{id}` num cancelado** | **400 `OPERATION_NOT_ALLOWED`, mensagem citando "cancelado"** |
-| 4.17 | `PATCH /{id}/complete` num cancelado | 400 |
-| 4.18 | `PATCH /{id}/complete` num agendado, depois `PUT` | **400** (concluído não é editável) |
+| 4.16 | **`PUT /{id}` num cancelado** | **422 `OPERATION_NOT_ALLOWED`, mensagem citando "cancelado"** |
+| 4.17 | `PATCH /{id}/complete` num cancelado | 422 |
+| 4.18 | `PATCH /{id}/complete` num agendado, depois `PUT` | **422** (concluído não é editável) |
 | 4.19 | `DELETE /{id}` | 204 |
 | 4.20 | `GET /{id}/history` do excluído | 404 (some da API) |
 | 4.21 | `PATCH /{id}/restore` | **200 com o compromisso de volta** |
@@ -218,9 +218,9 @@ Marque conforme executa. Todo endpoint tem ao menos um caso feliz e um negativo
 | GET | `/appointments/summary` | 200 | `year` ausente → 400 | R4.24 |
 | GET | `/appointments/conflicts` | 200 | janela invertida → **lista vazia** | R4.7-4.11 |
 | GET | `/appointments/{id}` | 200 | excluído → 404 | R4.20 |
-| PUT | `/appointments/{id}` | 200 | sem justificativa → 400; **cancelado/concluído → 400** | R4.12-4.13, 4.16, 4.18 |
-| PATCH | `/appointments/{id}/cancel` | 200 | sem justificativa → 400; já cancelado → 400 | R4.14-4.15 |
-| PATCH | `/appointments/{id}/complete` | 200 | cancelado → 400 | R4.17 |
+| PUT | `/appointments/{id}` | 200 | sem justificativa → 400; **cancelado/concluído → 422** | R4.12-4.13, 4.16, 4.18 |
+| PATCH | `/appointments/{id}/cancel` | 200 | sem justificativa → 400; já cancelado → 422 | R4.14-4.15 |
+| PATCH | `/appointments/{id}/complete` | 200 | cancelado → 422 | R4.17 |
 | PATCH | `/appointments/{id}/restore` | 200 | inexistente → 404 | R4.21-4.23 |
 | DELETE | `/appointments/{id}` | 204 | já excluído → 404 | R4.19 |
 | GET | `/appointments/{id}/history` | 200 com `DELETED`/`RESTORED` | excluído → 404 | R4.22 |
