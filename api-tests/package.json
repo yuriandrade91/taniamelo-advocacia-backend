@@ -1,0 +1,21 @@
+{
+  "name": "taniamelo-api-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Testes de contrato da API (auth, clientes, agenda). Projeto Node autocontido; não participa do build Maven.",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:local": "API_BASE_URL=http://localhost:8080 playwright test",
+    "test:aws": "playwright test",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "newman": "newman run ../docs/postman/taniamelo-api.postman_collection.json -e ../docs/postman/aws.postman_environment.json"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^20.19.0",
+    "newman": "^6.2.2",
+    "typescript": "^5.6.0"
+  }
+}
