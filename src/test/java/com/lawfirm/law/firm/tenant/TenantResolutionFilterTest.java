@@ -1,8 +1,10 @@
 package com.lawfirm.law.firm.tenant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -100,14 +102,57 @@ class TenantResolutionFilterTest {
     }
 
     @Test
-    @DisplayName("header desconhecido cai para a claim do JWT")
-    void unknownHeaderFallsBackToJwt() throws Exception {
+    @DisplayName("header desconhecido é RECUSADO com 400, sem chegar na cadeia")
+    void unknownHeaderIsRejected() throws Exception {
+        request.addHeader("X-Tenant-Id", "nao-existe");
+
+        AtomicReference<Boolean> chegou = new AtomicReference<>(false);
+        filter.doFilterInternal(request, response, (req, res) -> chegou.set(true));
+
+        // Antes, o header desconhecido era ignorado e a requisição seguia para o
+        // schema default - que é o escritório real. Um erro de digitação no
+        // X-Tenant-Id autenticava na base errada, em silêncio.
+        assertEquals(400, response.getStatus());
+        assertFalse(chegou.get(), "a requisição não pode seguir com tenant inválido");
+        assertTrue(response.getContentAsString().contains("TENANT_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("header desconhecido é recusado mesmo com JWT válido de outro escritório")
+    void unknownHeaderIsRejectedEvenWithValidJwt() throws Exception {
         request.addHeader("X-Tenant-Id", "nao-existe");
         request.addHeader("Authorization", "Bearer tok");
         when(jwtService.extractTenant("tok")).thenReturn("tania");
         when(tenantRegistry.schemaFor("tania")).thenReturn(Optional.of("tenant_tania"));
 
+        // Cair na claim aqui reinterpretaria em silêncio uma instrução explícita e
+        // errada de quem chamou.
+        filter.doFilterInternal(request, response, new MockFilterChain());
+        assertEquals(400, response.getStatus());
+    }
+
+    @Test
+    @DisplayName("header em branco é tratado como ausente, não como inválido")
+    void blankHeaderIsTreatedAsAbsent() throws Exception {
+        request.addHeader("X-Tenant-Id", "   ");
+        request.addHeader("Authorization", "Bearer tok");
+        when(jwtService.extractTenant("tok")).thenReturn("tania");
+        when(tenantRegistry.schemaFor("tania")).thenReturn(Optional.of("tenant_tania"));
+
+        // Cliente que manda o header vazio não escolheu escritório nenhum; recusar
+        // aqui quebraria quem só esquece de remover o cabeçalho.
         assertEquals("tenant_tania", tenantSeenByTheChain());
+    }
+
+    @Test
+    @DisplayName("a mensagem de recusa não revela quais escritórios existem")
+    void rejectionDoesNotLeakTenantNames() throws Exception {
+        request.addHeader("X-Tenant-Id", "chute");
+        filter.doFilterInternal(request, response, new MockFilterChain());
+
+        String corpo = response.getContentAsString();
+        assertFalse(corpo.contains("tenant_tania"), "vazou o nome do schema");
+        assertFalse(corpo.contains("tenant_demo"), "vazou o nome do schema");
     }
 
     @Test
