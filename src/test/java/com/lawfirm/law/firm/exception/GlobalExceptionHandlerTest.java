@@ -29,8 +29,13 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.method.MethodValidationResult;
+import org.springframework.validation.method.ParameterErrors;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
@@ -58,6 +63,68 @@ class GlobalExceptionHandlerTest {
     @Nested
     @DisplayName("1. Validação (400)")
     class ValidationFamily {
+
+        /**
+         * {@code @Valid} em {@code @RequestPart} — o caso dos uploads de arquivo.
+         *
+         * <p>Sem handler, {@code HandlerMethodValidationException} caía no 500 genérico, apesar de
+         * ela própria carregar {@code 400 BAD_REQUEST}. Subir um documento sem {@code documentType}
+         * devolvia "Erro interno do sistema... contate o suporte" — a API culpando a si mesma por
+         * um campo que faltou no corpo.
+         */
+        @Test
+        @DisplayName("validação de @RequestPart vira 400 com o nome do campo, não 500")
+        void requestPartValidationIsBadRequest() throws Exception {
+            BeanPropertyBindingResult binding =
+                    new BeanPropertyBindingResult(new Object(), "metadata");
+            binding.addError(
+                    new FieldError(
+                            "metadata", "metadata[0].documentType", "não deve estar em branco"));
+
+            MethodParameter parametro =
+                    new MethodParameter(Alvo.class.getDeclaredMethod("upload", List.class), 0);
+            ParameterErrors resultado =
+                    new ParameterErrors(parametro, null, binding, null, null, null);
+            HandlerMethodValidationException ex =
+                    new HandlerMethodValidationException(
+                            MethodValidationResult.create(
+                                    new Alvo(),
+                                    Alvo.class.getDeclaredMethod("upload", List.class),
+                                    List.of(resultado)));
+
+            ResponseEntity<ApiResponse<Void>> resposta = handler.handleMethodValidation(ex);
+
+            assertEquals(HttpStatus.BAD_REQUEST, resposta.getStatusCode());
+            List<ApiError> erros = errorsOf(resposta);
+            // O caminho completo é metadata[0].documentType; quem consome precisa do
+            // nome do campo, não da assinatura do método do controller.
+            assertEquals("documentType", erros.get(0).getField());
+            assertEquals("VALIDATION_ERROR", erros.get(0).getCode());
+        }
+
+        @Test
+        @DisplayName("Content-Type não suportado vira 415, não 500")
+        void unsupportedMediaTypeIs415() {
+            // Quem mandou JSON numa rota multipart cometeu erro de cliente. Caindo no
+            // 500 genérico, a API mandava "contate o suporte" para quem só precisava
+            // trocar o cabeçalho.
+            ResponseEntity<ApiResponse<Void>> resposta =
+                    handler.handleMediaType(
+                            new HttpMediaTypeNotSupportedException(
+                                    org.springframework.http.MediaType.APPLICATION_JSON,
+                                    List.of(
+                                            org.springframework.http.MediaType
+                                                    .MULTIPART_FORM_DATA)));
+
+            assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, resposta.getStatusCode());
+            assertEquals("UNSUPPORTED_MEDIA_TYPE", errorsOf(resposta).get(0).getCode());
+        }
+
+        /** Alvo mínimo só para obter um MethodParameter real. */
+        static class Alvo {
+            @SuppressWarnings("unused")
+            void upload(List<String> metadata) {}
+        }
 
         @Test
         @DisplayName("bean validation humaniza a mensagem usando o label PT-BR do campo")

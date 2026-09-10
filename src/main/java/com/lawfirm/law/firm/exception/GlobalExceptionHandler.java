@@ -4,12 +4,14 @@ import com.lawfirm.law.firm.dto.ApiError;
 import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.storage.FileStorageException;
 import jakarta.validation.ConstraintViolationException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,10 +19,15 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.method.ParameterErrors;
+import org.springframework.validation.method.ParameterValidationResult;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
@@ -173,6 +180,81 @@ public class GlobalExceptionHandler {
         }
         String code = field != null ? "INVALID_ENUM_VALUE" : "INVALID_REQUEST_BODY";
         return respond(HttpStatus.BAD_REQUEST, List.of(new ApiError(field, msg, code)));
+    }
+
+    /**
+     * Validação de parâmetro de método - {@code @Valid} em {@code @RequestPart} e
+     * {@code @RequestParam}.
+     *
+     * <p>Sem este handler a exceção caía no 500 genérico, apesar de ela própria carregar {@code 400
+     * BAD_REQUEST "Validation failure"}. Na prática, subir um documento sem o {@code documentType}
+     * devolvia "Erro interno do sistema. Tente novamente; se persistir, contate o suporte." - a API
+     * culpando a si mesma por um campo que faltou no corpo.
+     *
+     * <p>Percorre {@code getParameterValidationResults()} em vez de implementar o {@code Visitor}:
+     * o visitor tem um método por origem de parâmetro e obrigaria a repetir o mesmo tratamento em
+     * todos, para distinguir casos que aqui não mudam nada.
+     */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodValidation(
+            HandlerMethodValidationException ex) {
+        List<ApiError> errors = new ArrayList<>();
+
+        for (ParameterValidationResult resultado : ex.getParameterValidationResults()) {
+            if (resultado instanceof ParameterErrors parametroComCampos) {
+                for (FieldError fe : parametroComCampos.getFieldErrors()) {
+                    errors.add(erroDeCampo(nomeDoCampo(fe.getField()), fe.getDefaultMessage()));
+                }
+                continue;
+            }
+            String campo = resultado.getMethodParameter().getParameterName();
+            for (MessageSourceResolvable erro : resultado.getResolvableErrors()) {
+                errors.add(erroDeCampo(campo, erro.getDefaultMessage()));
+            }
+        }
+
+        if (errors.isEmpty()) {
+            errors.add(new ApiError(null, "Requisição inválida.", "VALIDATION_ERROR"));
+        }
+        return respond(HttpStatus.BAD_REQUEST, errors);
+    }
+
+    private static ApiError erroDeCampo(String campo, String mensagem) {
+        String label = FIELD_LABELS.getOrDefault(campo, campo);
+        return new ApiError(campo, humanize(label, mensagem), "VALIDATION_ERROR");
+    }
+
+    /**
+     * {@code metadata[0].documentType} -> {@code documentType}.
+     *
+     * <p>O caminho completo cita o índice do item e o nome do parâmetro do controller; quem consome
+     * a API precisa do nome do campo que faltou, não da assinatura do método que o recebeu.
+     */
+    private static String nomeDoCampo(String caminho) {
+        if (caminho == null) {
+            return null;
+        }
+        int ponto = caminho.lastIndexOf('.');
+        return ponto >= 0 ? caminho.substring(ponto + 1) : caminho;
+    }
+
+    /**
+     * Content-Type que a rota não aceita.
+     *
+     * <p>É 415, não 500: quem mandou JSON numa rota multipart cometeu um erro de cliente, e o
+     * status precisa dizer isso. Caía no 500 genérico e mandava "contate o suporte" para quem só
+     * precisava trocar o cabeçalho.
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMediaType(
+            HttpMediaTypeNotSupportedException ex) {
+        return respond(
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                List.of(
+                        new ApiError(
+                                null,
+                                "Formato de requisição não suportado por esta rota.",
+                                "UNSUPPORTED_MEDIA_TYPE")));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
