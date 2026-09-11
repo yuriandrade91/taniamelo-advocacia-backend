@@ -1,8 +1,8 @@
 package com.lawfirm.law.firm.dto;
 
 /**
- * Atualização parcial do cliente (PATCH /clients/{id}): situação, benefício, tipo de cliente e/ou
- * arrecadação. Envie só os campos que quer mudar - null significa "não mexer nisso".
+ * Atualização parcial do cliente (PATCH /clients/{clientId}): situação, benefício, tipo de cliente
+ * e/ou arrecadação. Envie só os campos que quer mudar - null significa "não mexer nisso".
  * situation/benefit/clientType aceitam o nome do enum ou o label PT-BR (validado no service para
  * produzir erro amigável).
  */

@@ -53,7 +53,7 @@ public class ClientController {
                     """
                     Cria um novo cliente. Identificadores únicos (CPF, NIT/PIS, número do benefício) \
                     são validados contra duplicidade antes de gravar. Endereços, arquivos, entrevistas \
-                    e pagamentos são cadastrados nos sub-recursos de /clients/{id} após a criação.
+                    e pagamentos são cadastrados nos sub-recursos de /clients/{clientId} após a criação.
 
                     **Valores válidos de `clientType`:** `Verificado` ou `Potencial` (nome do enum ou \
                     label, case/acento-insensitive). Qualquer outro valor retorna 400.""")
@@ -62,7 +62,10 @@ public class ClientController {
             @Valid @RequestBody ClientCreateRequestDTO createDto, UriComponentsBuilder uriBuilder) {
         ClientDetailsDTO created = clientService.create(createDto);
         URI location =
-                uriBuilder.path("/api/v1/clients/{id}").buildAndExpand(created.getId()).toUri();
+                uriBuilder
+                        .path("/api/v1/clients/{clientId}")
+                        .buildAndExpand(created.getClientId())
+                        .toUri();
         return ResponseEntity.created(location).body(ApiResponse.successObject(created));
     }
 
@@ -147,10 +150,12 @@ public class ClientController {
             summary = "Buscar cliente por id",
             description =
                     "Dados completos do cliente, incluindo a senha do INSS (descriptografada para o usuário autenticado).")
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<ClientDetailsDTO>> getById(@PathVariable UUID id) {
+    @GetMapping("/{clientId}")
+    public ResponseEntity<ApiResponse<ClientDetailsDTO>> getById(@PathVariable UUID clientId) {
         ClientDetailsDTO dto =
-                clientService.findById(id).orElseThrow(() -> NotFoundException.of("Cliente", id));
+                clientService
+                        .findById(clientId)
+                        .orElseThrow(() -> NotFoundException.of("Cliente", clientId));
         return ResponseEntity.ok(ApiResponse.successObject(dto));
     }
 
@@ -159,16 +164,16 @@ public class ClientController {
             description =
                     """
                     Lista paginada no envelope padrão, mais recente primeiro. Toda mudança de \
-                    situação via `PATCH /clients/{id}` gera um registro aqui automaticamente.
+                    situação via `PATCH /clients/{clientId}` gera um registro aqui automaticamente.
 
                     Cada entrada traz `previousSituation` e `currentSituation`, para a linha do \
                     tempo dizer "de X para Y". Na primeira entrada (situação definida no cadastro) \
                     `previousSituation` vem nulo.
 
                     `changedByUserId` é o id do usuário; o nome sai de `GET /users`.""")
-    @GetMapping("/{id}/situation-history")
+    @GetMapping("/{clientId}/situation-history")
     public ResponseEntity<ApiResponse<ClientSituationHistoryDTO>> situationHistory(
-            @PathVariable UUID id,
+            @PathVariable UUID clientId,
             @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1")
                     int pageNumber,
             @Parameter(
@@ -177,7 +182,7 @@ public class ClientController {
                     @RequestParam(defaultValue = "10")
                     int pageSize) {
         Page<ClientSituationHistoryDTO> page =
-                clientService.historyByClientId(id, pageNumber, pageSize);
+                clientService.historyByClientId(clientId, pageNumber, pageSize);
         return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
     }
 
@@ -186,14 +191,14 @@ public class ClientController {
             description =
                     """
                     PUT = substituição total dos campos editáveis - envie o objeto completo. Para \
-                    atualização parcial (situação/benefício/arrecadação) use PATCH /clients/{id}.
+                    atualização parcial (situação/benefício/arrecadação) use PATCH /clients/{clientId}.
 
                     **Valores válidos de `clientType`:** `Verificado` ou `Potencial` (nome do enum ou \
                     label, case/acento-insensitive). Qualquer outro valor retorna 400.""")
-    @PutMapping("/{id}")
+    @PutMapping("/{clientId}")
     public ResponseEntity<ApiResponse<ClientDetailsDTO>> update(
-            @PathVariable UUID id, @Valid @RequestBody ClientUpdateRequestDTO body) {
-        return ResponseEntity.ok(ApiResponse.successObject(clientService.update(id, body)));
+            @PathVariable UUID clientId, @Valid @RequestBody ClientUpdateRequestDTO body) {
+        return ResponseEntity.ok(ApiResponse.successObject(clientService.update(clientId, body)));
     }
 
     @Operation(
@@ -202,7 +207,7 @@ public class ClientController {
                     """
                     PATCH parcial: envie só o que quer mudar (`situation`, `benefit`, `clientType` \
                     e/ou `notBillable`). Mudança de situação gera automaticamente um registro no \
-                    histórico (`GET /clients/{id}/situation-history`); mudança de benefício, tipo \
+                    histórico (`GET /clients/{clientId}/situation-history`); mudança de benefício, tipo \
                     de cliente e de arrecadação não.
 
                     **Formato de `situation`, `benefit` e `clientType`:** aceita o nome da \
@@ -232,10 +237,10 @@ public class ClientController {
                     **Valores válidos de `clientType`:**
                     - `Verificado`
                     - `Potencial`""")
-    @PatchMapping("/{id}")
+    @PatchMapping("/{clientId}")
     public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> patch(
-            @PathVariable UUID id, @RequestBody ClientPatchRequestDTO patch) {
-        ClientPatchOutcome outcome = clientService.patch(id, patch);
+            @PathVariable UUID clientId, @RequestBody ClientPatchRequestDTO patch) {
+        ClientPatchOutcome outcome = clientService.patch(clientId, patch);
         return ResponseEntity.ok(
                 ApiResponse.successObject(new ClientPatchResponseDTO(patchMessage(outcome))));
     }
@@ -249,7 +254,7 @@ public class ClientController {
 
                     Nada em cascata é apagado - endereços, entrevistas, arquivos, pagamentos e o \
                     histórico de situação permanecem, e voltam inteiros por \
-                    `PATCH /clients/{id}/restore`.
+                    `PATCH /clients/{clientId}/restore`.
 
                     Compromissos vinculados na agenda mantêm o nome do cliente (gravado junto do \
                     compromisso), então nenhum item da agenda fica órfão.
@@ -257,9 +262,9 @@ public class ClientController {
                     Buscar, editar ou listar sub-recursos de um cliente excluído devolve 404 - do \
                     ponto de vista da API ele não existe mais.""")
     @RequerAdvogado
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> delete(@PathVariable UUID id) {
-        clientService.delete(id);
+    @DeleteMapping("/{clientId}")
+    public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> delete(@PathVariable UUID clientId) {
+        clientService.delete(clientId);
         return ResponseEntity.ok(
                 ApiResponse.successObject(
                         new ClientPatchResponseDTO("Cliente excluído com sucesso.")));
@@ -273,18 +278,19 @@ public class ClientController {
                     LAWYER**, e **cada leitura fica registrada** na auditoria com quem consultou e \
                     quando.
 
-                    Existe como rota separada porque a senha saiu de `GET /clients/{id}`. Voltar em \
+                    Existe como rota separada porque a senha saiu de `GET /clients/{clientId}`. Voltar em \
                     toda abertura de ficha a levava para log de acesso, cache de navegador e print \
                     de tela — e tornava meia medida a criptografia em repouso, que protege contra \
                     quem lê o banco e não contra quem tem login.
 
-                    Na edição (`PUT /clients/{id}` e `PUT /professional-data`) o campo passou a ser \
+                    Na edição (`PUT /clients/{clientId}` e `PUT /professional-data`) o campo passou a ser \
                     opcional: ausente significa "mantém a que está gravada".""")
     @RequerAdvogado
-    @GetMapping("/{id}/inss-password")
+    @GetMapping("/{clientId}/inss-password")
     public ResponseEntity<ApiResponse<ClientInssPasswordDTO>> revealInssPassword(
-            @PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.successObject(clientService.revealInssPassword(id)));
+            @PathVariable UUID clientId) {
+        return ResponseEntity.ok(
+                ApiResponse.successObject(clientService.revealInssPassword(clientId)));
     }
 
     @Operation(
@@ -298,9 +304,10 @@ public class ClientController {
                     Idempotente: restaurar um cliente que já está ativo devolve 200 sem alterar \
                     nada. Id inexistente devolve 404.""")
     @RequerAdvogado
-    @PatchMapping("/{id}/restore")
-    public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> restore(@PathVariable UUID id) {
-        clientService.restore(id);
+    @PatchMapping("/{clientId}/restore")
+    public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> restore(
+            @PathVariable UUID clientId) {
+        clientService.restore(clientId);
         return ResponseEntity.ok(
                 ApiResponse.successObject(
                         new ClientPatchResponseDTO("Cliente restaurado com sucesso.")));

@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
         name = "Cliente - Dados Pessoais",
         description = "Aba 'Dados pessoais' do cliente: identidade e contato")
 @RestController
-@RequestMapping("/api/v1/clients/{id}/personal-data")
+@RequestMapping("/api/v1/clients/{clientId}/personal-data")
 public class ClientPersonalDataController {
 
     private final ClientService clientService;
@@ -34,8 +34,10 @@ public class ClientPersonalDataController {
             description =
                     "Aba 'Dados pessoais': identidade e contato. Dados profissionais e endereços têm endpoints próprios.")
     @GetMapping
-    public ResponseEntity<ApiResponse<ClientPersonalDataResponseDTO>> get(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.successObject(clientService.getPersonalData(id)));
+    public ResponseEntity<ApiResponse<ClientPersonalDataResponseDTO>> get(
+            @PathVariable UUID clientId) {
+        return ResponseEntity.ok(
+                ApiResponse.successObject(clientService.getPersonalData(clientId)));
     }
 
     @Operation(
@@ -45,8 +47,8 @@ public class ClientPersonalDataController {
                             + "profissionais, endereços, benefício, situação ou arrecadação.")
     @PutMapping
     public ResponseEntity<ApiResponse<ClientPersonalDataResponseDTO>> update(
-            @PathVariable UUID id, @Valid @RequestBody ClientPersonalDataRequestDTO dto) {
+            @PathVariable UUID clientId, @Valid @RequestBody ClientPersonalDataRequestDTO dto) {
         return ResponseEntity.ok(
-                ApiResponse.successObject(clientService.updatePersonalData(id, dto)));
+                ApiResponse.successObject(clientService.updatePersonalData(clientId, dto)));
     }
 }

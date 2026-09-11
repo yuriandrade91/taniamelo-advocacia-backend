@@ -404,7 +404,7 @@ public class ClientServiceImpl implements ClientService {
 
     private ClientPersonalDataResponseDTO toPersonalDataDTO(Client entity) {
         ClientPersonalDataResponseDTO dto = new ClientPersonalDataResponseDTO();
-        dto.setId(entity.getId());
+        dto.setClientId(entity.getId());
         dto.setFullName(entity.getFullName());
         dto.setBirthDate(entity.getBirthDate());
         dto.setAge(ageOf(entity.getBirthDate()));
@@ -429,7 +429,7 @@ public class ClientServiceImpl implements ClientService {
 
     private ClientProfessionalDataResponseDTO toProfessionalDataDTO(Client entity) {
         ClientProfessionalDataResponseDTO dto = new ClientProfessionalDataResponseDTO();
-        dto.setId(entity.getId());
+        dto.setClientId(entity.getId());
         dto.setProfession(entity.getProfession());
         dto.setNitPis(entity.getNitPis());
         dto.setCtps(entity.getCtps());

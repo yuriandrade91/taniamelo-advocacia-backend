@@ -7,10 +7,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-@JsonPropertyOrder({"id"})
+@JsonPropertyOrder({"clientId"})
 public class ClientPersonalDataResponseDTO {
 
-    private UUID id;
+    private UUID clientId;
 
     private String fullName;
 
@@ -50,12 +50,12 @@ public class ClientPersonalDataResponseDTO {
 
     private Instant updatedAt;
 
-    public UUID getId() {
-        return id;
+    public UUID getClientId() {
+        return clientId;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
+    public void setClientId(UUID clientId) {
+        this.clientId = clientId;
     }
 
     public String getFullName() {

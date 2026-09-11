@@ -13,8 +13,8 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Payload de atualização completa (PUT /clients/{id}). Mesmas regras do create: PUT é substituição
- * total dos campos editáveis - para atualização parcial use PATCH /clients/{id}.
+ * Payload de atualização completa (PUT /clients/{clientId}). Mesmas regras do create: PUT é
+ * substituição total dos campos editáveis - para atualização parcial use PATCH /clients/{clientId}.
  */
 public class ClientUpdateRequestDTO implements ClientWritableFields {
 

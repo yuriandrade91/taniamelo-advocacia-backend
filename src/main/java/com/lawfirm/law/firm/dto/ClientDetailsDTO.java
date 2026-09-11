@@ -12,12 +12,12 @@ import java.util.UUID;
 
 /**
  * Resposta completa de um cliente (somente saída). Endereços, arquivos, entrevistas e pagamentos
- * são recursos próprios sob /clients/{id}/...
+ * são recursos próprios sob /clients/{clientId}/...
  */
-@JsonPropertyOrder({"id"})
+@JsonPropertyOrder({"clientId"})
 public class ClientDetailsDTO {
 
-    private UUID id;
+    private UUID clientId;
 
     private String fullName;
 
@@ -87,12 +87,12 @@ public class ClientDetailsDTO {
 
     private UUID updatedBy;
 
-    public UUID getId() {
-        return id;
+    public UUID getClientId() {
+        return clientId;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
+    public void setClientId(UUID clientId) {
+        this.clientId = clientId;
     }
 
     public String getFullName() {

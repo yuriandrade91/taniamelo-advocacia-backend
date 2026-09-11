@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
                 "Aba 'Dados profissionais' do cliente: profissão, NIT/PIS, CTPS, tempo de "
                         + "contribuição, benefício e senha do INSS")
 @RestController
-@RequestMapping("/api/v1/clients/{id}/professional-data")
+@RequestMapping("/api/v1/clients/{clientId}/professional-data")
 public class ClientProfessionalDataController {
 
     private final ClientService clientService;
@@ -38,8 +38,9 @@ public class ClientProfessionalDataController {
                             + "meses derivado no servidor), número do benefício e senha do INSS.")
     @GetMapping
     public ResponseEntity<ApiResponse<ClientProfessionalDataResponseDTO>> get(
-            @PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.successObject(clientService.getProfessionalData(id)));
+            @PathVariable UUID clientId) {
+        return ResponseEntity.ok(
+                ApiResponse.successObject(clientService.getProfessionalData(clientId)));
     }
 
     @Operation(
@@ -47,8 +48,8 @@ public class ClientProfessionalDataController {
             description = "Substituição completa só do subconjunto de dados profissionais.")
     @PutMapping
     public ResponseEntity<ApiResponse<ClientProfessionalDataResponseDTO>> update(
-            @PathVariable UUID id, @Valid @RequestBody ClientProfessionalDataRequestDTO dto) {
+            @PathVariable UUID clientId, @Valid @RequestBody ClientProfessionalDataRequestDTO dto) {
         return ResponseEntity.ok(
-                ApiResponse.successObject(clientService.updateProfessionalData(id, dto)));
+                ApiResponse.successObject(clientService.updateProfessionalData(clientId, dto)));
     }
 }

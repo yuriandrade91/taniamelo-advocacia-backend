@@ -4,10 +4,10 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.time.Instant;
 import java.util.UUID;
 
-@JsonPropertyOrder({"id"})
+@JsonPropertyOrder({"clientId"})
 public class ClientProfessionalDataResponseDTO {
 
-    private UUID id;
+    private UUID clientId;
 
     private String profession;
 
@@ -27,12 +27,12 @@ public class ClientProfessionalDataResponseDTO {
 
     private Instant updatedAt;
 
-    public UUID getId() {
-        return id;
+    public UUID getClientId() {
+        return clientId;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
+    public void setClientId(UUID clientId) {
+        this.clientId = clientId;
     }
 
     public String getProfession() {

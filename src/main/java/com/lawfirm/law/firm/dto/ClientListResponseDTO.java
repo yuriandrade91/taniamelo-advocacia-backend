@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @JsonPropertyOrder({
-    "id",
+    "clientId",
     "fullName",
     "cpf",
     "mobilePhone",
@@ -20,7 +20,7 @@ import java.util.UUID;
     "updatedAt"
 })
 public class ClientListResponseDTO {
-    private UUID id;
+    private UUID clientId;
     private String fullName;
     private String cpf;
     private String mobilePhone;
@@ -31,12 +31,12 @@ public class ClientListResponseDTO {
     private String beneficiaryNumber;
     private Instant updatedAt;
 
-    public UUID getId() {
-        return id;
+    public UUID getClientId() {
+        return clientId;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
+    public void setClientId(UUID clientId) {
+        this.clientId = clientId;
     }
 
     public String getFullName() {

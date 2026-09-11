@@ -14,7 +14,7 @@ import java.util.UUID;
 
 /**
  * Payload de criação de cliente (POST /clients). Endereços são um recurso próprio (POST
- * /clients/{id}/addresses) - não fazem parte deste payload.
+ * /clients/{clientId}/addresses) - não fazem parte deste payload.
  */
 public class ClientCreateRequestDTO implements ClientWritableFields {
 
