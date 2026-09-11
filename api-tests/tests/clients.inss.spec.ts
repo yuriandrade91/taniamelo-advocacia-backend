@@ -12,7 +12,7 @@ import { novoCliente } from "../src/factories.js";
  * quem precisa dela.
  */
 
-type Cliente = { id: string; fullName: string; inssPassword?: string };
+type Cliente = { clientId: string; fullName: string; inssPassword?: string };
 type Profissional = { profession?: string; inssPassword?: string };
 type SenhaInss = { inssPassword: string };
 
@@ -27,7 +27,7 @@ test.describe("senha do INSS", () => {
       await api.post("/api/v1/clients", { data: novoCliente({ inssPassword: SENHA }) }),
       201,
     );
-    id = criado.id;
+    id = criado.clientId;
   });
 
   test.afterAll(async ({ api }) => {

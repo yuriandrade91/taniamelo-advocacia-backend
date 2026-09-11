@@ -8,7 +8,7 @@ import { novoCliente, cpfInvalido, cpfValido } from "../src/factories.js";
  */
 
 type Cliente = {
-  id: string;
+  clientId: string;
   fullName: string;
   cpf: string;
   situation: string;
@@ -35,9 +35,9 @@ test.describe("POST /clients", () => {
       await api.post("/api/v1/clients", { data: payload }),
       201,
     );
-    criados.push(criado.id);
+    criados.push(criado.clientId);
 
-    expect(criado.id).toBeTruthy();
+    expect(criado.clientId).toBeTruthy();
     expect(criado.fullName).toBe(payload.fullName);
     expect(criado.situation).toBe(payload.situation);
     expect(criado.benefit).toBe(payload.benefit);
@@ -63,7 +63,7 @@ test.describe("POST /clients", () => {
     };
 
     const criado = await dadosDe<Cliente>(await api.post("/api/v1/clients", { data: minimo }), 201);
-    criados.push(criado.id);
+    criados.push(criado.clientId);
 
     // E os padrões do banco precisam aparecer na resposta, não vir nulos.
     expect(criado.nationality).toBe("Brasileira");
@@ -76,11 +76,11 @@ test.describe("POST /clients", () => {
   test("devolve Location apontando para o recurso criado", async ({ api }) => {
     const resposta = await api.post("/api/v1/clients", { data: novoCliente() });
     const criado = await dadosDe<Cliente>(resposta, 201);
-    criados.push(criado.id);
+    criados.push(criado.clientId);
 
     const location = resposta.headers()["location"];
     expect(location, "201 sem header Location").toBeTruthy();
-    expect(location).toContain(criado.id);
+    expect(location).toContain(criado.clientId);
   });
 
   test("CPF com dígito verificador errado é recusado", async ({ api }) => {
@@ -97,7 +97,7 @@ test.describe("POST /clients", () => {
       await api.post("/api/v1/clients", { data: payload }),
       201,
     );
-    criados.push(primeiro.id);
+    criados.push(primeiro.clientId);
 
     const repetido = await api.post("/api/v1/clients", {
       data: novoCliente({ cpf: payload.cpf }),
@@ -133,7 +133,7 @@ test.describe("POST /clients", () => {
       }),
       201,
     );
-    criados.push(criado.id);
+    criados.push(criado.clientId);
 
     // Entra pelo nome da constante, sai sempre como label — é o contrato
     // @JsonValue/@JsonCreator do projeto.
@@ -145,7 +145,7 @@ test.describe("POST /clients", () => {
 test.describe("GET /clients/{id}", () => {
   test("devolve a ficha com idade calculada", async ({ api, clienteId }) => {
     const cliente = await dadosDe<Cliente>(await api.get(`/api/v1/clients/${clienteId}`));
-    expect(cliente.id).toBe(clienteId);
+    expect(cliente.clientId).toBe(clienteId);
     // birthDate da fábrica é 1970-05-20: a idade tem de ser calculada, não nula.
     expect(cliente.age, "idade não calculada").toBeGreaterThan(40);
   });
@@ -287,10 +287,10 @@ test.describe("GET /clients/{id}/situation-history", () => {
   test("cliente sem mudanças devolve lista vazia paginada, não 404", async ({ api }) => {
     const criado = await dadosDe<Cliente>(await api.post("/api/v1/clients", { data: novoCliente() }), 201);
     try {
-      const resposta = await api.get(`/api/v1/clients/${criado.id}/situation-history`);
+      const resposta = await api.get(`/api/v1/clients/${criado.clientId}/situation-history`);
       expect(resposta.status()).toBe(200);
     } finally {
-      await api.delete(`/api/v1/clients/${criado.id}`);
+      await api.delete(`/api/v1/clients/${criado.clientId}`);
     }
   });
 });

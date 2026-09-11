@@ -9,7 +9,7 @@ import { novoCliente } from "../src/factories.js";
  * suíte depender de dados que alguém pode apagar amanhã.
  */
 
-type Item = { id: string; fullName: string; cpf: string; situation: string; benefit: string; clientType: string };
+type Item = { clientId: string; fullName: string; cpf: string; situation: string; benefit: string; clientType: string };
 
 let idVerificado = "";
 let idPotencial = "";
@@ -28,7 +28,7 @@ test.beforeAll(async ({ api }) => {
     }),
     201,
   );
-  idVerificado = verificado.id;
+  idVerificado = verificado.clientId;
 
   const potencial = await dadosDe<Item>(
     await api.post("/api/v1/clients", {
@@ -41,7 +41,7 @@ test.beforeAll(async ({ api }) => {
     }),
     201,
   );
-  idPotencial = potencial.id;
+  idPotencial = potencial.clientId;
 });
 
 test.afterAll(async ({ api }) => {
@@ -101,10 +101,10 @@ test.describe("paginação", () => {
     if (!p1.pagina.hasNextPage) test.skip(true, "base pequena demais para ter segunda página");
     const p2 = await listaDe<Item>(await api.get("/api/v1/clients?pageNumber=2&pageSize=3"));
 
-    const ids1 = new Set(p1.itens.map((c) => c.id));
+    const ids1 = new Set(p1.itens.map((c) => c.clientId));
     // Sobreposição entre páginas é o sintoma clássico de ordenação instável.
     for (const item of p2.itens) {
-      expect(ids1, "registro repetido entre páginas: a ordenação não é estável").not.toContain(item.id);
+      expect(ids1, "registro repetido entre páginas: a ordenação não é estável").not.toContain(item.clientId);
     }
   });
 });
@@ -114,7 +114,7 @@ test.describe("filtros", () => {
     const { itens } = await listaDe<Item>(
       await api.get(`/api/v1/clients?searchTerm=${encodeURIComponent(nomeUnico)}`),
     );
-    expect(itens.map((c) => c.id).sort()).toEqual([idVerificado, idPotencial].sort());
+    expect(itens.map((c) => c.clientId).sort()).toEqual([idVerificado, idPotencial].sort());
   });
 
   test("searchTerm encontra por CPF", async ({ api }) => {
@@ -122,14 +122,14 @@ test.describe("filtros", () => {
     const { itens } = await listaDe<Item>(
       await api.get(`/api/v1/clients?searchTerm=${encodeURIComponent(cliente.cpf)}`),
     );
-    expect(itens.map((c) => c.id)).toContain(idPotencial);
+    expect(itens.map((c) => c.clientId)).toContain(idPotencial);
   });
 
   test("searchTerm ignora caixa e acento", async ({ api }) => {
     const { itens } = await listaDe<Item>(
       await api.get(`/api/v1/clients?searchTerm=${encodeURIComponent(nomeUnico.toUpperCase())}`),
     );
-    expect(itens.map((c) => c.id)).toContain(idPotencial);
+    expect(itens.map((c) => c.clientId)).toContain(idPotencial);
   });
 
   test("searchTerm sem resultado devolve lista vazia", async ({ api }) => {
@@ -141,14 +141,14 @@ test.describe("filtros", () => {
     const { itens } = await listaDe<Item>(
       await api.get(`/api/v1/clients?clientType=Verificado&searchTerm=${encodeURIComponent(nomeUnico)}`),
     );
-    expect(itens.map((c) => c.id)).toEqual([idVerificado]);
+    expect(itens.map((c) => c.clientId)).toEqual([idVerificado]);
   });
 
   test("clientType filtra pelo nome da constante", async ({ api }) => {
     const { itens } = await listaDe<Item>(
       await api.get(`/api/v1/clients?clientType=VERIFICADO&searchTerm=${encodeURIComponent(nomeUnico)}`),
     );
-    expect(itens.map((c) => c.id)).toEqual([idVerificado]);
+    expect(itens.map((c) => c.clientId)).toEqual([idVerificado]);
   });
 
   test("clientType repetido soma os dois tipos", async ({ api }) => {
@@ -157,7 +157,7 @@ test.describe("filtros", () => {
         `/api/v1/clients?clientType=Verificado&clientType=Potencial&searchTerm=${encodeURIComponent(nomeUnico)}`,
       ),
     );
-    expect(itens.map((c) => c.id).sort()).toEqual([idVerificado, idPotencial].sort());
+    expect(itens.map((c) => c.clientId).sort()).toEqual([idVerificado, idPotencial].sort());
   });
 
   test("situation filtra", async ({ api }) => {
@@ -166,7 +166,7 @@ test.describe("filtros", () => {
         `/api/v1/clients?situation=${encodeURIComponent("Análise documental")}&searchTerm=${encodeURIComponent(nomeUnico)}`,
       ),
     );
-    expect(itens.map((c) => c.id)).toEqual([idVerificado]);
+    expect(itens.map((c) => c.clientId)).toEqual([idVerificado]);
   });
 
   test("benefitType filtra", async ({ api }) => {
@@ -175,7 +175,7 @@ test.describe("filtros", () => {
         `/api/v1/clients?benefitType=${encodeURIComponent("Aposentadoria especial")}&searchTerm=${encodeURIComponent(nomeUnico)}`,
       ),
     );
-    expect(itens.map((c) => c.id)).toEqual([idVerificado]);
+    expect(itens.map((c) => c.clientId)).toEqual([idVerificado]);
   });
 
   test("filtros se combinam com E, não com OU", async ({ api }) => {

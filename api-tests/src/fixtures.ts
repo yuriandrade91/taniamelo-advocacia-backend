@@ -100,9 +100,9 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
   clienteId: async ({ api }, use) => {
     const { novoCliente } = await import("./factories.js");
     const criado = await api.post("/api/v1/clients", { data: novoCliente() });
-    const cliente = await dadosDe<{ id: string }>(criado, 201);
-    await use(cliente.id);
-    await api.delete(`/api/v1/clients/${cliente.id}`);
+    const cliente = await dadosDe<{ clientId: string }>(criado, 201);
+    await use(cliente.clientId);
+    await api.delete(`/api/v1/clients/${cliente.clientId}`);
   },
 });
 
