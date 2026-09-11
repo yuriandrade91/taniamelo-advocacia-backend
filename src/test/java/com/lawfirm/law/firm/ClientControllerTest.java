@@ -141,7 +141,7 @@ public class ClientControllerTest extends PostgresIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Location"))
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.id").exists())
+                .andExpect(jsonPath("$.data.clientId").exists())
                 .andExpect(jsonPath("$.data.fullName").value("Test User"))
                 .andExpect(jsonPath("$.data.email").value("admin@taniamelo.adv.br"))
                 .andExpect(jsonPath("$.data.gender").value("Masculino"))

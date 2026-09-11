@@ -439,21 +439,21 @@ class ClientSubResourceControllersTest {
             MockMvc mockMvc = mvcFor(new ClientPersonalDataController(clientService));
 
             ClientPersonalDataResponseDTO dto = new ClientPersonalDataResponseDTO();
-            dto.setId(CLIENT);
+            dto.setClientId(CLIENT);
             dto.setFullName("Maria da Silva");
             dto.setAge(45);
             dto.setGender(Gender.FEMININO);
             when(clientService.getPersonalData(CLIENT)).thenReturn(dto);
             when(clientService.updatePersonalData(eq(CLIENT), any())).thenReturn(dto);
 
-            mockMvc.perform(get("/api/v1/clients/{id}/personal-data", CLIENT))
+            mockMvc.perform(get("/api/v1/clients/{clientId}/personal-data", CLIENT))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.fullName").value("Maria da Silva"))
                     .andExpect(jsonPath("$.data.age").value(45))
                     .andExpect(jsonPath("$.data.gender").value("Feminino"));
 
             mockMvc.perform(
-                            put("/api/v1/clients/{id}/personal-data", CLIENT)
+                            put("/api/v1/clients/{clientId}/personal-data", CLIENT)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(
                                             "{\"fullName\":\"Maria da Silva\",\"birthDate\":\"1980-05-20\","
@@ -470,7 +470,7 @@ class ClientSubResourceControllersTest {
             when(clientService.getPersonalData(any()))
                     .thenThrow(NotFoundException.of("Cliente", CLIENT));
 
-            mockMvc.perform(get("/api/v1/clients/{id}/personal-data", CLIENT))
+            mockMvc.perform(get("/api/v1/clients/{clientId}/personal-data", CLIENT))
                     .andExpect(status().isNotFound());
         }
 
@@ -480,20 +480,20 @@ class ClientSubResourceControllersTest {
             MockMvc mockMvc = mvcFor(new ClientProfessionalDataController(clientService));
 
             ClientProfessionalDataResponseDTO dto = new ClientProfessionalDataResponseDTO();
-            dto.setId(CLIENT);
+            dto.setClientId(CLIENT);
             dto.setProfession("Costureira");
             dto.setContributionTime("10 anos");
             dto.setContributionInMonths(120);
             when(clientService.getProfessionalData(CLIENT)).thenReturn(dto);
             when(clientService.updateProfessionalData(eq(CLIENT), any())).thenReturn(dto);
 
-            mockMvc.perform(get("/api/v1/clients/{id}/professional-data", CLIENT))
+            mockMvc.perform(get("/api/v1/clients/{clientId}/professional-data", CLIENT))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.profession").value("Costureira"))
                     .andExpect(jsonPath("$.data.contributionInMonths").value(120));
 
             mockMvc.perform(
-                            put("/api/v1/clients/{id}/professional-data", CLIENT)
+                            put("/api/v1/clients/{clientId}/professional-data", CLIENT)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(
                                             "{\"profession\":\"Costureira\",\"contributionTime\":\"10 anos\","
@@ -511,7 +511,7 @@ class ClientSubResourceControllersTest {
             MockMvc mockMvc = mvcFor(new ClientProfessionalDataController(clientService));
 
             mockMvc.perform(
-                            put("/api/v1/clients/{id}/professional-data", CLIENT)
+                            put("/api/v1/clients/{clientId}/professional-data", CLIENT)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content("{\"profession\":\"Costureira\"}"))
                     .andExpect(status().isOk());
@@ -524,7 +524,7 @@ class ClientSubResourceControllersTest {
             when(clientService.getProfessionalData(any()))
                     .thenThrow(NotFoundException.of("Cliente", CLIENT));
 
-            mockMvc.perform(get("/api/v1/clients/{id}/professional-data", CLIENT))
+            mockMvc.perform(get("/api/v1/clients/{clientId}/professional-data", CLIENT))
                     .andExpect(status().isNotFound());
         }
     }

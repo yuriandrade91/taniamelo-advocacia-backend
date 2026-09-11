@@ -75,7 +75,7 @@ class ClientControllerUnitTest {
 
     private ClientDetailsDTO detailsDto() {
         ClientDetailsDTO dto = new ClientDetailsDTO();
-        dto.setId(TestFixtures.CLIENT_ID);
+        dto.setClientId(TestFixtures.CLIENT_ID);
         dto.setFullName("Maria da Silva");
         dto.setEmail("maria@x.com");
         dto.setGender(Gender.FEMININO);
@@ -118,7 +118,7 @@ class ClientControllerUnitTest {
                                             "http://localhost/api/v1/clients/"
                                                     + TestFixtures.CLIENT_ID))
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data.id").value(TestFixtures.CLIENT_ID.toString()))
+                    .andExpect(jsonPath("$.data.clientId").value(TestFixtures.CLIENT_ID.toString()))
                     .andExpect(jsonPath("$.data.fullName").value("Maria da Silva"))
                     .andExpect(jsonPath("$.data.gender").value("Feminino"))
                     .andExpect(jsonPath("$.data.situation").value("Formulário preenchido"));
@@ -316,7 +316,7 @@ class ClientControllerUnitTest {
     }
 
     @Nested
-    @DisplayName("GET/PUT/DELETE /api/v1/clients/{id}")
+    @DisplayName("GET/PUT/DELETE /api/v1/clients/{clientId}")
     class ById {
 
         @Test
@@ -325,7 +325,7 @@ class ClientControllerUnitTest {
             when(clientService.findById(TestFixtures.CLIENT_ID))
                     .thenReturn(Optional.of(detailsDto()));
 
-            mockMvc.perform(get("/api/v1/clients/{id}", TestFixtures.CLIENT_ID))
+            mockMvc.perform(get("/api/v1/clients/{clientId}", TestFixtures.CLIENT_ID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.fullName").value("Maria da Silva"));
         }
@@ -335,7 +335,7 @@ class ClientControllerUnitTest {
         void getByIdReturns404() throws Exception {
             when(clientService.findById(any())).thenReturn(Optional.empty());
 
-            mockMvc.perform(get("/api/v1/clients/{id}", TestFixtures.CLIENT_ID))
+            mockMvc.perform(get("/api/v1/clients/{clientId}", TestFixtures.CLIENT_ID))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.success").value(false))
                     .andExpect(jsonPath("$.errors[0].code").value("NOT_FOUND"));
@@ -344,7 +344,7 @@ class ClientControllerUnitTest {
         @Test
         @DisplayName("id que não é UUID vira 400")
         void nonUuidIdReturns400() throws Exception {
-            mockMvc.perform(get("/api/v1/clients/{id}", "nao-e-uuid"))
+            mockMvc.perform(get("/api/v1/clients/{clientId}", "nao-e-uuid"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.errors[0].code").value("INVALID_PARAMETER"));
         }
@@ -366,7 +366,7 @@ class ClientControllerUnitTest {
             body.setSituation(Situation.FORMULARIO_PREENCHIDO);
 
             mockMvc.perform(
-                            put("/api/v1/clients/{id}", TestFixtures.CLIENT_ID)
+                            put("/api/v1/clients/{clientId}", TestFixtures.CLIENT_ID)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(body)))
                     .andExpect(status().isOk())
@@ -377,7 +377,7 @@ class ClientControllerUnitTest {
         @Test
         @DisplayName("DELETE devolve a mensagem de confirmação")
         void deleteReturnsMessage() throws Exception {
-            mockMvc.perform(delete("/api/v1/clients/{id}", TestFixtures.CLIENT_ID))
+            mockMvc.perform(delete("/api/v1/clients/{clientId}", TestFixtures.CLIENT_ID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.message").value("Cliente excluído com sucesso."));
 
@@ -391,7 +391,7 @@ class ClientControllerUnitTest {
                     .when(clientService)
                     .delete(TestFixtures.CLIENT_ID);
 
-            mockMvc.perform(delete("/api/v1/clients/{id}", TestFixtures.CLIENT_ID))
+            mockMvc.perform(delete("/api/v1/clients/{clientId}", TestFixtures.CLIENT_ID))
                     .andExpect(status().isNotFound());
         }
 
@@ -401,7 +401,7 @@ class ClientControllerUnitTest {
             when(clientService.findById(TestFixtures.CLIENT_ID))
                     .thenReturn(Optional.of(detailsDto()));
 
-            mockMvc.perform(get("/api/v1/clients/{id}", TestFixtures.CLIENT_ID))
+            mockMvc.perform(get("/api/v1/clients/{clientId}", TestFixtures.CLIENT_ID))
                     .andExpect(status().isOk())
                     // Voltar em toda abertura de ficha levava a senha para log de acesso,
                     // cache de navegador e print de tela.
@@ -414,7 +414,7 @@ class ClientControllerUnitTest {
             when(clientService.revealInssPassword(TestFixtures.CLIENT_ID))
                     .thenReturn(new ClientInssPasswordDTO("senha-do-portal"));
 
-            mockMvc.perform(get("/api/v1/clients/{id}/inss-password", TestFixtures.CLIENT_ID))
+            mockMvc.perform(get("/api/v1/clients/{clientId}/inss-password", TestFixtures.CLIENT_ID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.inssPassword").value("senha-do-portal"));
         }
@@ -425,14 +425,14 @@ class ClientControllerUnitTest {
             when(clientService.revealInssPassword(TestFixtures.CLIENT_ID))
                     .thenThrow(NotFoundException.of("Cliente", TestFixtures.CLIENT_ID));
 
-            mockMvc.perform(get("/api/v1/clients/{id}/inss-password", TestFixtures.CLIENT_ID))
+            mockMvc.perform(get("/api/v1/clients/{clientId}/inss-password", TestFixtures.CLIENT_ID))
                     .andExpect(status().isNotFound());
         }
 
         @Test
         @DisplayName("PATCH /restore devolve a mensagem de confirmação")
         void restoreReturnsMessage() throws Exception {
-            mockMvc.perform(patch("/api/v1/clients/{id}/restore", TestFixtures.CLIENT_ID))
+            mockMvc.perform(patch("/api/v1/clients/{clientId}/restore", TestFixtures.CLIENT_ID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.message").value("Cliente restaurado com sucesso."));
 
@@ -446,13 +446,13 @@ class ClientControllerUnitTest {
                     .when(clientService)
                     .restore(TestFixtures.CLIENT_ID);
 
-            mockMvc.perform(patch("/api/v1/clients/{id}/restore", TestFixtures.CLIENT_ID))
+            mockMvc.perform(patch("/api/v1/clients/{clientId}/restore", TestFixtures.CLIENT_ID))
                     .andExpect(status().isNotFound());
         }
     }
 
     @Nested
-    @DisplayName("PATCH /api/v1/clients/{id} - mensagem com concordância PT-BR")
+    @DisplayName("PATCH /api/v1/clients/{clientId} - mensagem com concordância PT-BR")
     class Patch {
 
         private void stubOutcome(
@@ -483,7 +483,7 @@ class ClientControllerUnitTest {
             stubOutcome(situation, benefit, type, billable);
 
             mockMvc.perform(
-                            patch("/api/v1/clients/{id}", TestFixtures.CLIENT_ID)
+                            patch("/api/v1/clients/{clientId}", TestFixtures.CLIENT_ID)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content("{\"situation\":\"Análise documental\"}"))
                     .andExpect(status().isOk())
@@ -497,7 +497,7 @@ class ClientControllerUnitTest {
             stubOutcome(false, false, false, false);
 
             mockMvc.perform(
-                            patch("/api/v1/clients/{id}", TestFixtures.CLIENT_ID)
+                            patch("/api/v1/clients/{clientId}", TestFixtures.CLIENT_ID)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content("{}"))
                     .andExpect(status().isOk());
@@ -505,7 +505,7 @@ class ClientControllerUnitTest {
     }
 
     @Nested
-    @DisplayName("GET /api/v1/clients/{id}/situation-history")
+    @DisplayName("GET /api/v1/clients/{clientId}/situation-history")
     class SituationHistory {
 
         @Test
@@ -522,7 +522,9 @@ class ClientControllerUnitTest {
                                     12));
 
             mockMvc.perform(
-                            get("/api/v1/clients/{id}/situation-history", TestFixtures.CLIENT_ID)
+                            get(
+                                            "/api/v1/clients/{clientId}/situation-history",
+                                            TestFixtures.CLIENT_ID)
                                     .param("pageNumber", "2")
                                     .param("pageSize", "5"))
                     .andExpect(status().isOk())
@@ -545,7 +547,10 @@ class ClientControllerUnitTest {
                             org.mockito.ArgumentMatchers.anyInt()))
                     .thenThrow(NotFoundException.of("Cliente", TestFixtures.CLIENT_ID));
 
-            mockMvc.perform(get("/api/v1/clients/{id}/situation-history", TestFixtures.CLIENT_ID))
+            mockMvc.perform(
+                            get(
+                                    "/api/v1/clients/{clientId}/situation-history",
+                                    TestFixtures.CLIENT_ID))
                     .andExpect(status().isNotFound());
         }
     }

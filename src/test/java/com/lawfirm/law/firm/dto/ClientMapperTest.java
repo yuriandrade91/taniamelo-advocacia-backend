@@ -211,7 +211,7 @@ class ClientMapperTest {
 
         assertEquals(30, dto.getAge());
         assertEquals("Maria da Silva", dto.getFullName());
-        assertEquals(entity.getId(), dto.getId());
+        assertEquals(entity.getId(), dto.getClientId());
     }
 
     @Test
@@ -245,7 +245,7 @@ class ClientMapperTest {
     void toListDtoMapsGridFields() {
         ClientListResponseDTO dto = mapper.toListDTO(TestFixtures.client());
 
-        assertEquals(TestFixtures.CLIENT_ID, dto.getId());
+        assertEquals(TestFixtures.CLIENT_ID, dto.getClientId());
         assertEquals("Maria da Silva", dto.getFullName());
         assertEquals("529.982.247-25", dto.getCpf());
     }
