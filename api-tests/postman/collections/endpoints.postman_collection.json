@@ -1,0 +1,25 @@
+{
+  "info": {
+    "name": "Endpoints",
+    "description": "",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "holidays",
+      "item": [
+        {
+          "name": "/all-holidays",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "https://date.nager.at/api/v3/PublicHolidays/2025/BR",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "collections": [
+    {
+      "name": "Endpoints",
+      "postmanId": "6770208-da94a290-c6c0-4d52-8b3c-dbaeaa2e4efd",
+      "file": "collections/endpoints.postman_collection.json",
+      "external": true,
+      "public": true,
+      "mutable": false
+    },
+    {
+      "name": "Tania Melo - Agenda (Appointments)",
+      "postmanId": "6770208-fae5cdda-ca83-44a0-89df-4c6a824be16e",
+      "file": "collections/agenda.postman_collection.json",
+      "external": false,
+      "public": false,
+      "mutable": true
+    },
+    {
+      "name": "Tania Melo Advocacia — API (auth, clientes, agenda)",
+      "postmanId": "6770208-940fc1f8-fca4-4183-90a3-f326b4943a5a",
+      "file": "collections/tania-melo-api.postman_collection.json",
+      "external": false,
+      "public": false,
+      "mutable": true
+    }
+  ]
+}

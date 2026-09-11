@@ -128,3 +128,31 @@ Ficam registrados porque explicam por que vários testes existem:
    dígitos extraídos e virava `cpf LIKE '%2%'`, que casa com quase toda a base:
    procurar "Maria 2ª" trazia meio escritório. Agora o ramo do CPF só entra em
    termo sem letra e com pelo menos 3 dígitos.
+
+## Execução serial das três coleções Postman
+
+Os snapshots sanitizados ficam em `postman/collections/` e a ordem de execução
+fica em `postman/manifest.json`. O runner valida todos os snapshots antes de
+iniciar, executa uma coleção por vez e injeta somente em memória os aliases
+`baseUrl`, `tenantSlug`, `tenant`, `login`, `loginId` e `password` a partir das
+variáveis `API_*`. JSON, JUnit, saída CLI e `summary.json` são separados por
+execução em `postman/reports/`. A coleção **Endpoints** aparece como `external`
+no resumo.
+
+```bash
+npm run postman:all       # alvo definido por API_BASE_URL
+npm run postman:aws       # instância AWS de desenvolvimento
+npm run postman:local     # http://localhost:8080
+npm run postman:public    # somente coleções públicas, sem credenciais
+```
+
+Coleções mutáveis exigem `API_LOGIN` e `API_PASSWORD`. O tenant padrão e seguro é
+`demo`; outro tenant é recusado, salvo override explícito e consciente:
+
+```bash
+POSTMAN_ALLOW_NON_DEMO=true npm run postman:all
+# equivalente: node scripts/run-all-postman.mjs --allow-non-demo
+```
+
+A senha deve ficar apenas no `.env`, shell ou secret do CI. Ela não é persistida
+pelo runner. Esta automação Node é independente do Maven.

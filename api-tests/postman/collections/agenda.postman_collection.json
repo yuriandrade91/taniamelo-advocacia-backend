@@ -1,0 +1,926 @@
+{
+  "info": {
+    "name": "Tania Melo - Agenda (Appointments)",
+    "description": "Testes ponta a ponta dos endpoints de Agenda (/api/v1/appointments), com asserts automáticos. Configure as variáveis da coleção (baseUrl, tenant, loginId, password, clientId) e rode pelo Runner ou via newman. O login captura o accessToken; datas passado/futuro são calculadas no pre-request da coleção.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Datas determinísticas relativas a agora (ISO-8601 UTC).",
+          "const now = Date.now();",
+          "const iso = (days, hours) => new Date(now + days*86400000 + hours*3600000).toISOString();",
+          "pm.collectionVariables.set('futureStart', iso(2, 0));",
+          "pm.collectionVariables.set('futureEnd',   iso(2, 1));",
+          "pm.collectionVariables.set('pastStart',   iso(-3, 0));",
+          "pm.collectionVariables.set('pastEnd',     iso(-3, 1));",
+          "pm.collectionVariables.set('curYear', String(new Date().getUTCFullYear()));",
+          "pm.collectionVariables.set('curMonth', String(new Date().getUTCMonth() + 1));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": ""
+    },
+    {
+      "key": "tenant",
+      "value": ""
+    },
+    {
+      "key": "loginId",
+      "value": ""
+    },
+    {
+      "key": "password",
+      "value": ""
+    },
+    {
+      "key": "clientId",
+      "value": ""
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "tenantId",
+      "value": ""
+    },
+    {
+      "key": "futureStart",
+      "value": ""
+    },
+    {
+      "key": "futureEnd",
+      "value": ""
+    },
+    {
+      "key": "pastStart",
+      "value": ""
+    },
+    {
+      "key": "pastEnd",
+      "value": ""
+    },
+    {
+      "key": "curYear",
+      "value": ""
+    },
+    {
+      "key": "curMonth",
+      "value": ""
+    },
+    {
+      "key": "apptId",
+      "value": ""
+    },
+    {
+      "key": "pastApptId",
+      "value": ""
+    },
+    {
+      "key": "cancelApptId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{loginId}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('envelope success', () => pm.expect(b.success).to.be.true);",
+                  "pm.test('tem access token', () => pm.expect(b.data.token).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('accessToken', b.data.token);",
+                  "pm.collectionVariables.set('tenantId', b.data.tenantId);",
+                  "pm.test('tenantId e slug presentes', () => { pm.expect(b.data.tenantId).to.be.a('string'); pm.expect(b.data.tenantSlug).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. CRUD (happy path)",
+      "item": [
+        {
+          "name": "Criar (futuro, com cliente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Entrevista com Maria (teste)\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{futureStart}}\",\n  \"endAt\": \"{{futureEnd}}\",\n  \"modality\": \"Presencial\",\n  \"location\": \"Escritório - Sala 1\",\n  \"description\": \"Criado pelo teste automatizado.\",\n  \"clientId\": \"{{clientId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/appointments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('status Agendado', () => pm.expect(b.data.status).to.eql('Agendado'));",
+                  "pm.test('clientName veio do cliente', () => pm.expect(b.data.clientName).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('apptId', b.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar por id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/appointments/{{apptId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('id confere', () => pm.expect(b.data.id).to.eql(pm.collectionVariables.get('apptId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar (ano+mês)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/appointments?year=2026&month=8&pageNumber=1&pageSize=10"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('data é array', () => pm.expect(b.data).to.be.an('array'));",
+                  "pm.test('tem paginação', () => pm.expect(b.pagination).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resumo por mês (abas)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/appointments/summary?year=2026"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('array de {year,month,count}', () => { pm.expect(b.data).to.be.an('array'); if (b.data.length) { pm.expect(b.data[0]).to.have.property('month'); pm.expect(b.data[0]).to.have.property('count'); } });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar (com justificativa)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Entrevista com Maria (editada)\",\n  \"type\": \"Entrevista\",\n  \"startAt\": \"{{futureStart}}\",\n  \"endAt\": \"{{futureEnd}}\",\n  \"modality\": \"Online\",\n  \"meetingUrl\": \"https://meet.google.com/xxx-yyyy-zzz\",\n  \"clientId\": \"{{clientId}}\",\n  \"justification\": \"Ajuste de modalidade para online.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/appointments/{{apptId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('título atualizado', () => pm.expect(b.data.title).to.eql('Entrevista com Maria (editada)'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Concluir",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/appointments/{{apptId}}/complete"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('status Concluído', () => pm.expect(pm.response.json().data.status).to.eql('Concluído'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Histórico (contém EDITED)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/appointments/{{apptId}}/history"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const acts = pm.response.json().data.map(h => h.action);",
+                  "pm.test('registrou edição', () => pm.expect(acts).to.include('EDITED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/appointments/{{apptId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Vínculo com cliente",
+      "item": [
+        {
+          "name": "Criar com nome livre (sem clientId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Reunião com pessoa não cadastrada\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{futureStart}}\",\n  \"endAt\": \"{{futureEnd}}\",\n  \"clientName\": \"Fulano Não Cadastrado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/appointments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('clientId nulo', () => pm.expect(b.data.clientId).to.be.oneOf([null, undefined]));",
+                  "pm.test('clientName livre preservado', () => pm.expect(b.data.clientName).to.eql('Fulano Não Cadastrado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar com clientId inexistente (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Cliente inexistente\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{futureStart}}\",\n  \"endAt\": \"{{futureEnd}}\",\n  \"clientId\": \"00000000-0000-4000-8000-000000000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/appointments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('code NOT_FOUND', () => pm.expect(pm.response.json().errors[0].code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Regras e erros",
+      "item": [
+        {
+          "name": "Sem token (401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/appointments?year=2026",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('code UNAUTHENTICATED', () => pm.expect(pm.response.json().errors[0].code).to.eql('UNAUTHENTICATED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "start > end (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Período inválido\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{futureEnd}}\",\n  \"endAt\": \"{{futureStart}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/appointments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retroativo SEM confirmação (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Compromisso retroativo\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{pastStart}}\",\n  \"endAt\": \"{{pastEnd}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/appointments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));",
+                  "pm.test('code PAST_DATE_NOT_CONFIRMED', () => pm.expect(pm.response.json().errors[0].code).to.eql('PAST_DATE_NOT_CONFIRMED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retroativo CONFIRMADO (201 + autoria)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Compromisso retroativo (ciente)\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{pastStart}}\",\n  \"endAt\": \"{{pastEnd}}\",\n  \"pastDateAcknowledged\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/appointments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('registrou quem autorizou', () => pm.expect(b.data.pastDateAuthorizedBy).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('pastApptId', b.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Auditoria do retroativo (ACKNOWLEDGED)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/appointments/{{pastApptId}}/history"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const acts = pm.response.json().data.map(h => h.action);",
+                  "pm.test('histórico tem ACKNOWLEDGED', () => pm.expect(acts).to.include('ACKNOWLEDGED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar sem justificativa (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sem justificativa\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{futureStart}}\",\n  \"endAt\": \"{{futureEnd}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/appointments/{{pastApptId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('campo justification', () => pm.expect(JSON.stringify(pm.response.json().errors)).to.include('justification'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Setup: criar p/ cancelar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"A cancelar\",\n  \"type\": \"Reunião\",\n  \"startAt\": \"{{futureStart}}\",\n  \"endAt\": \"{{futureEnd}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/appointments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('cancelApptId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelar sem justificativa (400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"justification\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/appointments/{{cancelApptId}}/cancel"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelar (200)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"justification\": \"Cliente remarcou.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/appointments/{{cancelApptId}}/cancel"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('status Cancelado', () => pm.expect(pm.response.json().data.status).to.eql('Cancelado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelar já cancelado (422)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"justification\": \"De novo.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/appointments/{{cancelApptId}}/cancel"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));",
+                  "pm.test('code OPERATION_NOT_ALLOWED', () => pm.expect(pm.response.json().errors[0].code).to.eql('OPERATION_NOT_ALLOWED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Concluir um cancelado (422)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/appointments/{{cancelApptId}}/complete"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));",
+                  "pm.test('code OPERATION_NOT_ALLOWED', () => pm.expect(pm.response.json().errors[0].code).to.eql('OPERATION_NOT_ALLOWED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar id inexistente (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/appointments/11111111-1111-4111-8111-111111111111"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('code NOT_FOUND', () => pm.expect(pm.response.json().errors[0].code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
