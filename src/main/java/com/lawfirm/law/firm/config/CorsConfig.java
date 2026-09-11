@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -56,6 +57,15 @@ public class CorsConfig {
 
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
+
+        // Header de RESPOSTA que o navegador só entrega ao JavaScript se estiver
+        // listado aqui. `addAllowedHeader("*")` acima é sobre o que ENTRA, e não
+        // cobre isto - são duas listas diferentes, e confundir as duas é como o
+        // `Retry-After` do 429 chegava ao navegador e sumia antes do `fetch`.
+        //
+        // Sem ele a tela de login só consegue dizer "tente mais tarde", e quem lê
+        // isso tenta de novo imediatamente - exatamente o que o freio evita.
+        config.addExposedHeader(HttpHeaders.RETRY_AFTER);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

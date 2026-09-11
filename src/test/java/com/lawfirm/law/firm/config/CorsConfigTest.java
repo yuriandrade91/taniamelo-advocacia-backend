@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -39,6 +40,23 @@ class CorsConfigTest {
         assertEquals(List.of("*"), configFor("").getAllowedOriginPatterns());
         assertEquals(List.of("*"), configFor("   ").getAllowedOriginPatterns());
         assertEquals(List.of("*"), configFor(",,,").getAllowedOriginPatterns());
+    }
+
+    @Test
+    @DisplayName("Retry-After é exposto ao JavaScript, em qualquer configuração de origem")
+    void retryAfterIsExposedToTheBrowser() {
+        // Header de resposta que o navegador esconde do JavaScript a menos que
+        // esteja nesta lista. `addAllowedHeader("*")` NÃO cobre - é a lista do que
+        // entra, não do que sai.
+        //
+        // Sem isto, o `Retry-After` do 429 chega ao navegador e some antes do
+        // código: a tela de login só consegue dizer "tente mais tarde", e quem lê
+        // isso tenta de novo na hora - o oposto do que o freio de tentativas quer.
+        for (String origens : new String[] {"*", "", "https://app.taniamelo.adv.br"}) {
+            assertTrue(
+                    configFor(origens).getExposedHeaders().contains(HttpHeaders.RETRY_AFTER),
+                    "Retry-After deveria ser exposto com origens=" + origens);
+        }
     }
 
     @Test
