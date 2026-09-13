@@ -76,6 +76,9 @@ coleção 1:N").
   (tempo de contribuição, regras de transição da EC 103/2019, pontos,
   pedágio) - hoje `client_files` (kind=SIMULATION) só armazena o PDF já
   pronto e os metadados preenchidos pelo usuário, sem calcular nada.
+  O primeiro passo (ler o PDF e virar linhas de vínculo) está desenhado em
+  `docs/PLANO_IA_LLM_RAG.md` §4.1 - a conclusão de lá é que ele começa por um
+  parser determinístico, sem IA, e só usa modelo onde o parser falhar.
 - Agenda de perícias e audiências.
 - Contratos de honorários formais (documento assinado, % de êxito automático
   sobre valor de benefício retroativo) e relatório financeiro consolidado do
