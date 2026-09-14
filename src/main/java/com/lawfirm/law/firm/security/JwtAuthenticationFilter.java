@@ -1,5 +1,7 @@
 package com.lawfirm.law.firm.security;
 
+import com.lawfirm.law.firm.tenant.TenantContext;
+import com.lawfirm.law.firm.tenant.TenantRegistry;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,11 +23,40 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final TenantRegistry tenantRegistry;
 
     public JwtAuthenticationFilter(
-            JwtService jwtService, CustomUserDetailsService userDetailsService) {
+            JwtService jwtService,
+            CustomUserDetailsService userDetailsService,
+            TenantRegistry tenantRegistry) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.tenantRegistry = tenantRegistry;
+    }
+
+    /**
+     * O token vale para o escritório que o emitiu - e para nenhum outro.
+     *
+     * <p>Sem esta checagem, o {@code X-Tenant-Id} do cabeçalho decidia sozinho em qual schema
+     * procurar o usuário ({@link com.lawfirm.law.firm.tenant.TenantResolutionFilter} resolve pelo
+     * header primeiro), e o usuário era carregado pelo e-mail LÁ. Como o {@link
+     * com.lawfirm.law.firm.config.AdminUserSeeder} semeia o mesmo e-mail e a mesma senha em todos
+     * os schemas, existia por construção uma conta presente em todos os escritórios: com o token de
+     * um e o cabeçalho de outro, dava para ler a carteira de clientes alheia, criar compromisso
+     * nela e ler a senha do INSS dos clientes dela.
+     *
+     * <p>Comparamos schema resolvido contra schema do claim, e não o texto do claim contra o texto
+     * do header, porque o identificador público aceita slug OU UUID: {@code demo} e o UUID do mesmo
+     * escritório são o mesmo lugar, e comparar strings recusaria isso.
+     */
+    private boolean tokenPerteceAoEscritorioDaRequisicao(String token) {
+        String schemaDaRequisicao = TenantContext.get();
+        if (schemaDaRequisicao == null) {
+            return false;
+        }
+        String schemaDoToken =
+                tenantRegistry.schemaFor(jwtService.extractTenant(token)).orElse(null);
+        return schemaDaRequisicao.equals(schemaDoToken);
     }
 
     @Override
@@ -40,6 +71,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(PREFIX.length());
             try {
                 if (jwtService.isValid(token)
+                        && tokenPerteceAoEscritorioDaRequisicao(token)
                         && SecurityContextHolder.getContext().getAuthentication() == null) {
                     String email = jwtService.extractEmail(token);
                     UserDetails userDetails = userDetailsService.loadUserByUsername(email);
