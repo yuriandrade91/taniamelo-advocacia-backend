@@ -15,7 +15,6 @@ import com.lawfirm.law.firm.dto.ClientProfessionalDataRequestDTO;
 import com.lawfirm.law.firm.dto.ClientProfessionalDataResponseDTO;
 import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
-import com.lawfirm.law.firm.dto.ClientWritableFields;
 import com.lawfirm.law.firm.exception.NotFoundException;
 import com.lawfirm.law.firm.exception.ValidationErrorCode;
 import com.lawfirm.law.firm.exception.ValidationException;
@@ -29,6 +28,7 @@ import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSpecification;
 import com.lawfirm.law.firm.security.CurrentUser;
 import com.lawfirm.law.firm.util.ContributionTimeParser;
+import com.lawfirm.law.firm.util.DocumentoIdentidade;
 import com.lawfirm.law.firm.util.PageRequests;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
@@ -67,8 +68,9 @@ public class ClientServiceImpl implements ClientService {
     @Override
     @Transactional
     public ClientDetailsDTO create(ClientCreateRequestDTO dto) {
-        validateUniqueness(dto);
         Client entity = mapper.toEntity(dto);
+        normalizarIdentidade(entity);
+        validarIdentidadeUnica(entity, null);
         entity.setContributionInMonths(
                 ContributionTimeParser.toMonths(entity.getContributionTime()));
         entity.setCreatedBy(CurrentUser.id());
@@ -114,7 +116,15 @@ public class ClientServiceImpl implements ClientService {
         Client existing = findOrThrow(id);
         Situation previous = existing.getSituation();
 
+        validarIdentidadeUnica(
+                id,
+                dto.getCpf(),
+                dto.getRg(),
+                dto.getCtps(),
+                dto.getNitPis(),
+                dto.getBeneficiaryNumber());
         mapper.updateEntityFromDto(dto, existing);
+        normalizarIdentidade(existing);
         existing.setContributionInMonths(
                 ContributionTimeParser.toMonths(existing.getContributionTime()));
         existing.setUpdatedBy(CurrentUser.id());
@@ -210,6 +220,12 @@ public class ClientServiceImpl implements ClientService {
         if (existing.getDeletedAt() == null) {
             return;
         }
+        // Enquanto este cliente esteve excluído, o CPF dele ficou livre - o índice
+        // único é parcial de propósito. Se alguém recadastrou a mesma pessoa nesse
+        // meio-tempo, trazer o antigo de volta estouraria unique violation no banco:
+        // 409 genérico, sem dizer qual campo nem qual cliente está ocupando. Checando
+        // aqui, a recusa é 400 nomeando o documento.
+        validarIdentidadeUnica(existing, id);
         existing.setDeletedAt(null);
         existing.setUpdatedBy(CurrentUser.id());
         repository.save(existing);
@@ -261,6 +277,18 @@ public class ClientServiceImpl implements ClientService {
             UUID id, ClientPersonalDataRequestDTO dto) {
         Client existing = findOrThrow(id);
 
+        // Antes de escrever: a entidade é gerenciada, e mutar antes de consultar
+        // dispara flush automático - aí o índice do banco estoura primeiro e a resposta
+        // vira 409 sem dizer o campo. Os três documentos que esta aba não edita vão como
+        // estão na entidade.
+        validarIdentidadeUnica(
+                id,
+                dto.getCpf(),
+                dto.getRg(),
+                existing.getCtps(),
+                existing.getNitPis(),
+                existing.getBeneficiaryNumber());
+
         existing.setFullName(dto.getFullName());
         existing.setBirthDate(dto.getBirthDate());
         existing.setCpf(dto.getCpf());
@@ -285,6 +313,7 @@ public class ClientServiceImpl implements ClientService {
         }
         existing.setUpdatedBy(CurrentUser.id());
 
+        normalizarIdentidade(existing);
         return toPersonalDataDTO(repository.save(existing));
     }
 
@@ -301,6 +330,16 @@ public class ClientServiceImpl implements ClientService {
             UUID id, ClientProfessionalDataRequestDTO dto) {
         Client existing = findOrThrow(id);
 
+        // Mesma razão da aba de dados pessoais: validar antes de mutar. CPF e RG não são
+        // editados aqui e vão como estão na entidade.
+        validarIdentidadeUnica(
+                id,
+                existing.getCpf(),
+                existing.getRg(),
+                dto.getCtps(),
+                dto.getNitPis(),
+                dto.getBeneficiaryNumber());
+
         existing.setProfession(dto.getProfession());
         existing.setNitPis(dto.getNitPis());
         existing.setCtps(dto.getCtps());
@@ -315,6 +354,7 @@ public class ClientServiceImpl implements ClientService {
         }
         existing.setUpdatedBy(CurrentUser.id());
 
+        normalizarIdentidade(existing);
         return toProfessionalDataDTO(repository.save(existing));
     }
 
@@ -378,21 +418,115 @@ public class ClientServiceImpl implements ClientService {
         historyRepository.save(h);
     }
 
-    private void validateUniqueness(ClientWritableFields dto) {
-        checkDuplicate(dto.getCpf(), repository::existsByCpf, "cpf", "CPF já cadastrado");
-        checkDuplicate(
-                dto.getNitPis(), repository::existsByNitPis, "nitPis", "NIT/PIS já cadastrado");
-        checkDuplicate(
-                dto.getBeneficiaryNumber(),
-                repository::existsByBeneficiaryNumberIgnoreCase,
-                "beneficiaryNumber",
-                "Número do benefício já cadastrado");
+    /**
+     * Normaliza os cinco documentos que identificam o cliente, na entidade, antes de qualquer
+     * gravação.
+     *
+     * <p>Fica aqui, e não no mapper, porque as abas de dados pessoais e profissionais escrevem
+     * direto na entidade sem passar por ele - normalizar no mapper deixaria dois dos quatro
+     * caminhos de escrita de fora, que é como o defeito nasceu.
+     */
+    private void normalizarIdentidade(Client entity) {
+        entity.setCpf(DocumentoIdentidade.apenasDigitos(entity.getCpf()));
+        entity.setRg(DocumentoIdentidade.alfanumericoMaiusculo(entity.getRg()));
+        entity.setCtps(DocumentoIdentidade.apenasDigitos(entity.getCtps()));
+        entity.setNitPis(DocumentoIdentidade.apenasDigitos(entity.getNitPis()));
+        entity.setBeneficiaryNumber(
+                DocumentoIdentidade.apenasDigitos(entity.getBeneficiaryNumber()));
     }
 
-    private void checkDuplicate(
-            String value, Predicate<String> existsFn, String field, String message) {
-        if (value != null && !value.isBlank() && existsFn.test(value.trim())) {
-            throw new ValidationException(field, ValidationErrorCode.DUPLICATE_VALUE, message);
+    /**
+     * Recusa documento que já pertence a outro cliente ativo.
+     *
+     * <p>Vale para criação E edição. Antes só valia na criação, então o mesmo CPF duplicado dava
+     * 400 com o campo apontado no cadastro e 409 genérico na edição - mesma regra, duas respostas,
+     * e uma delas sem dizer qual campo.
+     *
+     * <p>Contato (celular, e-mail, telefone de recado) NÃO entra: contato se compartilha entre mãe
+     * e filho, casal, responsável. Tornar único recusaria o segundo cadastro de uma família.
+     *
+     * @param idAtual id do cliente sendo editado, ou {@code null} na criação. Sem isso, salvar sem
+     *     mexer no CPF acusaria duplicidade do registro contra ele mesmo.
+     */
+    private void validarIdentidadeUnica(Client entity, UUID idAtual) {
+        validarIdentidadeUnica(
+                idAtual,
+                entity.getCpf(),
+                entity.getRg(),
+                entity.getCtps(),
+                entity.getNitPis(),
+                entity.getBeneficiaryNumber());
+    }
+
+    /**
+     * Mesma validação, sobre os valores que ESTÃO PRESTES a ser gravados.
+     *
+     * <p>Na edição isto tem de rodar ANTES de mexer na entidade. A entidade é gerenciada pelo JPA:
+     * assim que os campos mudam, qualquer consulta à mesma tabela dispara um flush automático, e o
+     * índice único do banco estoura primeiro - 409 genérico, sem dizer qual campo, que é exatamente
+     * o que esta validação existe para evitar. Validar antes de mutar mantém a resposta em 400
+     * nomeando o documento.
+     */
+    private void validarIdentidadeUnica(
+            UUID idAtual,
+            String cpf,
+            String rg,
+            String ctps,
+            String nitPis,
+            String beneficiaryNumber) {
+        checarDocumento(
+                DocumentoIdentidade.apenasDigitos(cpf),
+                idAtual,
+                repository::existsByCpf,
+                repository::existsByCpfAndIdNot,
+                "cpf",
+                "CPF já cadastrado para outro cliente");
+        checarDocumento(
+                DocumentoIdentidade.alfanumericoMaiusculo(rg),
+                idAtual,
+                repository::existsByRg,
+                repository::existsByRgAndIdNot,
+                "rg",
+                "RG já cadastrado para outro cliente");
+        checarDocumento(
+                DocumentoIdentidade.apenasDigitos(ctps),
+                idAtual,
+                repository::existsByCtps,
+                repository::existsByCtpsAndIdNot,
+                "ctps",
+                "CTPS já cadastrada para outro cliente");
+        checarDocumento(
+                DocumentoIdentidade.apenasDigitos(nitPis),
+                idAtual,
+                repository::existsByNitPis,
+                repository::existsByNitPisAndIdNot,
+                "nitPis",
+                "NIT/PIS já cadastrado para outro cliente");
+        checarDocumento(
+                DocumentoIdentidade.apenasDigitos(beneficiaryNumber),
+                idAtual,
+                repository::existsByBeneficiaryNumber,
+                repository::existsByBeneficiaryNumberAndIdNot,
+                "beneficiaryNumber",
+                "Número do benefício já cadastrado para outro cliente");
+    }
+
+    private void checarDocumento(
+            String valorNormalizado,
+            UUID idAtual,
+            Predicate<String> existeNaBase,
+            BiPredicate<String, UUID> existeEmOutro,
+            String campo,
+            String mensagem) {
+        if (valorNormalizado == null || valorNormalizado.isBlank()) {
+            return;
+        }
+        boolean duplicado =
+                idAtual == null
+                        ? existeNaBase.test(valorNormalizado)
+                        : existeEmOutro.test(valorNormalizado, idAtual);
+        if (duplicado) {
+            throw new ValidationException(campo, ValidationErrorCode.DUPLICATE_VALUE, mensagem);
         }
     }
 

@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -156,70 +157,152 @@ class ClientServiceImplTest {
             assertNull(entity.getContributionInMonths());
         }
 
+        /* ────────────────────────────────────────────────────────────────
+         * Identidade única.
+         *
+         * A validação passou a acontecer sobre a ENTIDADE, depois de mapear e
+         * normalizar - antes olhava o DTO cru, e era por isso que
+         * "39053344705" e "390.533.447-05" passavam os dois: para a checagem
+         * eram textos diferentes.
+         * ──────────────────────────────────────────────────────────────── */
+
         @Test
         @DisplayName("CPF já cadastrado é bloqueado antes de gravar")
         void rejectsDuplicateCpf() {
-            ClientCreateRequestDTO dto = createDto();
-            when(repository.existsByCpf("529.982.247-25")).thenReturn(true);
+            Client entity = TestFixtures.client();
+            entity.setCpf("529.982.247-25");
+            when(mapper.toEntity(any())).thenReturn(entity);
+            when(repository.existsByCpf("52998224725")).thenReturn(true);
 
             ValidationException ex =
-                    assertThrows(ValidationException.class, () -> service.create(dto));
+                    assertThrows(ValidationException.class, () -> service.create(createDto()));
             assertEquals("cpf", ex.getField());
             assertEquals(ValidationErrorCode.DUPLICATE_VALUE, ex.getValidationErrorCode());
-            assertEquals("CPF já cadastrado", ex.getMessage());
             verify(repository, never()).save(any());
         }
 
         @Test
-        @DisplayName("NIT/PIS duplicado é bloqueado")
-        void rejectsDuplicateNitPis() {
-            ClientCreateRequestDTO dto = createDto();
-            dto.setNitPis("12345");
-            when(repository.existsByNitPis("12345")).thenReturn(true);
+        @DisplayName("o CPF é comparado por DÍGITOS: com e sem máscara são o mesmo cadastro")
+        void cpfMascaradoEhOMesmoCadastro() {
+            // O defeito que originou tudo isto: os dois passavam, e viravam duas
+            // fichas da mesma pessoa, com históricos separados.
+            Client entity = TestFixtures.client();
+            entity.setCpf("390.533.447-05");
+            when(mapper.toEntity(any())).thenReturn(entity);
+            when(repository.existsByCpf("39053344705")).thenReturn(true);
 
             assertEquals(
-                    "nitPis",
-                    assertThrows(ValidationException.class, () -> service.create(dto)).getField());
+                    "cpf",
+                    assertThrows(ValidationException.class, () -> service.create(createDto()))
+                            .getField());
         }
 
         @Test
-        @DisplayName("número do benefício duplicado é bloqueado (sem diferenciar caixa)")
-        void rejectsDuplicateBeneficiaryNumber() {
-            ClientCreateRequestDTO dto = createDto();
-            dto.setBeneficiaryNumber("bn-1");
-            when(repository.existsByBeneficiaryNumberIgnoreCase("bn-1")).thenReturn(true);
+        @DisplayName("o que é gravado já vai normalizado")
+        void gravaNormalizado() {
+            Client entity = TestFixtures.client();
+            entity.setCpf("390.533.447-05");
+            entity.setRg("mg-12.345.678");
+            entity.setCtps("12.345/0001");
+            entity.setNitPis("123.45678.90-1");
+            entity.setBeneficiaryNumber("123.456.789-0");
+            when(mapper.toEntity(any())).thenReturn(entity);
+            when(mapper.toDTO(any(Client.class))).thenReturn(new ClientDetailsDTO());
 
-            assertEquals(
-                    "beneficiaryNumber",
-                    assertThrows(ValidationException.class, () -> service.create(dto)).getField());
+            service.create(createDto());
+
+            assertEquals("39053344705", entity.getCpf());
+            assertEquals("MG12345678", entity.getRg());
+            assertEquals("123450001", entity.getCtps());
+            assertEquals("123456789 01".replace(" ", ""), entity.getNitPis());
+            assertEquals("1234567890", entity.getBeneficiaryNumber());
+        }
+
+        @Test
+        @DisplayName("RG, CTPS, NIT/PIS e nº do benefício duplicados também são bloqueados")
+        void rejectsOutrosDocumentos() {
+            record Caso(
+                    String campo, java.util.function.Consumer<Client> preenche, Runnable stub) {}
+
+            Client entity = TestFixtures.client();
+            List<Caso> casos =
+                    List.of(
+                            new Caso(
+                                    "rg",
+                                    c -> c.setRg("MG12345678"),
+                                    () ->
+                                            when(repository.existsByRg("MG12345678"))
+                                                    .thenReturn(true)),
+                            new Caso(
+                                    "ctps",
+                                    c -> c.setCtps("1234567"),
+                                    () ->
+                                            when(repository.existsByCtps("1234567"))
+                                                    .thenReturn(true)),
+                            new Caso(
+                                    "nitPis",
+                                    c -> c.setNitPis("12345678901"),
+                                    () ->
+                                            when(repository.existsByNitPis("12345678901"))
+                                                    .thenReturn(true)),
+                            new Caso(
+                                    "beneficiaryNumber",
+                                    c -> c.setBeneficiaryNumber("1234567890"),
+                                    () ->
+                                            when(repository.existsByBeneficiaryNumber("1234567890"))
+                                                    .thenReturn(true)));
+
+            for (Caso caso : casos) {
+                reset(repository, mapper);
+                Client alvo = TestFixtures.client();
+                alvo.setRg(null);
+                alvo.setCtps(null);
+                alvo.setNitPis(null);
+                alvo.setBeneficiaryNumber(null);
+                caso.preenche().accept(alvo);
+                when(mapper.toEntity(any())).thenReturn(alvo);
+                caso.stub().run();
+
+                assertEquals(
+                        caso.campo(),
+                        assertThrows(ValidationException.class, () -> service.create(createDto()))
+                                .getField(),
+                        "esperava bloqueio em " + caso.campo());
+            }
+            assertNotNull(entity);
+        }
+
+        @Test
+        @DisplayName("contato NÃO é único: mãe e filho podem ter o mesmo telefone e e-mail")
+        void contatoNaoEhUnico() {
+            // Decisão de produto: contato se compartilha. Tornar único recusaria o
+            // segundo cadastro de uma família.
+            Client entity = TestFixtures.client();
+            when(mapper.toEntity(any())).thenReturn(entity);
+            when(mapper.toDTO(any(Client.class))).thenReturn(new ClientDetailsDTO());
+
+            service.create(createDto());
+
+            verify(repository).save(entity);
         }
 
         @Test
         @DisplayName("campos únicos em branco não são checados contra duplicidade")
         void blankUniqueFieldsAreSkipped() {
-            ClientCreateRequestDTO dto = createDto();
-            dto.setNitPis("   ");
-            dto.setBeneficiaryNumber(null);
-            when(mapper.toEntity(any())).thenReturn(TestFixtures.client());
+            Client entity = TestFixtures.client();
+            entity.setNitPis("   ");
+            entity.setBeneficiaryNumber(null);
+            entity.setRg(null);
+            entity.setCtps(null);
+            when(mapper.toEntity(any())).thenReturn(entity);
             when(mapper.toDTO(any(Client.class))).thenReturn(new ClientDetailsDTO());
 
-            service.create(dto);
+            service.create(createDto());
 
             verify(repository, never()).existsByNitPis(anyString());
-            verify(repository, never()).existsByBeneficiaryNumberIgnoreCase(anyString());
-        }
-
-        @Test
-        @DisplayName("o valor checado é o texto sem espaços nas pontas")
-        void trimsBeforeCheckingDuplicates() {
-            ClientCreateRequestDTO dto = createDto();
-            dto.setCpf("  529.982.247-25  ");
-            when(mapper.toEntity(any())).thenReturn(TestFixtures.client());
-            when(mapper.toDTO(any(Client.class))).thenReturn(new ClientDetailsDTO());
-
-            service.create(dto);
-
-            verify(repository).existsByCpf("529.982.247-25");
+            verify(repository, never()).existsByBeneficiaryNumber(anyString());
+            verify(repository, never()).existsByRg(anyString());
+            verify(repository, never()).existsByCtps(anyString());
         }
     }
 
@@ -767,7 +850,9 @@ class ClientServiceImplTest {
                     service.updatePersonalData(TestFixtures.CLIENT_ID, dto);
 
             assertEquals("Maria Souza", response.getFullName());
-            assertEquals("111.444.777-35", client.getCpf());
+            // A aba escreve direto na entidade, mas passa pela mesma normalização do
+            // cadastro: o CPF é gravado em dígitos, venha mascarado ou não.
+            assertEquals("11144477735", client.getCpf());
             assertEquals(MaritalStatus.DIVORCIADO, client.getMaritalStatus());
             assertEquals("Brasileira", client.getNationality());
             assertTrue(client.getIsWhatsapp());

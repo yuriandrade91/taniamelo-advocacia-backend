@@ -14,7 +14,37 @@ public interface ClientRepository
 
     boolean existsByNitPis(String nitPis);
 
-    boolean existsByBeneficiaryNumberIgnoreCase(String beneficiaryNumber);
+    /*
+     * Comparação exata, e não IgnoreCase: o valor chega normalizado (só dígitos), e
+     * era justamente o descompasso entre a checagem IgnoreCase da aplicação e o
+     * índice sensível a caixa do banco que fazia os dois discordarem sobre o que é
+     * duplicado.
+     */
+    boolean existsByBeneficiaryNumber(String beneficiaryNumber);
+
+    /*
+     * Variantes "e não seja eu": a validação de unicidade passou a valer também na
+     * EDIÇÃO, e lá o próprio registro é um resultado legítimo - sem excluir o id
+     * atual, salvar um cliente sem mexer no CPF acusaria duplicidade contra ele
+     * mesmo.
+     *
+     * Os valores chegam normalizados (DocumentoIdentidade), então a comparação é
+     * exata de propósito: é o mesmo texto que o índice único do banco compara.
+     */
+
+    boolean existsByCpfAndIdNot(String cpf, UUID id);
+
+    boolean existsByRg(String rg);
+
+    boolean existsByRgAndIdNot(String rg, UUID id);
+
+    boolean existsByCtps(String ctps);
+
+    boolean existsByCtpsAndIdNot(String ctps, UUID id);
+
+    boolean existsByNitPisAndIdNot(String nitPis, UUID id);
+
+    boolean existsByBeneficiaryNumberAndIdNot(String beneficiaryNumber, UUID id);
 
     /**
      * Busca ignorando a exclusão lógica - o único caminho até um cliente excluído.
