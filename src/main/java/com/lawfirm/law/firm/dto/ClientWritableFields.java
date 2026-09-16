@@ -52,7 +52,11 @@ public interface ClientWritableFields {
 
     String getCtpsSeries();
 
-    String getContributionTime();
+    Integer getContributionYears();
+
+    Integer getContributionMonths();
+
+    Integer getContributionDays();
 
     Boolean getNotBillable();
 

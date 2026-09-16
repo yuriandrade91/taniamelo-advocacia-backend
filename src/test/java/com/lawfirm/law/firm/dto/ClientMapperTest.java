@@ -46,7 +46,9 @@ class ClientMapperTest {
         dto.setSituation(Situation.ANALISE_DOCUMENTAL);
         dto.setEmail("maria@x.com");
         dto.setProfession("Costureira");
-        dto.setContributionTime("10 anos");
+        dto.setContributionYears(10);
+        dto.setContributionMonths(0);
+        dto.setContributionDays(0);
         return dto;
     }
 
@@ -59,7 +61,9 @@ class ClientMapperTest {
         assertEquals("529.982.247-25", entity.getCpf());
         assertEquals(Gender.FEMININO, entity.getGender());
         assertEquals(BenefitType.APOSENTADORIA_RURAL, entity.getBenefit());
-        assertEquals("10 anos", entity.getContributionTime());
+        assertEquals(10, entity.getContributionYears());
+        assertEquals(0, entity.getContributionMonths());
+        assertEquals(0, entity.getContributionDays());
         assertNull(entity.getId());
         assertNull(entity.getCreatedBy());
         assertNull(entity.getUpdatedBy());

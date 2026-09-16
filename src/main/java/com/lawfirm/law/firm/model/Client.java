@@ -131,10 +131,17 @@ public class Client implements Auditable {
     @Column(name = "benefit_number", unique = true, length = 30)
     private String beneficiaryNumber;
 
-    @Column(name = "contribution_time")
-    private String contributionTime;
+    // Tempo de contribuição: três números, não texto livre. Ver TempoDeContribuicao.
+    @Column(name = "contribution_years")
+    private Integer contributionYears;
 
-    /** Derivado de contributionTime via ContributionTimeParser - nunca escrito direto pela API. */
+    @Column(name = "contribution_months")
+    private Integer contributionMonths;
+
+    @Column(name = "contribution_days")
+    private Integer contributionDays;
+
+    /** Derivado dos três acima via TempoDeContribuicao - nunca escrito direto pela API. */
     @Column(name = "contribution_in_months")
     private Integer contributionInMonths;
 
@@ -376,12 +383,28 @@ public class Client implements Auditable {
         this.beneficiaryNumber = beneficiaryNumber;
     }
 
-    public String getContributionTime() {
-        return contributionTime;
+    public Integer getContributionYears() {
+        return contributionYears;
     }
 
-    public void setContributionTime(String contributionTime) {
-        this.contributionTime = contributionTime;
+    public void setContributionYears(Integer contributionYears) {
+        this.contributionYears = contributionYears;
+    }
+
+    public Integer getContributionMonths() {
+        return contributionMonths;
+    }
+
+    public void setContributionMonths(Integer contributionMonths) {
+        this.contributionMonths = contributionMonths;
+    }
+
+    public Integer getContributionDays() {
+        return contributionDays;
+    }
+
+    public void setContributionDays(Integer contributionDays) {
+        this.contributionDays = contributionDays;
     }
 
     public Integer getContributionInMonths() {

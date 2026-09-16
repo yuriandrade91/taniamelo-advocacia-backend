@@ -176,7 +176,9 @@ Content-Type: application/json
   "nitPis": "123.45678.90-1",
   "ctps": "12345",
   "ctpsSeries": "00123",
-  "contributionTime": "16 anos, 4 meses, 10 dias",
+  "contributionYears": 16,
+  "contributionMonths": 4,
+  "contributionDays": 10,
   "beneficiaryNumber": null,
   "inssPassword": "inss@123"
 }

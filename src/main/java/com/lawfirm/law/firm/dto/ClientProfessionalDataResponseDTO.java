@@ -17,6 +17,15 @@ public class ClientProfessionalDataResponseDTO {
 
     private String ctpsSeries;
 
+    private Integer contributionYears;
+
+    private Integer contributionMonths;
+
+    private Integer contributionDays;
+
+    /**
+     * Derivado: "33 anos, 11 meses e 5 dias". Somente leitura - o que se grava são os três acima.
+     */
     private String contributionTime;
 
     private Integer contributionInMonths;
@@ -65,6 +74,30 @@ public class ClientProfessionalDataResponseDTO {
 
     public void setCtpsSeries(String ctpsSeries) {
         this.ctpsSeries = ctpsSeries;
+    }
+
+    public Integer getContributionYears() {
+        return contributionYears;
+    }
+
+    public void setContributionYears(Integer contributionYears) {
+        this.contributionYears = contributionYears;
+    }
+
+    public Integer getContributionMonths() {
+        return contributionMonths;
+    }
+
+    public void setContributionMonths(Integer contributionMonths) {
+        this.contributionMonths = contributionMonths;
+    }
+
+    public Integer getContributionDays() {
+        return contributionDays;
+    }
+
+    public void setContributionDays(Integer contributionDays) {
+        this.contributionDays = contributionDays;
     }
 
     public String getContributionTime() {

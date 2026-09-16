@@ -123,7 +123,9 @@ class ClientServiceImplTest {
         void createsAndRecordsInitialHistory() {
             ClientCreateRequestDTO dto = createDto();
             Client entity = TestFixtures.client();
-            entity.setContributionTime("3 anos, 10 meses, 22 dias");
+            entity.setContributionYears(3);
+            entity.setContributionMonths(10);
+            entity.setContributionDays(22);
             when(mapper.toEntity(dto)).thenReturn(entity);
             when(mapper.toDTO(any(Client.class))).thenReturn(new ClientDetailsDTO());
             authenticate();
@@ -147,8 +149,12 @@ class ClientServiceImplTest {
         @Test
         @DisplayName("sem tempo de contribuição, o total em meses fica nulo")
         void nullContributionTimeLeavesMonthsNull() {
+            // Os três nulos significam "não informado", que é diferente de informar zero - era
+            // essa distinção que o parser de texto apagava ao devolver 0 para "nao informado".
             Client entity = TestFixtures.client();
-            entity.setContributionTime(null);
+            entity.setContributionYears(null);
+            entity.setContributionMonths(null);
+            entity.setContributionDays(null);
             when(mapper.toEntity(any())).thenReturn(entity);
             when(mapper.toDTO(any(Client.class))).thenReturn(new ClientDetailsDTO());
 
@@ -571,14 +577,16 @@ class ClientServiceImplTest {
         }
 
         @Test
-        @DisplayName("o total de meses é recalculado a partir do texto atualizado")
+        @DisplayName("o total de meses é recalculado a partir dos números atualizados")
         void recomputesContributionMonths() {
             Client existing = TestFixtures.client();
             when(repository.findById(TestFixtures.CLIENT_ID)).thenReturn(Optional.of(existing));
             when(mapper.toDTO(any(Client.class))).thenReturn(new ClientDetailsDTO());
             org.mockito.Mockito.doAnswer(
                             invocation -> {
-                                existing.setContributionTime("2 anos");
+                                existing.setContributionYears(2);
+                                existing.setContributionMonths(0);
+                                existing.setContributionDays(0);
                                 return null;
                             })
                     .when(mapper)
@@ -897,7 +905,9 @@ class ClientServiceImplTest {
         void getReturnsProfessionalFields() {
             Client client = TestFixtures.client();
             client.setProfession("Costureira");
-            client.setContributionTime("10 anos");
+            client.setContributionYears(10);
+            client.setContributionMonths(0);
+            client.setContributionDays(0);
             client.setContributionInMonths(120);
             when(repository.findById(TestFixtures.CLIENT_ID)).thenReturn(Optional.of(client));
 
@@ -905,12 +915,13 @@ class ClientServiceImplTest {
                     service.getProfessionalData(TestFixtures.CLIENT_ID);
 
             assertEquals("Costureira", dto.getProfession());
-            assertEquals("10 anos", dto.getContributionTime());
+            assertEquals(10, dto.getContributionYears());
+            assertEquals("10 anos", dto.getContributionTime(), "frase derivada, não gravada");
             assertEquals(120, dto.getContributionInMonths());
         }
 
         @Test
-        @DisplayName("update recalcula o total de meses a partir do texto enviado")
+        @DisplayName("update recalcula o total de meses a partir dos números enviados")
         void updateRecomputesMonths() {
             Client client = TestFixtures.client();
             when(repository.findById(TestFixtures.CLIENT_ID)).thenReturn(Optional.of(client));
@@ -922,13 +933,16 @@ class ClientServiceImplTest {
             dto.setCtps("CTPS1");
             dto.setCtpsSeries("S1");
             dto.setBeneficiaryNumber("BN1");
-            dto.setContributionTime("5 anos, 6 meses, 20 dias");
+            dto.setContributionYears(5);
+            dto.setContributionMonths(6);
+            dto.setContributionDays(20);
             dto.setInssPassword("nova-senha");
 
             ClientProfessionalDataResponseDTO response =
                     service.updateProfessionalData(TestFixtures.CLIENT_ID, dto);
 
             assertEquals(67, response.getContributionInMonths());
+            assertEquals("5 anos, 6 meses e 20 dias", response.getContributionTime());
             assertEquals(67, client.getContributionInMonths());
             assertEquals("Pedreiro", client.getProfession());
             assertEquals("nova-senha", client.getInssPassword());

@@ -110,6 +110,22 @@ public interface ClientMapper {
     @Mapping(target = "changedByUserId", source = "changedBy")
     ClientSituationHistoryDTO toHistoryDTO(com.lawfirm.law.firm.model.ClientSituationHistory h);
 
+    /**
+     * A frase de exibição do tempo de contribuição ("33 anos, 11 meses e 5 dias") é montada na
+     * resposta, não guardada: o banco tem os três números e derivar aqui evita que o texto e os
+     * números divirjam depois de uma edição.
+     */
+    @AfterMapping
+    default void formatarTempoDeContribuicao(Client entity, @MappingTarget ClientDetailsDTO dto) {
+        if (entity != null) {
+            dto.setContributionTime(
+                    com.lawfirm.law.firm.util.TempoDeContribuicao.formatar(
+                            entity.getContributionYears(),
+                            entity.getContributionMonths(),
+                            entity.getContributionDays()));
+        }
+    }
+
     @AfterMapping
     default void computeAge(Client entity, @MappingTarget ClientDetailsDTO dto) {
         if (entity != null && entity.getBirthDate() != null) {

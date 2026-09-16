@@ -27,9 +27,9 @@ import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSpecification;
 import com.lawfirm.law.firm.security.CurrentUser;
-import com.lawfirm.law.firm.util.ContributionTimeParser;
 import com.lawfirm.law.firm.util.DocumentoIdentidade;
 import com.lawfirm.law.firm.util.PageRequests;
+import com.lawfirm.law.firm.util.TempoDeContribuicao;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
@@ -71,8 +71,7 @@ public class ClientServiceImpl implements ClientService {
         Client entity = mapper.toEntity(dto);
         normalizarIdentidade(entity);
         validarIdentidadeUnica(entity, null);
-        entity.setContributionInMonths(
-                ContributionTimeParser.toMonths(entity.getContributionTime()));
+        recalcularTempoDeContribuicao(entity);
         entity.setCreatedBy(CurrentUser.id());
         Client saved = repository.save(entity);
         recordHistory(null, saved);
@@ -125,8 +124,7 @@ public class ClientServiceImpl implements ClientService {
                 dto.getBeneficiaryNumber());
         mapper.updateEntityFromDto(dto, existing);
         normalizarIdentidade(existing);
-        existing.setContributionInMonths(
-                ContributionTimeParser.toMonths(existing.getContributionTime()));
+        recalcularTempoDeContribuicao(existing);
         existing.setUpdatedBy(CurrentUser.id());
 
         Client saved = repository.save(existing);
@@ -345,9 +343,10 @@ public class ClientServiceImpl implements ClientService {
         existing.setCtps(dto.getCtps());
         existing.setCtpsSeries(dto.getCtpsSeries());
         existing.setBeneficiaryNumber(dto.getBeneficiaryNumber());
-        existing.setContributionTime(dto.getContributionTime());
-        existing.setContributionInMonths(
-                ContributionTimeParser.toMonths(dto.getContributionTime()));
+        existing.setContributionYears(dto.getContributionYears());
+        existing.setContributionMonths(dto.getContributionMonths());
+        existing.setContributionDays(dto.getContributionDays());
+        recalcularTempoDeContribuicao(existing);
         // Ausente = mantém: a senha não volta no GET, então quem edita a aba não a tem em mãos.
         if (dto.getInssPassword() != null && !dto.getInssPassword().isBlank()) {
             existing.setInssPassword(dto.getInssPassword());
@@ -359,6 +358,19 @@ public class ClientServiceImpl implements ClientService {
     }
 
     // ── Private helpers ──
+
+    /**
+     * O total em meses é derivado, nunca recebido: a API aceita anos, meses e dias, e quem grava o
+     * total é o servidor. Recalcular num lugar só evita o total sobreviver a uma edição dos três
+     * números - foi assim que "300000000 anos" deixou -694967296 gravado.
+     */
+    private static void recalcularTempoDeContribuicao(Client entity) {
+        entity.setContributionInMonths(
+                TempoDeContribuicao.emMeses(
+                        entity.getContributionYears(),
+                        entity.getContributionMonths(),
+                        entity.getContributionDays()));
+    }
 
     private Client findOrThrow(UUID id) {
         return repository.findById(id).orElseThrow(() -> NotFoundException.of("Cliente", id));
@@ -568,7 +580,14 @@ public class ClientServiceImpl implements ClientService {
         dto.setNitPis(entity.getNitPis());
         dto.setCtps(entity.getCtps());
         dto.setCtpsSeries(entity.getCtpsSeries());
-        dto.setContributionTime(entity.getContributionTime());
+        dto.setContributionYears(entity.getContributionYears());
+        dto.setContributionMonths(entity.getContributionMonths());
+        dto.setContributionDays(entity.getContributionDays());
+        dto.setContributionTime(
+                TempoDeContribuicao.formatar(
+                        entity.getContributionYears(),
+                        entity.getContributionMonths(),
+                        entity.getContributionDays()));
         dto.setContributionInMonths(entity.getContributionInMonths());
         dto.setBeneficiaryNumber(entity.getBeneficiaryNumber());
         dto.setUpdatedBy(entity.getUpdatedBy());

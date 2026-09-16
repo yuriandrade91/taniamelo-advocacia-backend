@@ -482,6 +482,7 @@ class ClientSubResourceControllersTest {
             ClientProfessionalDataResponseDTO dto = new ClientProfessionalDataResponseDTO();
             dto.setClientId(CLIENT);
             dto.setProfession("Costureira");
+            dto.setContributionYears(10);
             dto.setContributionTime("10 anos");
             dto.setContributionInMonths(120);
             when(clientService.getProfessionalData(CLIENT)).thenReturn(dto);
@@ -496,7 +497,8 @@ class ClientSubResourceControllersTest {
                             put("/api/v1/clients/{clientId}/professional-data", CLIENT)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(
-                                            "{\"profession\":\"Costureira\",\"contributionTime\":\"10 anos\","
+                                            "{\"profession\":\"Costureira\",\"contributionYears\":10,"
+                                                    + "\"contributionMonths\":0,\"contributionDays\":0,"
                                                     + "\"inssPassword\":\"senha\"}"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.contributionInMonths").value(120));

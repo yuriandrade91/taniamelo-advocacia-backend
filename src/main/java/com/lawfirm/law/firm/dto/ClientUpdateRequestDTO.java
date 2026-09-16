@@ -7,6 +7,8 @@ import com.lawfirm.law.firm.model.MaritalStatus;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.validation.ValidCPF;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
@@ -63,7 +65,22 @@ public class ClientUpdateRequestDTO implements ClientWritableFields {
 
     private String ctpsSeries;
 
-    private String contributionTime;
+    /**
+     * Tempo de contribuição em três campos, e não numa frase: "nao informado" virava 0 e "300000000
+     * anos" virava -694967296 quando isto era texto interpretado por regex. Faixas em
+     * TempoDeContribuicao (mês de 30 dias, ano de 12 meses).
+     */
+    @Min(value = 0, message = "Anos de contribuição não pode ser negativo")
+    @Max(value = 130, message = "Anos de contribuição não pode passar de 130")
+    private Integer contributionYears;
+
+    @Min(value = 0, message = "Meses de contribuição não pode ser negativo")
+    @Max(value = 11, message = "Meses de contribuição vai de 0 a 11 - 12 meses são 1 ano")
+    private Integer contributionMonths;
+
+    @Min(value = 0, message = "Dias de contribuição não pode ser negativo")
+    @Max(value = 29, message = "Dias de contribuição vai de 0 a 29 - 30 dias são 1 mês")
+    private Integer contributionDays;
 
     private Boolean notBillable;
 
@@ -255,12 +272,28 @@ public class ClientUpdateRequestDTO implements ClientWritableFields {
     }
 
     @Override
-    public String getContributionTime() {
-        return contributionTime;
+    public Integer getContributionYears() {
+        return contributionYears;
     }
 
-    public void setContributionTime(String contributionTime) {
-        this.contributionTime = contributionTime;
+    public void setContributionYears(Integer contributionYears) {
+        this.contributionYears = contributionYears;
+    }
+
+    public Integer getContributionMonths() {
+        return contributionMonths;
+    }
+
+    public void setContributionMonths(Integer contributionMonths) {
+        this.contributionMonths = contributionMonths;
+    }
+
+    public Integer getContributionDays() {
+        return contributionDays;
+    }
+
+    public void setContributionDays(Integer contributionDays) {
+        this.contributionDays = contributionDays;
     }
 
     @Override
