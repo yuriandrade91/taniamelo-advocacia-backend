@@ -1,11 +1,15 @@
 spring:
   application:
     name: law-firm
+  # Credenciais por variável de ambiente, com default só para o Postgres do
+  # docker-compose local. Estavam fixas no arquivo: usuário e senha de banco
+  # versionados no git, e um ambiente novo herdando "postgres/postgres" por
+  # esquecimento em vez de por decisão.
   datasource:
-    url: jdbc:postgresql://localhost:5432/system
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/system}
     driver-class-name: org.postgresql.Driver
-    username: postgres
-    password: postgres
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
   jpa:
     hibernate:
       ddl-auto: validate
