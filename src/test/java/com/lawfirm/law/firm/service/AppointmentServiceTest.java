@@ -698,14 +698,62 @@ class AppointmentServiceTest {
         }
 
         @Test
-        @DisplayName("concluir marca Concluído e não exige justificativa")
+        @DisplayName("concluir marca Concluído, registra na trilha e não exige justificativa")
         void completeMarksAsDone() {
+            appointment.setStartAt(Instant.parse("2020-01-10T14:00:00Z"));
             authenticate();
 
-            assertEquals("Concluído", service.complete(APPOINTMENT_ID).getStatus());
+            assertEquals("Concluído", service.complete(APPOINTMENT_ID, false).getStatus());
             assertEquals(AppointmentStatus.CONCLUIDO, appointment.getStatus());
             assertEquals(TestFixtures.USER_ID, appointment.getUpdatedBy());
-            verify(historyRepository, never()).save(any());
+
+            // Concluir é estado terminal: a trilha tem de saber quem deu isso por feito.
+            AppointmentHistory h = captureHistory();
+            assertEquals(AppointmentAction.COMPLETED, h.getAction());
+            assertNull(h.getJustification(), "conclusão não pede justificativa");
+        }
+
+        @Test
+        @DisplayName("concluir antes da hora marcada é recusado sem confirmação")
+        void completingBeforeStartNeedsAcknowledgement() {
+            // A fixture começa em 2099: pela agenda, ainda vai acontecer. Dar por realizado o
+            // que ainda não começou é quase sempre linha errada da lista.
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class, () -> service.complete(APPOINTMENT_ID, false));
+            assertEquals(BusinessErrorCode.EARLY_COMPLETION_NOT_CONFIRMED, ex.getErrorCode());
+            assertEquals(AppointmentStatus.AGENDADO, appointment.getStatus());
+            verify(repository, never()).save(any(Appointment.class));
+        }
+
+        @Test
+        @DisplayName("concluir antes da hora COM confirmação passa e a ciência fica na trilha")
+        void completingBeforeStartWithAcknowledgement() {
+            authenticate();
+
+            assertEquals("Concluído", service.complete(APPOINTMENT_ID, true).getStatus());
+
+            ArgumentCaptor<AppointmentHistory> saved =
+                    ArgumentCaptor.forClass(AppointmentHistory.class);
+            verify(historyRepository, times(2)).save(saved.capture());
+            assertEquals(
+                    List.of(AppointmentAction.COMPLETED, AppointmentAction.ACKNOWLEDGED),
+                    saved.getAllValues().stream().map(AppointmentHistory::getAction).toList());
+            assertTrue(saved.getAllValues().get(1).getJustification().contains("antes do horário"));
+        }
+
+        @Test
+        @DisplayName("concluir duas vezes é recusado, como cancelar já era")
+        void completingTwiceIsRejected() {
+            // Carimbar um segundo autor por cima do primeiro apagaria quem de fato deu
+            // isso por feito.
+            appointment.setStatus(AppointmentStatus.CONCLUIDO);
+
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class, () -> service.complete(APPOINTMENT_ID, true));
+            assertEquals(BusinessErrorCode.OPERATION_NOT_ALLOWED, ex.getErrorCode());
+            assertTrue(ex.getMessage().contains("já está concluído"));
         }
 
         @Test
@@ -714,9 +762,25 @@ class AppointmentServiceTest {
             appointment.setStatus(AppointmentStatus.CANCELADO);
 
             BusinessException ex =
-                    assertThrows(BusinessException.class, () -> service.complete(APPOINTMENT_ID));
+                    assertThrows(
+                            BusinessException.class, () -> service.complete(APPOINTMENT_ID, true));
             assertEquals(BusinessErrorCode.OPERATION_NOT_ALLOWED, ex.getErrorCode());
             assertTrue(ex.getMessage().contains("não pode ser concluído"));
+        }
+
+        @Test
+        @DisplayName("cancelar um compromisso concluído vira 422 - concluído é terminal")
+        void cancellingACompletedAppointmentIsRejected() {
+            // Cancelar depois desmentiria um fato já registrado na trilha. Se foi engano,
+            // o caminho é excluir (reversível e auditado) ou criar um novo.
+            appointment.setStatus(AppointmentStatus.CONCLUIDO);
+
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class,
+                            () -> service.cancel(APPOINTMENT_ID, "mudei de ideia"));
+            assertEquals(BusinessErrorCode.OPERATION_NOT_ALLOWED, ex.getErrorCode());
+            assertTrue(ex.getMessage().contains("não pode ser cancelado"));
         }
 
         @Test
@@ -794,7 +858,7 @@ class AppointmentServiceTest {
 
             assertThrows(NotFoundException.class, () -> service.get(unknown));
             assertThrows(NotFoundException.class, () -> service.cancel(unknown, "x"));
-            assertThrows(NotFoundException.class, () -> service.complete(unknown));
+            assertThrows(NotFoundException.class, () -> service.complete(unknown, true));
             assertThrows(NotFoundException.class, () -> service.delete(unknown));
             assertThrows(NotFoundException.class, () -> service.history(unknown, 1, 10));
         }

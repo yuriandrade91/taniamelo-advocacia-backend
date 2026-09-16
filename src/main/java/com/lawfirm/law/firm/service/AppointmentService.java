@@ -22,8 +22,8 @@ import com.lawfirm.law.firm.repository.AppointmentRepository;
 import com.lawfirm.law.firm.repository.AppointmentSpecification;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
-import com.lawfirm.law.firm.util.PageRequests;
 import com.lawfirm.law.firm.util.FusoDoEscritorio;
+import com.lawfirm.law.firm.util.PageRequests;
 import com.lawfirm.law.firm.util.RequestDates;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -263,6 +263,14 @@ public class AppointmentService {
             throw new BusinessException(
                     BusinessErrorCode.OPERATION_NOT_ALLOWED, "Compromisso já está cancelado.");
         }
+        // Concluído é terminal: cancelar depois desmentiria um fato já registrado na trilha.
+        // Se a conclusão foi um engano, o caminho é excluir (que é reversível e auditado) ou
+        // criar um compromisso novo.
+        if (entity.getStatus() == AppointmentStatus.CONCLUIDO) {
+            throw new BusinessException(
+                    BusinessErrorCode.OPERATION_NOT_ALLOWED,
+                    "Compromisso concluído não pode ser cancelado. Exclua-o ou crie um novo.");
+        }
         entity.setStatus(AppointmentStatus.CANCELADO);
         entity.setCancellationReason(reason);
         entity.setUpdatedBy(CurrentUser.id());
@@ -272,17 +280,53 @@ public class AppointmentService {
         return toDTO(saved);
     }
 
+    /**
+     * Conclui o compromisso. Terminal: de {@code CONCLUIDO} não se edita, não se cancela e não se
+     * volta - o caminho de volta é excluir (reversível e auditado) ou criar um compromisso novo.
+     *
+     * <p>Três recusas, todas com a mesma razão de fundo: concluir é afirmar que aconteceu.
+     *
+     * <ul>
+     *   <li><b>Cancelado</b> não conclui: os dois fatos se contradizem.
+     *   <li><b>Já concluído</b> não conclui de novo, como cancelar já recusava - a segunda chamada
+     *       é engano ou clique duplo, e carimbar um segundo autor por cima do primeiro apagaria
+     *       quem de fato deu isso por feito.
+     *   <li><b>Ainda não começou</b> só conclui com confirmação explícita: dar por realizado o que
+     *       a agenda diz que ainda vai acontecer é quase sempre linha errada da lista. Mesma forma
+     *       da ciência de data no passado - 422 uma vez, a tela pergunta, a segunda chamada vem
+     *       confirmada.
+     * </ul>
+     */
     @Transactional
-    public AppointmentResponseDTO complete(UUID id) {
+    public AppointmentResponseDTO complete(UUID id, boolean earlyCompletionAcknowledged) {
         Appointment entity = findOrThrow(id);
         if (entity.getStatus() == AppointmentStatus.CANCELADO) {
             throw new BusinessException(
                     BusinessErrorCode.OPERATION_NOT_ALLOWED,
                     "Compromisso cancelado não pode ser concluído.");
         }
+        if (entity.getStatus() == AppointmentStatus.CONCLUIDO) {
+            throw new BusinessException(
+                    BusinessErrorCode.OPERATION_NOT_ALLOWED, "Compromisso já está concluído.");
+        }
+        if (!isPast(entity.getStartAt()) && !earlyCompletionAcknowledged) {
+            throw new BusinessException(BusinessErrorCode.EARLY_COMPLETION_NOT_CONFIRMED);
+        }
+
         entity.setStatus(AppointmentStatus.CONCLUIDO);
         entity.setUpdatedBy(CurrentUser.id());
-        return toDTO(repository.save(entity));
+        Appointment saved = repository.save(entity);
+
+        recordHistory(saved, AppointmentAction.COMPLETED, null);
+        if (!isPast(saved.getStartAt())) {
+            recordHistory(
+                    saved,
+                    AppointmentAction.ACKNOWLEDGED,
+                    "Ciência confirmada pelo usuário: concluído antes do horário marcado (início "
+                            + saved.getStartAt()
+                            + ").");
+        }
+        return toDTO(saved);
     }
 
     /**

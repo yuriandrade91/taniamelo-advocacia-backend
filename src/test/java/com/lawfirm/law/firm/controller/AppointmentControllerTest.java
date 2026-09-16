@@ -271,7 +271,7 @@ class AppointmentControllerTest {
     void completeReturnsDone() throws Exception {
         AppointmentResponseDTO done = responseDto();
         done.setStatus("Concluído");
-        when(service.complete(ID)).thenReturn(done);
+        when(service.complete(ID, false)).thenReturn(done);
 
         mockMvc.perform(patch("/api/v1/appointments/{id}/complete", ID))
                 .andExpect(status().isOk())
@@ -279,9 +279,30 @@ class AppointmentControllerTest {
     }
 
     @Test
+    @DisplayName("PATCH /complete antes da hora pede confirmação; com ela, passa")
+    void completeBeforeStartNeedsAcknowledgement() throws Exception {
+        when(service.complete(ID, false))
+                .thenThrow(new BusinessException(BusinessErrorCode.EARLY_COMPLETION_NOT_CONFIRMED));
+        AppointmentResponseDTO done = responseDto();
+        done.setStatus("Concluído");
+        when(service.complete(ID, true)).thenReturn(done);
+
+        mockMvc.perform(patch("/api/v1/appointments/{id}/complete", ID))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.errors[0].code").value("EARLY_COMPLETION_NOT_CONFIRMED"));
+
+        mockMvc.perform(
+                        patch("/api/v1/appointments/{id}/complete", ID)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"earlyCompletionAcknowledged\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("Concluído"));
+    }
+
+    @Test
     @DisplayName("PATCH /complete num cancelado vira 422")
     void completingCancelledReturns422() throws Exception {
-        when(service.complete(ID))
+        when(service.complete(ID, false))
                 .thenThrow(
                         new BusinessException(
                                 BusinessErrorCode.OPERATION_NOT_ALLOWED,

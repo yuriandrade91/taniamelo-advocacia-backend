@@ -2,6 +2,7 @@ package com.lawfirm.law.firm.controller;
 
 import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.dto.AppointmentCancelRequestDTO;
+import com.lawfirm.law.firm.dto.AppointmentCompleteRequestDTO;
 import com.lawfirm.law.firm.dto.AppointmentHistoryDTO;
 import com.lawfirm.law.firm.dto.AppointmentRequestDTO;
 import com.lawfirm.law.firm.dto.AppointmentResponseDTO;
@@ -149,7 +150,11 @@ public class AppointmentController {
 
     @Operation(
             summary = "Cancelar compromisso",
-            description = "Marca como Cancelado. Exige `justification` (registrada no histórico).")
+            description =
+                    """
+                    Marca como Cancelado. Exige `justification`, registrada no histórico.
+
+                    **Estado terminal**, como concluir: cancelar de novo, ou cancelar algo já                     concluído, devolve 422 `OPERATION_NOT_ALLOWED`.""")
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<ApiResponse<AppointmentResponseDTO>> cancel(
             @PathVariable UUID id, @Valid @RequestBody AppointmentCancelRequestDTO dto) {
@@ -157,10 +162,23 @@ public class AppointmentController {
                 ApiResponse.successObject(service.cancel(id, dto.getJustification())));
     }
 
-    @Operation(summary = "Concluir compromisso", description = "Marca como Concluído.")
+    @Operation(
+            summary = "Concluir compromisso",
+            description =
+                    """
+                    Marca como Concluído e registra `COMPLETED` na trilha (`GET /{id}/history`).
+
+                    **Estado terminal**: compromisso concluído não é editado, cancelado nem                     revertido. Se foi engano, exclua (`DELETE /{id}`, reversível e auditado) ou                     crie um novo.
+
+                    Recusa com 422 `OPERATION_NOT_ALLOWED` se já estiver concluído ou cancelado.
+
+                    Concluir **antes** do horário de início devolve 422                     `EARLY_COMPLETION_NOT_CONFIRMED` - a tela pergunta e reenvia com                     `earlyCompletionAcknowledged: true`, e a ciência fica na trilha. Corpo                     opcional: para concluir algo que já começou, não é preciso mandar nada.""")
     @PatchMapping("/{id}/complete")
-    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> complete(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.successObject(service.complete(id)));
+    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> complete(
+            @PathVariable UUID id,
+            @RequestBody(required = false) AppointmentCompleteRequestDTO dto) {
+        boolean confirmado = dto != null && dto.isEarlyCompletionAcknowledged();
+        return ResponseEntity.ok(ApiResponse.successObject(service.complete(id, confirmado)));
     }
 
     @Operation(

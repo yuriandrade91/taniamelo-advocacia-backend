@@ -5,7 +5,9 @@ public enum BusinessErrorCode {
     OPERATION_NOT_ALLOWED("Operação não permitida"),
     BUSINESS_RULE_VIOLATION("Violação de regra de negócio"),
     PAST_DATE_NOT_CONFIRMED(
-            "A data do compromisso está no passado; confirme a ciência para registrar.");
+            "A data do compromisso está no passado; confirme a ciência para registrar."),
+    EARLY_COMPLETION_NOT_CONFIRMED(
+            "O compromisso ainda não começou; confirme que ele já aconteceu para concluir.");
 
     private final String message;
 
