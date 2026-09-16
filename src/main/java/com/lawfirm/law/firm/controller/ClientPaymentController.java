@@ -4,7 +4,7 @@ import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.dto.ClientPaymentRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentUpdateRequestDTO;
-import com.lawfirm.law.firm.security.RequerAdvogado;
+import com.lawfirm.law.firm.security.RequerAdmin;
 import com.lawfirm.law.firm.service.ClientPaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,9 +14,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Cliente - Financeiro", description = "Parcelas de honorários cobradas do cliente")
+/**
+ * Financeiro do cliente - <b>o recurso inteiro é ADMIN</b>.
+ *
+ * <p>A anotação está na classe, e não método a método, porque a regra é do recurso: qualquer rota
+ * nova aqui já nasce fechada. O corte é diferente do resto da API (onde STAFF opera e ADMIN/LAWYER
+ * destrói) porque aqui não se trata de risco de perder dado, e sim de quem tem que ver honorários.
+ */
+@Tag(
+        name = "Cliente - Financeiro",
+        description = "Parcelas de honorários cobradas do cliente. Acesso restrito a ADMIN.")
 @RestController
 @RequestMapping("/api/v1/clients/{clientId}/payments")
+@RequerAdmin
 public class ClientPaymentController {
 
     private final ClientPaymentService service;
@@ -74,7 +84,6 @@ public class ClientPaymentController {
     @Operation(
             summary = "Excluir parcela",
             description = "Soft delete - preservada para auditoria financeira.")
-    @RequerAdvogado
     @DeleteMapping("/{paymentId}")
     public ResponseEntity<Void> delete(@PathVariable UUID clientId, @PathVariable UUID paymentId) {
         service.delete(clientId, paymentId);

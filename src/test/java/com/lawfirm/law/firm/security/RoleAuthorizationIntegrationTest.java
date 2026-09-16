@@ -4,6 +4,7 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -25,7 +27,7 @@ import org.springframework.web.context.WebApplicationContext;
  * ela tem efeito. São coisas diferentes: sem {@code @EnableMethodSecurity}, a anotação compila,
  * fica bonita no código e não recusa nada - o pior estado possível, porque parece protegido.
  */
-@DisplayName("Autorização por papel: STAFF opera, ADMIN/LAWYER destrói")
+@DisplayName("Autorização por papel: STAFF opera, ADMIN/LAWYER destrói, só ADMIN vê dinheiro")
 class RoleAuthorizationIntegrationTest extends PostgresIntegrationTest {
 
     private static final UUID ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
@@ -82,6 +84,41 @@ class RoleAuthorizationIntegrationTest extends PostgresIntegrationTest {
     void staffCannotRevealInssPassword() throws Exception {
         mockMvc.perform(get("/api/v1/clients/{id}/inss-password", ID))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "STAFF")
+    @DisplayName("STAFF não vê o financeiro do cliente - nem para ler")
+    void staffCannotSeePayments() throws Exception {
+        // O corpo do POST vai VÁLIDO de propósito: a validação do @RequestBody acontece antes
+        // da autorização, e um corpo inválido daria 400 - passando o teste sem provar nada
+        // sobre o papel.
+        mockMvc.perform(get("/api/v1/clients/{id}/payments", ID)).andExpect(status().isForbidden());
+        mockMvc.perform(
+                        post("/api/v1/clients/{id}/payments", ID)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"description\":\"Parcela 1\",\"amount\":100,"
+                                                + "\"dueDate\":\"2026-12-01\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/api/v1/clients/{id}/payments/{p}", ID, ID))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "LAWYER")
+    @DisplayName("LAWYER também não vê o financeiro - aqui o corte é dinheiro, não destruição")
+    void lawyerCannotSeePayments() throws Exception {
+        // Diferente de todo o resto: em excluir e restaurar, LAWYER passa. Honorários são do
+        // escritório, não do caso.
+        mockMvc.perform(get("/api/v1/clients/{id}/payments", ID)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("ADMIN vê o financeiro (404 do cliente inexistente, não 403)")
+    void adminSeesPayments() throws Exception {
+        mockMvc.perform(get("/api/v1/clients/{id}/payments", ID)).andExpect(status().isNotFound());
     }
 
     @Test

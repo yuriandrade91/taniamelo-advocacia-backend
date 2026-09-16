@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Se um endpoint destrutivo precisar mesmo ficar aberto, a exceção é declarada abaixo, com o
  * motivo escrito.
  */
-@DisplayName("Contrato de segurança: DELETE exige advogado")
+@DisplayName("Contrato de segurança: DELETE exige papel")
 class SecuredEndpointsContractTest {
 
     private static final String PACOTE = "com.lawfirm.law.firm.controller";
@@ -49,7 +49,7 @@ class SecuredEndpointsContractTest {
     }
 
     @Test
-    @DisplayName("todo @DeleteMapping exige ADMIN ou LAWYER")
+    @DisplayName("todo @DeleteMapping exige ADMIN ou LAWYER (ou só ADMIN, que é mais estrito)")
     void everyDeleteRequiresLawyer() {
         List<Class<?>> alvos = controllers();
         assertTrue(alvos.size() >= 8, "a varredura não encontrou os controllers: " + alvos);
@@ -66,10 +66,11 @@ class SecuredEndpointsContractTest {
                 if (EXCECOES.contains(nome)) {
                     continue;
                 }
+                // RequerAdmin também vale: é um subconjunto de ADMIN/LAWYER, não uma
+                // brecha. O financeiro usa ele no nível da classe.
                 boolean exige =
-                        AnnotatedElementUtils.hasAnnotation(metodo, RequerAdvogado.class)
-                                || AnnotatedElementUtils.hasAnnotation(
-                                        controller, RequerAdvogado.class);
+                        temAnotacao(metodo, controller, RequerAdvogado.class)
+                                || temAnotacao(metodo, controller, RequerAdmin.class);
                 if (exige) {
                     protegidos++;
                 } else {
@@ -103,6 +104,25 @@ class SecuredEndpointsContractTest {
                 "com.lawfirm.law.firm.controller.ClientController",
                 "revealInssPassword",
                 java.util.UUID.class);
+    }
+
+    private static boolean temAnotacao(
+            Method metodo,
+            Class<?> controller,
+            Class<? extends java.lang.annotation.Annotation> a) {
+        return AnnotatedElementUtils.hasAnnotation(metodo, a)
+                || AnnotatedElementUtils.hasAnnotation(controller, a);
+    }
+
+    @Test
+    @DisplayName("o financeiro do cliente é ADMIN no recurso inteiro")
+    void paymentsRequireAdmin() throws Exception {
+        // Na classe, e não método a método: rota nova no financeiro nasce fechada.
+        Class<?> controller =
+                Class.forName("com.lawfirm.law.firm.controller.ClientPaymentController");
+        assertTrue(
+                AnnotatedElementUtils.hasAnnotation(controller, RequerAdmin.class),
+                "ClientPaymentController deveria exigir ADMIN na classe");
     }
 
     private static void assertRequerAdvogado(String classe, String metodo, Class<?>... parametros)
