@@ -3,7 +3,10 @@ package com.lawfirm.law.firm.repository;
 import com.lawfirm.law.firm.model.Appointment;
 import com.lawfirm.law.firm.model.AppointmentStatus;
 import com.lawfirm.law.firm.model.AppointmentType;
+import com.lawfirm.law.firm.util.FusoDoEscritorio;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Root;
 import java.text.Normalizer;
 import java.time.Instant;
 import java.util.List;
@@ -73,38 +76,44 @@ public final class AppointmentSpecification {
     }
 
     /**
-     * Ano(s) de início dentro de uma lista, via {@code date_part('year', start_at)} (Postgres) -
-     * aceita 1 ou N valores. Combinar com {@link #monthsIn} para o filtro de mês independente do
-     * ano.
+     * Ano(s) de início dentro de uma lista - aceita 1 ou N valores. Combinar com {@link #monthsIn}
+     * para o filtro de mês independente do ano.
      */
     public static Specification<Appointment> yearsIn(List<Integer> years) {
         return (root, query, cb) -> {
             if (CollectionUtils.isEmpty(years)) return null;
-            Expression<Double> yearExpr =
-                    cb.function(
-                            "date_part",
-                            Double.class,
-                            cb.literal("year"),
-                            root.<Instant>get("startAt"));
-            return yearExpr.in(years.stream().map(Integer::doubleValue).toList());
+            return parteDaData(cb, "year", root)
+                    .in(years.stream().map(Integer::doubleValue).toList());
+        };
+    }
+
+    /** Mês(es) 1-12 de início dentro de uma lista - aceita 1 ou N valores. */
+    public static Specification<Appointment> monthsIn(List<Integer> months) {
+        return (root, query, cb) -> {
+            if (CollectionUtils.isEmpty(months)) return null;
+            return parteDaData(cb, "month", root)
+                    .in(months.stream().map(Integer::doubleValue).toList());
         };
     }
 
     /**
-     * Mês(es) 1-12 de início dentro de uma lista, via {@code date_part('month', start_at)}
-     * (Postgres) - aceita 1 ou N valores.
+     * {@code date_part(campo, timezone('America/Sao_Paulo', start_at))} no Postgres.
+     *
+     * <p>A conversão de fuso é explícita de propósito. {@code start_at} é {@code TIMESTAMPTZ}, e
+     * {@code date_part} sobre ele responde no fuso da SESSÃO do banco - que depende de onde o
+     * Postgres está instalado e do que o driver negociou, não de uma decisão nossa. Com sessão em
+     * UTC, um compromisso às 21h de 31 de janeiro é 1º de fevereiro: sumia de "janeiro" na agenda e
+     * aparecia em fevereiro. Assim a resposta é a mesma em qualquer servidor.
      */
-    public static Specification<Appointment> monthsIn(List<Integer> months) {
-        return (root, query, cb) -> {
-            if (CollectionUtils.isEmpty(months)) return null;
-            Expression<Double> monthExpr =
-                    cb.function(
-                            "date_part",
-                            Double.class,
-                            cb.literal("month"),
-                            root.<Instant>get("startAt"));
-            return monthExpr.in(months.stream().map(Integer::doubleValue).toList());
-        };
+    private static Expression<Double> parteDaData(
+            CriteriaBuilder cb, String campo, Root<Appointment> root) {
+        Expression<Instant> noFusoDoEscritorio =
+                cb.function(
+                        "timezone",
+                        Instant.class,
+                        cb.literal(FusoDoEscritorio.ID),
+                        root.<Instant>get("startAt"));
+        return cb.function("date_part", Double.class, cb.literal(campo), noFusoDoEscritorio);
     }
 
     public static Specification<Appointment> clientIs(UUID clientId) {

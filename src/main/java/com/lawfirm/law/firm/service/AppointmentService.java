@@ -23,9 +23,9 @@ import com.lawfirm.law.firm.repository.AppointmentSpecification;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
 import com.lawfirm.law.firm.util.PageRequests;
+import com.lawfirm.law.firm.util.FusoDoEscritorio;
 import com.lawfirm.law.firm.util.RequestDates;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -180,7 +180,7 @@ public class AppointmentService {
             if (a.getStatus() != AppointmentStatus.AGENDADO) {
                 continue;
             }
-            int month = a.getStartAt().atZone(ZoneOffset.UTC).getMonthValue();
+            int month = a.getStartAt().atZone(FusoDoEscritorio.ZONA).getMonthValue();
             byMonth.merge(month, 1L, Long::sum);
         }
         return byMonth.entrySet().stream()

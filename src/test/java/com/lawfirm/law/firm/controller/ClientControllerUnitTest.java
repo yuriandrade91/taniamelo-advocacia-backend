@@ -273,10 +273,11 @@ class ClientControllerUnitTest {
             // porque o front manda a chave e o Swagger documenta o label.
             org.junit.jupiter.api.Assertions.assertEquals(
                     List.of(ClientType.VERIFICADO, ClientType.POTENCIAL), clientTypes.getValue());
+            // Fuso do escritório (UTC-3), não UTC: "1º de janeiro" é o dia 1º aqui.
             org.junit.jupiter.api.Assertions.assertEquals(
-                    Instant.parse("2026-01-01T00:00:00Z"), from.getValue());
+                    Instant.parse("2026-01-01T03:00:00Z"), from.getValue());
             org.junit.jupiter.api.Assertions.assertEquals(
-                    Instant.parse("2026-12-31T23:59:59.999999999Z"), to.getValue());
+                    Instant.parse("2027-01-01T02:59:59.999999999Z"), to.getValue());
         }
 
         @Test

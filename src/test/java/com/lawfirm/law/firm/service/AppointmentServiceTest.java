@@ -463,7 +463,7 @@ class AppointmentServiceTest {
         }
 
         @Test
-        @DisplayName("a janela consultada cobre o ano inteiro em UTC")
+        @DisplayName("a janela consultada cobre o ano inteiro no fuso do escritório")
         void queriesTheWholeYear() {
             when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
                     .thenReturn(List.of());
@@ -473,8 +473,10 @@ class AppointmentServiceTest {
             ArgumentCaptor<Instant> from = ArgumentCaptor.forClass(Instant.class);
             ArgumentCaptor<Instant> to = ArgumentCaptor.forClass(Instant.class);
             verify(repository).findByDeletedAtIsNullAndStartAtBetween(from.capture(), to.capture());
-            assertEquals(Instant.parse("2026-01-01T00:00:00Z"), from.getValue());
-            assertEquals(Instant.parse("2026-12-31T23:59:59.999999999Z"), to.getValue());
+            // Em UTC a janela começava às 21h de 31/12/2025: um compromisso da noite da
+            // virada entrava no resumo do ano errado.
+            assertEquals(Instant.parse("2026-01-01T03:00:00Z"), from.getValue());
+            assertEquals(Instant.parse("2027-01-01T02:59:59.999999999Z"), to.getValue());
         }
 
         @Test

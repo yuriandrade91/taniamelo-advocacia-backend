@@ -28,12 +28,12 @@ import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSpecification;
 import com.lawfirm.law.firm.security.CurrentUser;
 import com.lawfirm.law.firm.util.DocumentoIdentidade;
+import com.lawfirm.law.firm.util.FusoDoEscritorio;
 import com.lawfirm.law.firm.util.PageRequests;
 import com.lawfirm.law.firm.util.TempoDeContribuicao;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -545,7 +545,7 @@ public class ClientServiceImpl implements ClientService {
     private static Integer ageOf(LocalDate birthDate) {
         return birthDate == null
                 ? null
-                : Period.between(birthDate, LocalDate.now(ZoneOffset.UTC)).getYears();
+                : Period.between(birthDate, FusoDoEscritorio.hoje()).getYears();
     }
 
     private ClientPersonalDataResponseDTO toPersonalDataDTO(Client entity) {

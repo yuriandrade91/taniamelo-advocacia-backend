@@ -12,6 +12,13 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        jdbc:
+          # Como o Instant viaja até o banco. UTC aqui é o certo e não tem nada a ver
+          # com o fuso de exibição: quem traduz instante em dia/mês para uma pessoa
+          # ler é o FusoDoEscritorio (America/Sao_Paulo). Estava só no perfil dev, o
+          # que deixava produção com o fuso default da JVM - ou seja, dependendo de
+          # onde a máquina está.
+          time_zone: UTC
   jmx:
     enabled: false
 

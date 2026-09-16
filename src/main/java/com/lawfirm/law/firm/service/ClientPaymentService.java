@@ -13,9 +13,9 @@ import com.lawfirm.law.firm.model.PaymentStatus;
 import com.lawfirm.law.firm.repository.ClientPaymentRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
+import com.lawfirm.law.firm.util.FusoDoEscritorio;
 import com.lawfirm.law.firm.util.PageRequests;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,7 +105,8 @@ public class ClientPaymentService {
             if (newStatus == PaymentStatus.PAGO) {
                 // Marcar como pago sem informar a data assume "hoje" - o caso comum
                 // (usuário confirmando o pagamento no momento em que ele chegou).
-                entity.setPaidDate(dto.getPaidDate() != null ? dto.getPaidDate() : LocalDate.now());
+                entity.setPaidDate(
+                        dto.getPaidDate() != null ? dto.getPaidDate() : FusoDoEscritorio.hoje());
             } else {
                 // PENDENTE/CANCELADO com paidDate preenchida é um estado contraditório
                 // (não dá para estar "pago" e "pendente" ao mesmo tempo) - limpa, a
@@ -180,7 +181,7 @@ public class ClientPaymentService {
         dto.setOverdue(
                 entity.getStatus() == PaymentStatus.PENDENTE
                         && entity.getDueDate() != null
-                        && entity.getDueDate().isBefore(LocalDate.now()));
+                        && entity.getDueDate().isBefore(FusoDoEscritorio.hoje()));
         dto.setCreatedBy(entity.getCreatedBy());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedBy(entity.getUpdatedBy());
