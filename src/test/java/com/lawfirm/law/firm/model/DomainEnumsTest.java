@@ -1,9 +1,11 @@
 package com.lawfirm.law.firm.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.lawfirm.law.firm.audit.AuditAction;
 import com.lawfirm.law.firm.util.EnumLabelSupport;
@@ -101,6 +103,32 @@ class DomainEnumsTest {
         for (AppointmentAction action : AppointmentAction.values()) {
             assertSame(action, AppointmentAction.valueOf(action.name()));
         }
+    }
+
+    @Test
+    @DisplayName("o funil de situação tem ordem, de 1 a 6, sem buraco nem empate")
+    void situationIsOrdered() {
+        int esperado = 1;
+        for (Situation s : Situation.values()) {
+            assertEquals(esperado++, s.getOrdem(), s.name() + " fora de ordem");
+        }
+    }
+
+    @Test
+    @DisplayName("retrocesso é voltar no funil - avançar, pular e a situação inicial não são")
+    void situationRegression() {
+        assertTrue(
+                Situation.ehRetrocesso(
+                        Situation.BENEFICIO_CONCLUIDO, Situation.ANALISE_DOCUMENTAL));
+        assertFalse(
+                Situation.ehRetrocesso(
+                        Situation.FORMULARIO_PREENCHIDO, Situation.BENEFICIO_FUTURO),
+                "pular etapa para a frente é normal: cliente que chega com tudo pronto");
+        assertFalse(
+                Situation.ehRetrocesso(null, Situation.BENEFICIO_CONCLUIDO),
+                "sem anterior é a situação inicial - o cliente começou ali, não voltou");
+        assertFalse(
+                Situation.ehRetrocesso(Situation.ANALISE_DOCUMENTAL, Situation.ANALISE_DOCUMENTAL));
     }
 
     @Test

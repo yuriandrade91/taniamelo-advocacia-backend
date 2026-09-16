@@ -110,6 +110,26 @@ public interface ClientMapper {
     ClientSituationHistoryDTO toHistoryDTO(com.lawfirm.law.firm.model.ClientSituationHistory h);
 
     /**
+     * Marca as entradas que andaram para trás no funil.
+     *
+     * <p>Derivado aqui, e não gravado numa coluna: a ordem das etapas é regra de negócio e pode
+     * mudar; um booleano gravado ficaria contando a ordem de ontem. Do banco vem o label, então a
+     * resolução passa por {@code fromLabel} - que também aceita as escritas antigas.
+     */
+    @AfterMapping
+    default void marcarRetrocesso(
+            com.lawfirm.law.firm.model.ClientSituationHistory h,
+            @MappingTarget ClientSituationHistoryDTO dto) {
+        if (h == null) {
+            return;
+        }
+        dto.setRetrocesso(
+                com.lawfirm.law.firm.model.Situation.ehRetrocesso(
+                        com.lawfirm.law.firm.model.Situation.fromLabel(h.getPreviousSituation()),
+                        com.lawfirm.law.firm.model.Situation.fromLabel(h.getNewSituation())));
+    }
+
+    /**
      * A frase de exibição do tempo de contribuição ("33 anos, 11 meses e 5 dias") é montada na
      * resposta, não guardada: o banco tem os três números e derivar aqui evita que o texto e os
      * números divirjam depois de uma edição.
@@ -131,8 +151,7 @@ public interface ClientMapper {
             // No fuso do escritório, igual a ClientServiceImpl.ageOf. Em UTC, entre 21h e
             // meia-noite o "hoje" já era amanhã - e quem fazia aniversário no dia seguinte
             // aparecia um ano mais velho desde a noite anterior.
-            dto.setAge(
-                    Period.between(entity.getBirthDate(), FusoDoEscritorio.hoje()).getYears());
+            dto.setAge(Period.between(entity.getBirthDate(), FusoDoEscritorio.hoje()).getYears());
         }
     }
 }

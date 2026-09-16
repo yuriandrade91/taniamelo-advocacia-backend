@@ -13,6 +13,11 @@ import java.util.UUID;
  * entrada anterior pode nem estar carregada.
  *
  * <p>{@code previousSituation} é nulo na primeira entrada (situação inicial, no cadastro).
+ *
+ * <p>{@code retrocesso} diz se aquela mudança andou para trás no funil. O funil tem ordem (ver
+ * {@code Situation}) e voltar é permitido - gente erra a linha da lista, e recusar a correção só
+ * empurraria o conserto para fora do sistema. Mas voltar também não é rotina, e quem lê a linha do
+ * tempo tem de conseguir ver a diferença sem decorar a ordem das seis etapas.
  */
 @JsonPropertyOrder({"id"})
 public class ClientSituationHistoryDTO {
@@ -21,6 +26,9 @@ public class ClientSituationHistoryDTO {
     private String currentSituation;
     private Instant changedAt;
     private UUID changedByUserId;
+
+    /** Derivado das duas situações; nunca gravado. Falso na primeira entrada. */
+    private boolean retrocesso;
 
     public UUID getId() {
         return id;
@@ -60,5 +68,13 @@ public class ClientSituationHistoryDTO {
 
     public void setChangedByUserId(UUID changedByUserId) {
         this.changedByUserId = changedByUserId;
+    }
+
+    public boolean isRetrocesso() {
+        return retrocesso;
+    }
+
+    public void setRetrocesso(boolean retrocesso) {
+        this.retrocesso = retrocesso;
     }
 }

@@ -334,17 +334,35 @@ class ClientMapperTest {
         assertEquals(history.getId(), dto.getId());
         assertEquals(TestFixtures.USER_ID, dto.getChangedByUserId());
         assertEquals(Instant.parse("2026-04-01T12:00:00Z"), dto.getChangedAt());
+        assertFalse(dto.isRetrocesso(), "formulário -> análise avança no funil");
     }
 
     @Test
-    @DisplayName("toHistoryDTO da primeira entrada vem sem situação anterior")
+    @DisplayName("toHistoryDTO marca as entradas que voltaram no funil")
+    void toHistoryDtoFlagsRegression() {
+        // Voltar é permitido - gente erra a linha da lista. Mas quem lê a linha do tempo tem
+        // de ver a diferença sem decorar a ordem das seis etapas.
+        ClientSituationHistory history = new ClientSituationHistory();
+        history.setId(UUID.randomUUID());
+        history.setPreviousSituation("Benefício concluído");
+        history.setNewSituation("Análise documental");
+        history.setChangedAt(Instant.parse("2026-04-01T12:00:00Z"));
+
+        assertTrue(mapper.toHistoryDTO(history).isRetrocesso());
+    }
+
+    @Test
+    @DisplayName("toHistoryDTO da primeira entrada vem sem situação anterior e sem retrocesso")
     void toHistoryDtoOfFirstEntryHasNoPrevious() {
         ClientSituationHistory first = new ClientSituationHistory();
         first.setId(UUID.randomUUID());
-        first.setNewSituation("Formulário preenchido");
+        first.setNewSituation("Benefício concluído");
         first.setChangedAt(Instant.parse("2026-04-01T12:00:00Z"));
 
-        assertNull(mapper.toHistoryDTO(first).getPreviousSituation());
+        ClientSituationHistoryDTO dto = mapper.toHistoryDTO(first);
+        assertNull(dto.getPreviousSituation());
+        // Mesmo entrando direto na última etapa: o cliente começou ali, não voltou para ali.
+        assertFalse(dto.isRetrocesso());
     }
 
     @Test
