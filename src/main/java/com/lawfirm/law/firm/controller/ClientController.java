@@ -88,9 +88,11 @@ public class ClientController {
                     - `Aposentadoria especial`
                     - `Aposentadoria por deficiência`
                     - `Aposentadoria por tempo de contribuição do professor`
-                    - `Aposentadoria por invalidez`
                     - `Aposentadoria rural`
-                    - `Aposentadoria para PCD`
+
+                    Ainda aceitos na entrada, mas gravados e devolvidos com o nome canônico: \
+                    `Aposentadoria por invalidez` (= incapacidade permanente, nome anterior à \
+                    EC 103/2019) e `Aposentadoria para PCD` (= deficiência).
 
                     **Valores válidos de `situation`:**
                     - `Formulário preenchido`
@@ -230,9 +232,11 @@ public class ClientController {
                     - `Aposentadoria especial`
                     - `Aposentadoria por deficiência`
                     - `Aposentadoria por tempo de contribuição do professor`
-                    - `Aposentadoria por invalidez`
                     - `Aposentadoria rural`
-                    - `Aposentadoria para PCD`
+
+                    Ainda aceitos na entrada, mas gravados e devolvidos com o nome canônico: \
+                    `Aposentadoria por invalidez` (= incapacidade permanente, nome anterior à \
+                    EC 103/2019) e `Aposentadoria para PCD` (= deficiência).
 
                     **Valores válidos de `clientType`:**
                     - `Verificado`

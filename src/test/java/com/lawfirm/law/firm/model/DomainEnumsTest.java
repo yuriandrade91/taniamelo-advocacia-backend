@@ -106,6 +106,38 @@ class DomainEnumsTest {
     }
 
     @Test
+    @DisplayName("os nomes antigos de benefício ainda entram, mas resolvem para o canônico")
+    void oldBenefitNamesAreAliases() {
+        // "Invalidez" é o nome anterior à EC 103/2019 de "incapacidade permanente"; "PCD" é a
+        // escrita informal de "deficiência". Eram valores próprios do enum, e o mesmo benefício
+        // ficava gravado de dois jeitos - qualquer contagem por benefício somava metade em cada.
+        assertSame(
+                BenefitType.APOSENTADORIA_POR_INCAPACIDADE_PERMANENTE,
+                BenefitType.fromLabel("Aposentadoria por invalidez"));
+        assertSame(
+                BenefitType.APOSENTADORIA_POR_INCAPACIDADE_PERMANENTE,
+                BenefitType.fromLabel("APOSENTADORIA_POR_INVALIDEZ"));
+        assertSame(
+                BenefitType.APOSENTADORIA_POR_DEFICIENCIA,
+                BenefitType.fromLabel("Aposentadoria para PCD"));
+        assertSame(
+                BenefitType.APOSENTADORIA_POR_DEFICIENCIA,
+                BenefitType.fromLabel("APOSENTADORIA_PCD"));
+    }
+
+    @Test
+    @DisplayName("o apelido não vira valor: sobraram sete benefícios, e a resposta usa o canônico")
+    void aliasesAreNotValues() {
+        assertEquals(7, BenefitType.values().length);
+        assertEquals(
+                "Aposentadoria por incapacidade permanente",
+                BenefitType.fromLabel("Aposentadoria por invalidez").getLabel());
+        assertEquals(
+                "Aposentadoria por deficiência",
+                BenefitType.fromLabel("Aposentadoria para PCD").getLabel());
+    }
+
+    @Test
     @DisplayName("o funil de situação tem ordem, de 1 a 6, sem buraco nem empate")
     void situationIsOrdered() {
         int esperado = 1;
@@ -121,8 +153,7 @@ class DomainEnumsTest {
                 Situation.ehRetrocesso(
                         Situation.BENEFICIO_CONCLUIDO, Situation.ANALISE_DOCUMENTAL));
         assertFalse(
-                Situation.ehRetrocesso(
-                        Situation.FORMULARIO_PREENCHIDO, Situation.BENEFICIO_FUTURO),
+                Situation.ehRetrocesso(Situation.FORMULARIO_PREENCHIDO, Situation.BENEFICIO_FUTURO),
                 "pular etapa para a frente é normal: cliente que chega com tudo pronto");
         assertFalse(
                 Situation.ehRetrocesso(null, Situation.BENEFICIO_CONCLUIDO),
