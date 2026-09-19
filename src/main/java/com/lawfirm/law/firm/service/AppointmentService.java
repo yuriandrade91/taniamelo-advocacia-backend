@@ -1,5 +1,7 @@
 package com.lawfirm.law.firm.service;
 
+import com.lawfirm.law.firm.audit.AuditAction;
+import com.lawfirm.law.firm.audit.IntencaoDeAuditoria;
 import com.lawfirm.law.firm.dto.AppointmentHistoryDTO;
 import com.lawfirm.law.firm.dto.AppointmentRequestDTO;
 import com.lawfirm.law.firm.dto.AppointmentResponseDTO;
@@ -339,7 +341,11 @@ public class AppointmentService {
         Appointment entity = findOrThrow(id);
         entity.setDeletedAt(Instant.now());
         entity.setUpdatedBy(CurrentUser.id());
-        Appointment saved = repository.save(entity);
+        // A agenda tem trilha própria (appointment_history) E entra no audit_log genérico.
+        // A declaração é para o segundo: sem ela, a exclusão lógica vira UPDATE lá.
+        Appointment saved =
+                IntencaoDeAuditoria.declarando(
+                        AuditAction.DELETE, () -> repository.saveAndFlush(entity));
 
         recordHistory(saved, AppointmentAction.DELETED, null);
     }
@@ -360,7 +366,9 @@ public class AppointmentService {
         }
         entity.setDeletedAt(null);
         entity.setUpdatedBy(CurrentUser.id());
-        Appointment saved = repository.save(entity);
+        Appointment saved =
+                IntencaoDeAuditoria.declarando(
+                        AuditAction.RESTORE, () -> repository.saveAndFlush(entity));
 
         recordHistory(saved, AppointmentAction.RESTORED, null);
         return toDTO(saved);

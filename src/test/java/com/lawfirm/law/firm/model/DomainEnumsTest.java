@@ -84,10 +84,13 @@ class DomainEnumsTest {
         assertSame(FileKind.DOCUMENT, FileKind.valueOf("DOCUMENT"));
         assertSame(FileKind.SIMULATION, FileKind.valueOf("SIMULATION"));
 
-        assertEquals(4, AuditAction.values().length);
+        assertEquals(5, AuditAction.values().length);
         assertSame(AuditAction.CREATE, AuditAction.valueOf("CREATE"));
         assertSame(AuditAction.UPDATE, AuditAction.valueOf("UPDATE"));
+        // DELETE e RESTORE valem também para exclusão LÓGICA, que no banco é um update - quem
+        // diz qual é qual é o service, via IntencaoDeAuditoria.
         assertSame(AuditAction.DELETE, AuditAction.valueOf("DELETE"));
+        assertSame(AuditAction.RESTORE, AuditAction.valueOf("RESTORE"));
         // READ é a exceção à regra "só mutação gera auditoria": existe para a leitura da
         // senha do INSS, que precisa ter autor e data.
         assertSame(AuditAction.READ, AuditAction.valueOf("READ"));

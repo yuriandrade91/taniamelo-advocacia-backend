@@ -58,9 +58,15 @@ public class AuditLogListener {
         record(entity, AuditAction.CREATE);
     }
 
+    /**
+     * Exclusão e restauração lógicas chegam aqui como update, porque é o que elas são no banco. Se
+     * o service declarou a intenção ({@link IntencaoDeAuditoria}), ela vale; sem declaração, é
+     * edição mesmo.
+     */
     @PostUpdate
     public void onUpdate(Object entity) {
-        record(entity, AuditAction.UPDATE);
+        AuditAction declarada = IntencaoDeAuditoria.atual();
+        record(entity, declarada != null ? declarada : AuditAction.UPDATE);
     }
 
     @PostRemove

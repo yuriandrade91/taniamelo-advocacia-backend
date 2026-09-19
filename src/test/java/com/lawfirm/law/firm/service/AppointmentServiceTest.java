@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -75,6 +76,11 @@ class AppointmentServiceTest {
     void setUp() {
         service = new AppointmentService(repository, historyRepository, clientRepository);
         when(repository.save(any(Appointment.class))).thenAnswer(i -> i.getArgument(0));
+        // saveAndFlush é usado onde a intenção de auditoria precisa que o @PostUpdate dispare
+        // dentro do bloco (exclusão e restauração) - ver IntencaoDeAuditoria.
+        lenient()
+                .when(repository.saveAndFlush(any(Appointment.class)))
+                .thenAnswer(i -> i.getArgument(0));
         when(clientRepository.findById(TestFixtures.CLIENT_ID))
                 .thenReturn(Optional.of(TestFixtures.client()));
         when(clientRepository.findAllById(any())).thenReturn(List.of());
@@ -792,7 +798,7 @@ class AppointmentServiceTest {
 
             assertNotNull(appointment.getDeletedAt());
             assertEquals(TestFixtures.USER_ID, appointment.getUpdatedBy());
-            verify(repository).save(appointment);
+            verify(repository).saveAndFlush(appointment);
             verify(repository, never()).delete(any(Appointment.class));
         }
 

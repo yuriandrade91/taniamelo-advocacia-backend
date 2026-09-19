@@ -1,5 +1,7 @@
 package com.lawfirm.law.firm.service;
 
+import com.lawfirm.law.firm.audit.AuditAction;
+import com.lawfirm.law.firm.audit.IntencaoDeAuditoria;
 import com.lawfirm.law.firm.dto.ClientFileDocumentResponseDTO;
 import com.lawfirm.law.firm.dto.ClientFileDocumentUpdateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientFileDocumentUploadMetadataDTO;
@@ -295,7 +297,8 @@ public class ClientFileService {
     private void softDelete(ClientFile file) {
         file.setDeletedAt(Instant.now());
         file.setUpdatedBy(CurrentUser.id());
-        repository.save(file);
+        // Exclusão lógica: sem declarar, a trilha registraria UPDATE.
+        IntencaoDeAuditoria.declarando(AuditAction.DELETE, () -> repository.saveAndFlush(file));
     }
 
     private Pageable pageable(int pageNumber, int pageSize) {

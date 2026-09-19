@@ -1,5 +1,7 @@
 package com.lawfirm.law.firm.service;
 
+import com.lawfirm.law.firm.audit.AuditAction;
+import com.lawfirm.law.firm.audit.IntencaoDeAuditoria;
 import com.lawfirm.law.firm.dto.ClientInterviewRequestDTO;
 import com.lawfirm.law.firm.dto.ClientInterviewResponseDTO;
 import com.lawfirm.law.firm.exception.NotFoundException;
@@ -74,7 +76,8 @@ public class ClientInterviewService {
         ClientInterview entity = findInterviewOrThrow(clientId, interviewId);
         entity.setDeletedAt(Instant.now());
         entity.setUpdatedBy(CurrentUser.id());
-        repository.save(entity);
+        // Exclusão lógica: sem declarar, a trilha registraria UPDATE.
+        IntencaoDeAuditoria.declarando(AuditAction.DELETE, () -> repository.saveAndFlush(entity));
     }
 
     // ── Private helpers ──

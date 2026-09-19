@@ -748,7 +748,7 @@ class ClientFileServiceTest {
             service.deleteFile(TestFixtures.CLIENT_ID, FILE_ID);
 
             assertNotNull(principal.getDeletedAt());
-            verify(repository, times(1)).save(principal);
+            verify(repository, times(1)).saveAndFlush(principal);
         }
 
         @Test

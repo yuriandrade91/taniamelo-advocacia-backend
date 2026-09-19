@@ -429,7 +429,7 @@ class ClientPaymentServiceTest {
 
         assertNotNull(payment.getDeletedAt());
         assertEquals(TestFixtures.USER_ID, payment.getUpdatedBy());
-        verify(repository).save(payment);
+        verify(repository).saveAndFlush(payment);
         verify(repository, never()).delete(any());
     }
 

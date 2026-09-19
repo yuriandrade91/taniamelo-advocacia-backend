@@ -1,5 +1,6 @@
 package com.lawfirm.law.firm.service;
 
+import com.lawfirm.law.firm.audit.IntencaoDeAuditoria;
 import com.lawfirm.law.firm.audit.AuditAction;
 import com.lawfirm.law.firm.audit.AuditLog;
 import com.lawfirm.law.firm.audit.AuditLogRepository;
@@ -201,7 +202,9 @@ public class ClientServiceImpl implements ClientService {
         Client existing = findOrThrow(id);
         existing.setDeletedAt(Instant.now());
         existing.setUpdatedBy(CurrentUser.id());
-        repository.save(existing);
+        // Sem declarar, a trilha registraria UPDATE - indistinguível de uma correção de
+        // telefone. Ver IntencaoDeAuditoria.
+        IntencaoDeAuditoria.declarando(AuditAction.DELETE, () -> repository.saveAndFlush(existing));
     }
 
     /**
@@ -226,7 +229,8 @@ public class ClientServiceImpl implements ClientService {
         validarIdentidadeUnica(existing, id);
         existing.setDeletedAt(null);
         existing.setUpdatedBy(CurrentUser.id());
-        repository.save(existing);
+        IntencaoDeAuditoria.declarando(
+                AuditAction.RESTORE, () -> repository.saveAndFlush(existing));
     }
 
     /**

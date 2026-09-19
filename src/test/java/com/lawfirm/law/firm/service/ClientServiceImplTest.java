@@ -413,7 +413,7 @@ class ClientServiceImplTest {
             // O delete físico levaria junto endereços, entrevistas, arquivos, pagamentos e o
             // histórico (FKs ON DELETE CASCADE). Nada disso pode acontecer aqui.
             verify(repository, never()).deleteById(any());
-            verify(repository).save(existing);
+            verify(repository).saveAndFlush(existing);
             assertNotNull(existing.getDeletedAt());
         }
 
@@ -440,7 +440,7 @@ class ClientServiceImplTest {
             service.restore(TestFixtures.CLIENT_ID);
 
             assertNull(deleted.getDeletedAt());
-            verify(repository).save(deleted);
+            verify(repository).saveAndFlush(deleted);
         }
 
         @Test

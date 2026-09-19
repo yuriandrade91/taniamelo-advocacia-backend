@@ -242,7 +242,7 @@ class ClientInterviewServiceTest {
 
         assertNotNull(interview.getDeletedAt());
         assertEquals(TestFixtures.USER_ID, interview.getUpdatedBy());
-        verify(repository).save(interview);
+        verify(repository).saveAndFlush(interview);
         verify(repository, org.mockito.Mockito.never()).delete(any());
     }
 }
