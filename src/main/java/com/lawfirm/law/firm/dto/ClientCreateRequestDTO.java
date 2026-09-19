@@ -11,6 +11,9 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -20,26 +23,48 @@ import java.util.UUID;
  */
 public class ClientCreateRequestDTO implements ClientWritableFields {
 
-    @NotBlank private String fullName;
+    @Size(max = 255)
+    @NotBlank
+    private String fullName;
 
-    @NotNull private LocalDate birthDate;
+    /**
+     * No passado, sempre. Sem isto, {@code 2090-01-01} era aceito com 201 e a ficha passava a
+     * mostrar {@code age: -63} - verificado rodando.
+     */
+    @Past(message = "Data de nascimento precisa estar no passado")
+    @NotNull
+    private LocalDate birthDate;
 
-    @NotBlank @ValidCPF private String cpf;
+    @Size(max = 14)
+    @NotBlank
+    @ValidCPF
+    private String cpf;
 
-    @NotBlank private String motherName;
+    @Size(max = 255)
+    @NotBlank
+    private String motherName;
 
-    @NotBlank private String mobilePhone;
+    @Size(max = 20)
+    @NotBlank
+    private String mobilePhone;
 
-    @NotBlank private String inssPassword;
+    @Size(max = 255)
+    @NotBlank
+    private String inssPassword;
 
     @NotNull private Gender gender;
 
+    @Size(max = 20)
     private String rg;
 
-    @Email private String email;
+    @Size(max = 255)
+    @Email
+    private String email;
 
+    @Size(max = 20)
     private String referencePhone;
 
+    @Size(max = 255)
     private String referenceResponsible;
 
     private MaritalStatus maritalStatus;
@@ -48,14 +73,19 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
 
     @NotNull private Situation situation;
 
+    @Size(max = 30)
     private String beneficiaryNumber;
 
+    @Size(max = 20)
     private String nitPis;
 
+    @Size(max = 100)
     private String profession;
 
+    @Size(max = 30)
     private String ctps;
 
+    @Size(max = 20)
     private String ctpsSeries;
 
     /**
@@ -77,10 +107,13 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
 
     private Boolean notBillable;
 
+    @Size(max = 20)
     private String rgIssuer;
 
+    @PastOrPresent(message = "Data de emissão do RG não pode estar no futuro")
     private LocalDate rgIssueDate;
 
+    @Size(max = 50)
     private String nationality;
 
     private Boolean isWhatsapp;

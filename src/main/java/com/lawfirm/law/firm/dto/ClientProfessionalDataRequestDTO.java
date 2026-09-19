@@ -2,6 +2,7 @@ package com.lawfirm.law.firm.dto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 
 /**
  * Aba "Dados profissionais": profissão, vínculos e credenciais previdenciárias. O tempo de
@@ -10,12 +11,16 @@ import jakarta.validation.constraints.Min;
  */
 public class ClientProfessionalDataRequestDTO {
 
+    @Size(max = 100)
     private String profession;
 
+    @Size(max = 20)
     private String nitPis;
 
+    @Size(max = 30)
     private String ctps;
 
+    @Size(max = 20)
     private String ctpsSeries;
 
     @Min(value = 0, message = "Anos de contribuição não pode ser negativo")
@@ -30,6 +35,7 @@ public class ClientProfessionalDataRequestDTO {
     @Max(value = 29, message = "Dias de contribuição vai de 0 a 29 - 30 dias são 1 mês")
     private Integer contributionDays;
 
+    @Size(max = 30)
     private String beneficiaryNumber;
 
     /**
@@ -39,6 +45,7 @@ public class ClientProfessionalDataRequestDTO {
      * não a recebe mais, logo não tem como devolvê-la num PUT. Exigi-la aqui obrigaria a tela a
      * pedir a senha de novo a cada correção de endereço.
      */
+    @Size(max = 255)
     private String inssPassword;
 
     public String getProfession() {

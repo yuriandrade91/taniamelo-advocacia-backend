@@ -1,22 +1,35 @@
 package com.lawfirm.law.firm.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /** Corpo de POST/PUT de um endereço. Usado tanto para criar quanto para substituir por completo. */
 public class ClientAddressRequestDTO {
 
     private String addressType;
 
-    @NotBlank private String street;
+    @Size(max = 255)
+    @NotBlank
+    private String street;
 
+    @Size(max = 20)
     private String addressNumber;
+
+    @Size(max = 100)
     private String complement;
+
+    @Size(max = 100)
     private String neighborhood;
 
-    @NotBlank private String city;
+    @Size(max = 100)
+    @NotBlank
+    private String city;
 
-    @NotBlank private String state;
+    @Size(max = 2)
+    @NotBlank
+    private String state;
 
+    @Size(max = 10)
     private String zipCode;
 
     /** Se true, esta passa a ser a principal (a anterior é desmarcada automaticamente). */

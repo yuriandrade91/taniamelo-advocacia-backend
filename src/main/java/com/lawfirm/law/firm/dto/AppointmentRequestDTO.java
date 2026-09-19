@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -17,6 +18,7 @@ import java.util.UUID;
  */
 public class AppointmentRequestDTO {
 
+    @Size(max = 255)
     @NotBlank
     @Schema(example = "Entrevista com Yuri Andrade")
     private String title;
@@ -33,8 +35,10 @@ public class AppointmentRequestDTO {
 
     private AppointmentModality modality;
 
+    @Size(max = 255)
     private String location;
 
+    @Size(max = 500)
     @Schema(example = "https://meet.google.com/xxx-yyyy-zzz")
     private String meetingUrl;
 
@@ -48,6 +52,7 @@ public class AppointmentRequestDTO {
                     "Nome livre da pessoa quando NÃO há cliente cadastrado. Ignorado se clientId"
                             + " for informado (aí o nome vem do cliente).",
             example = "Yuri Andrade")
+    @Size(max = 255)
     private String clientName;
 
     @Schema(description = "Obrigatória na edição (justificativa da alteração)")

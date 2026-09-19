@@ -1,5 +1,6 @@
 package com.lawfirm.law.firm.dto;
 
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -10,14 +11,19 @@ import java.time.LocalDate;
  */
 public class ClientPaymentUpdateRequestDTO {
 
+    @Size(max = 255)
     private String description;
+
     private BigDecimal amount;
     private Integer installmentNumber;
     private Integer installmentTotal;
     private LocalDate dueDate;
     private LocalDate paidDate;
     private String status;
+
+    @Size(max = 20)
     private String paymentMethod;
+
     private String notes;
 
     public String getDescription() {

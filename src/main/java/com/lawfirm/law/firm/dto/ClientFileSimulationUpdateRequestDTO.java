@@ -1,12 +1,16 @@
 package com.lawfirm.law.firm.dto;
 
+import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 /** Atualização parcial dos metadados de uma simulação (o arquivo em si não muda). */
 public class ClientFileSimulationUpdateRequestDTO {
 
     private LocalDate simulationDate;
+
+    @Size(max = 30)
     private String version;
+
     private Integer vinculos;
     private String notes;
 

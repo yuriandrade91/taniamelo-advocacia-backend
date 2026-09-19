@@ -3,16 +3,19 @@ package com.lawfirm.law.firm.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /** Corpo de POST de uma parcela de honorários. Sempre nasce como PENDENTE. */
 public class ClientPaymentRequestDTO {
 
-    @NotBlank private String description;
+    @Size(max = 255)
+    @NotBlank
+    private String description;
 
     @NotNull
-    @DecimalMin(value = "0.01", message = "must be greater than zero")
+    @DecimalMin(value = "0.01", message = "O valor da parcela precisa ser maior que zero.")
     private BigDecimal amount;
 
     private Integer installmentNumber;
@@ -20,7 +23,9 @@ public class ClientPaymentRequestDTO {
 
     @NotNull private LocalDate dueDate;
 
+    @Size(max = 20)
     private String paymentMethod;
+
     private String notes;
 
     public String getDescription() {
