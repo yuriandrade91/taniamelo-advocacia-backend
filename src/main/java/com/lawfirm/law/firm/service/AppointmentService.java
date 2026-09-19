@@ -107,7 +107,6 @@ public class AppointmentService {
         Specification<Appointment> spec =
                 AppointmentSpecification.combine(
                         List.of(
-                                AppointmentSpecification.notDeleted(),
                                 AppointmentSpecification.statusIn(
                                         List.of(AppointmentStatus.AGENDADO)),
                                 AppointmentSpecification.overlaps(startAt, endAt),
@@ -148,7 +147,6 @@ public class AppointmentService {
         Specification<Appointment> spec =
                 AppointmentSpecification.combine(
                         List.of(
-                                AppointmentSpecification.notDeleted(),
                                 periodSpec,
                                 AppointmentSpecification.typeIn(types),
                                 AppointmentSpecification.statusIn(statuses),
@@ -193,6 +191,22 @@ public class AppointmentService {
     @Transactional(readOnly = true)
     public AppointmentResponseDTO get(UUID id) {
         return toDTO(findOrThrow(id));
+    }
+
+    /**
+     * A lixeira: compromissos excluídos, mais recentes primeiro.
+     *
+     * <p>Existe porque {@code PATCH /{id}/restore} só servia a quem tivesse anotado o UUID antes de
+     * excluir - desfazer estava na API e não era alcançável. Consulta nativa no repositório, porque
+     * {@code @SQLRestriction} esconde excluído de toda consulta JPQL (que é o que se quer em todo o
+     * resto).
+     */
+    @Transactional(readOnly = true)
+    public Page<AppointmentResponseDTO> listDeleted(int pageNumber, int pageSize) {
+        Page<Appointment> page = repository.findDeleted(PageRequests.of(pageNumber, pageSize));
+        Map<UUID, String> names =
+                clientNamesFor(page.getContent().stream().map(Appointment::getClientId).toList());
+        return page.map(entity -> toDTO(entity, names));
     }
 
     private static boolean isEmpty(List<Integer> values) {
@@ -359,8 +373,12 @@ public class AppointmentService {
      */
     @Transactional
     public AppointmentResponseDTO restore(UUID id) {
+        // Nativa: com @SQLRestriction na entidade, findById não enxerga excluído - e restaurar
+        // é exatamente a operação que precisa enxergar.
         Appointment entity =
-                repository.findById(id).orElseThrow(() -> NotFoundException.of("Compromisso", id));
+                repository
+                        .findByIdIncludingDeleted(id)
+                        .orElseThrow(() -> NotFoundException.of("Compromisso", id));
         if (entity.getDeletedAt() == null) {
             return toDTO(entity);
         }
@@ -538,6 +556,7 @@ public class AppointmentService {
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedBy(entity.getUpdatedBy());
         dto.setUpdatedAt(entity.getUpdatedAt());
+        dto.setDeletedAt(entity.getDeletedAt());
         return dto;
     }
 

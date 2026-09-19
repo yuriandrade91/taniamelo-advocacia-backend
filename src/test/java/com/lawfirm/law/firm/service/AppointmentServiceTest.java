@@ -822,7 +822,8 @@ class AppointmentServiceTest {
             authenticate();
             Appointment deleted = existing();
             deleted.setDeletedAt(Instant.parse("2026-02-01T10:00:00Z"));
-            when(repository.findById(APPOINTMENT_ID)).thenReturn(Optional.of(deleted));
+            when(repository.findByIdIncludingDeleted(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(deleted));
 
             AppointmentResponseDTO response = service.restore(APPOINTMENT_ID);
 
@@ -839,7 +840,8 @@ class AppointmentServiceTest {
         @DisplayName("restore de compromisso ativo é no-op e não polui a trilha")
         void restoreOfActiveAppointmentIsNoOp() {
             Appointment active = existing();
-            when(repository.findById(APPOINTMENT_ID)).thenReturn(Optional.of(active));
+            when(repository.findByIdIncludingDeleted(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(active));
 
             assertNotNull(service.restore(APPOINTMENT_ID));
 
@@ -851,7 +853,7 @@ class AppointmentServiceTest {
         @DisplayName("restore de id inexistente estoura 404")
         void restoreOfMissingAppointmentThrows() {
             UUID unknown = UUID.randomUUID();
-            when(repository.findById(unknown)).thenReturn(Optional.empty());
+            when(repository.findByIdIncludingDeleted(unknown)).thenReturn(Optional.empty());
 
             assertThrows(NotFoundException.class, () -> service.restore(unknown));
         }

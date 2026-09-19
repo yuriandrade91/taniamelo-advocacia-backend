@@ -75,6 +75,26 @@ public class AppointmentController {
     }
 
     @Operation(
+            summary = "Lixeira: compromissos excluídos",
+            description =
+                    """
+                    Compromissos com exclusão lógica, mais recentes primeiro, para restaurar pelo \
+                    `PATCH /appointments/{id}/restore`.
+
+                    Existe porque, sem ela, restaurar só era possível para quem tivesse anotado o \
+                    UUID antes de excluir. Cada item traz `deletedAt`.
+
+                    **Restrito a ADMIN e LAWYER**: é o mesmo papel que exclui e restaura.""")
+    @RequerAdvogado
+    @GetMapping("/deleted")
+    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> listDeleted(
+            @RequestParam(defaultValue = "1") int pageNumber,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        Page<AppointmentResponseDTO> page = service.listDeleted(pageNumber, pageSize);
+        return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
+    }
+
+    @Operation(
             summary = "Resumo por mês",
             description =
                     "Contagem de compromissos PENDENTES (status Agendado) por mês do ano - alimenta"

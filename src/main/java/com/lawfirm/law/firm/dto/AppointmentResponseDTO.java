@@ -26,6 +26,12 @@ public class AppointmentResponseDTO {
     private UUID updatedBy;
     private Instant updatedAt;
 
+    /**
+     * Quando foi excluído. Nulo na listagem normal - só a lixeira ({@code GET
+     * /appointments/deleted}) devolve registros com isto preenchido.
+     */
+    private Instant deletedAt;
+
     public UUID getId() {
         return id;
     }
@@ -176,5 +182,13 @@ public class AppointmentResponseDTO {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

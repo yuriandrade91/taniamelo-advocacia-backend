@@ -149,6 +149,30 @@ public class ClientController {
     }
 
     @Operation(
+            summary = "Lixeira: clientes excluídos",
+            description =
+                    """
+                    Clientes com exclusão lógica, mais recentes primeiro, para restaurar pelo \
+                    `PATCH /clients/{clientId}/restore`.
+
+                    Existe porque, sem ela, restaurar só era possível para quem tivesse anotado o \
+                    UUID antes de excluir - desfazer estava na API e não era alcançável. Cada item \
+                    traz `deletedAt`.
+
+                    **Restrito a ADMIN e LAWYER**: é o mesmo papel que exclui e restaura.""")
+    @RequerAdvogado
+    @GetMapping("/deleted")
+    public ResponseEntity<ApiResponse<ClientListResponseDTO>> listDeleted(
+            @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1")
+                    int pageNumber,
+            @Parameter(description = "Tamanho da página (máximo 100)")
+                    @RequestParam(defaultValue = "10")
+                    int pageSize) {
+        Page<ClientListResponseDTO> page = clientService.listDeleted(pageNumber, pageSize);
+        return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
+    }
+
+    @Operation(
             summary = "Buscar cliente por id",
             description =
                     """

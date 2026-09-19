@@ -34,6 +34,9 @@ public interface ClientService {
             Instant createdFrom,
             Instant createdTo);
 
+    /** Clientes excluídos, mais recentes primeiro - a lixeira que torna o restore alcançável. */
+    Page<ClientListResponseDTO> listDeleted(int pageNumber, int pageSize);
+
     Optional<ClientDetailsDTO> findById(UUID id);
 
     ClientDetailsDTO update(UUID id, ClientUpdateRequestDTO dto);

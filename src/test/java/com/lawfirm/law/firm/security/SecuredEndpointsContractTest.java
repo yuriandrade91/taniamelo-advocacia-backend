@@ -130,6 +130,7 @@ class SecuredEndpointsContractTest {
                     Map.entry("ClientController#situationHistory", ABERTO),
                     Map.entry("ClientController#delete", ADVOGADO),
                     Map.entry("ClientController#restore", ADVOGADO),
+                    Map.entry("ClientController#listDeleted", ADVOGADO),
                     Map.entry("ClientController#revealInssPassword", ADVOGADO),
                     Map.entry("ClientPersonalDataController#get", ABERTO),
                     Map.entry("ClientPersonalDataController#update", ABERTO),
@@ -172,6 +173,7 @@ class SecuredEndpointsContractTest {
                     Map.entry("AppointmentController#complete", ABERTO),
                     Map.entry("AppointmentController#delete", ADVOGADO),
                     Map.entry("AppointmentController#restore", ADVOGADO),
+                    Map.entry("AppointmentController#listDeleted", ADVOGADO),
 
                     // ── Financeiro: ADMIN, inclusive para ler ──
                     Map.entry("ClientPaymentController#list", ADMIN),

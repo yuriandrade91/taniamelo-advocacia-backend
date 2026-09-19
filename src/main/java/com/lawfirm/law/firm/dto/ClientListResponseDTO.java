@@ -31,6 +31,12 @@ public class ClientListResponseDTO {
     private String beneficiaryNumber;
     private Instant updatedAt;
 
+    /**
+     * Quando foi excluído. Nulo na listagem normal - só a lixeira ({@code GET /clients/deleted})
+     * devolve registros com isto preenchido.
+     */
+    private Instant deletedAt;
+
     public UUID getClientId() {
         return clientId;
     }
@@ -109,5 +115,13 @@ public class ClientListResponseDTO {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

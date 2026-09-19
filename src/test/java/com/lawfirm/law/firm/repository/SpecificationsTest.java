@@ -1,8 +1,10 @@
 package com.lawfirm.law.firm.repository;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -246,10 +248,20 @@ class SpecificationsTest {
         }
 
         @Test
-        @DisplayName("notDeleted filtra deletedAt IS NULL")
-        void notDeleted() {
-            assertSame(predicate, apply(AppointmentSpecification.notDeleted(), root));
-            verify(cb).isNull(any(Expression.class));
+        @DisplayName("o filtro de excluídos NÃO mora mais aqui - é @SQLRestriction na entidade")
+        void softDeleteIsFilteredByTheMapping() {
+            // notDeleted() foi removida: o filtro era repetido à mão em cinco lugares e a sexta
+            // query nasceria sem ele. Agora Appointment tem @SQLRestriction, como Client, e quem
+            // precisa VER excluído usa as consultas nativas do repositório.
+            assertTrue(
+                    Appointment.class.isAnnotationPresent(
+                            org.hibernate.annotations.SQLRestriction.class),
+                    "Appointment perdeu o @SQLRestriction - excluído volta a vazar nas listagens");
+            assertEquals(
+                    "deleted_at IS NULL",
+                    Appointment.class
+                            .getAnnotation(org.hibernate.annotations.SQLRestriction.class)
+                            .value());
         }
 
         @Test
@@ -337,13 +349,11 @@ class SpecificationsTest {
             assertNull(AppointmentSpecification.combine(List.of()));
             assertNull(AppointmentSpecification.combine(Arrays.asList(null, null)));
 
-            Specification<Appointment> only = AppointmentSpecification.notDeleted();
+            Specification<Appointment> only = AppointmentSpecification.clientIs(UUID.randomUUID());
             assertSame(only, AppointmentSpecification.combine(Arrays.asList(null, only)));
             assertNotNull(
                     AppointmentSpecification.combine(
-                            List.of(
-                                    AppointmentSpecification.notDeleted(),
-                                    AppointmentSpecification.clientIs(UUID.randomUUID()))));
+                            List.of(only, AppointmentSpecification.idNot(UUID.randomUUID()))));
         }
     }
 }

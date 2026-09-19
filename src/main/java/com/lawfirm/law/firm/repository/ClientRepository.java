@@ -3,6 +3,8 @@ package com.lawfirm.law.firm.repository;
 import com.lawfirm.law.firm.model.Client;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -55,4 +57,16 @@ public interface ClientRepository
      */
     @Query(value = "SELECT * FROM clients WHERE id = :id", nativeQuery = true)
     Optional<Client> findByIdIncludingDeleted(UUID id);
+
+    /**
+     * A lixeira: só os excluídos, mais recentes primeiro. Nativa pelo mesmo motivo da de cima.
+     *
+     * <p>Sem isto, {@code PATCH /{id}/restore} só era utilizável por quem tivesse anotado o UUID
+     * antes de excluir - ou seja, desfazer existia na API e não era alcançável.
+     */
+    @Query(
+            value = "SELECT * FROM clients WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC",
+            countQuery = "SELECT count(*) FROM clients WHERE deleted_at IS NOT NULL",
+            nativeQuery = true)
+    Page<Client> findDeleted(Pageable pageable);
 }

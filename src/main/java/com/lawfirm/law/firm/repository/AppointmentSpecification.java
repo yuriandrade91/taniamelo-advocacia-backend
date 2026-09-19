@@ -19,11 +19,6 @@ public final class AppointmentSpecification {
 
     private AppointmentSpecification() {}
 
-    /** Só compromissos não excluídos (soft delete). */
-    public static Specification<Appointment> notDeleted() {
-        return (root, query, cb) -> cb.isNull(root.get("deletedAt"));
-    }
-
     public static Specification<Appointment> startBetween(Instant from, Instant to) {
         return (root, query, cb) -> {
             if (from == null && to == null) return null;

@@ -12,6 +12,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UuidGenerator;
 
 /**
@@ -26,6 +27,13 @@ import org.hibernate.annotations.UuidGenerator;
 @Entity
 @Table(name = "appointments")
 @EntityListeners(AuditLogListener.class)
+/*
+ * Exclusão lógica filtrada no mapeamento, como em Client: sem isto o filtro deleted_at IS NULL era
+ * repetido à mão em cinco lugares, e a sexta query nasceria sem ele. Para alcançar um excluído
+ * (listar a lixeira, restaurar), use as consultas NATIVAS do AppointmentRepository - nativa escapa
+ * da restrição.
+ */
+@SQLRestriction("deleted_at IS NULL")
 public class Appointment implements Auditable {
 
     @Id

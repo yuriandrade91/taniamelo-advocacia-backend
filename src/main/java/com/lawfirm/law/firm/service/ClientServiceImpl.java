@@ -1,9 +1,9 @@
 package com.lawfirm.law.firm.service;
 
-import com.lawfirm.law.firm.audit.IntencaoDeAuditoria;
 import com.lawfirm.law.firm.audit.AuditAction;
 import com.lawfirm.law.firm.audit.AuditLog;
 import com.lawfirm.law.firm.audit.AuditLogRepository;
+import com.lawfirm.law.firm.audit.IntencaoDeAuditoria;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
 import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
@@ -103,6 +103,19 @@ public class ClientServiceImpl implements ClientService {
         var pageable =
                 PageRequests.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "updatedAt"));
         return repository.findAll(spec, pageable).map(mapper::toListDTO);
+    }
+
+    /**
+     * A lixeira: clientes excluídos, mais recentes primeiro.
+     *
+     * <p>Existe porque {@code PATCH /{id}/restore} só servia a quem tivesse anotado o UUID antes de
+     * excluir - desfazer estava na API e não era alcançável. Consulta nativa no repositório, porque
+     * {@code @SQLRestriction} esconde excluído de toda consulta JPQL (que é o que se quer em todo o
+     * resto).
+     */
+    @Override
+    public Page<ClientListResponseDTO> listDeleted(int pageNumber, int pageSize) {
+        return repository.findDeleted(PageRequests.of(pageNumber, pageSize)).map(mapper::toListDTO);
     }
 
     @Override
