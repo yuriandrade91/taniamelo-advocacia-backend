@@ -16,8 +16,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfigurationSource;
 
 /**
- * Autenticação stateless via JWT. Autorização por papel (@PreAuthorize) fica para uma próxima fase
- * - hoje qualquer usuário autenticado acessa os endpoints de negócio.
+ * Autenticação stateless via JWT, com autorização por papel ligada ({@code @EnableMethodSecurity}
+ * logo abaixo).
+ *
+ * <p>Dois cortes, e eles são diferentes: {@code @RequerAdvogado} (ADMIN/LAWYER) separa operar de
+ * destruir - STAFF faz o dia a dia, excluir e restaurar exigem advogado; {@code @RequerAdmin} é só
+ * ADMIN e vale para o financeiro do cliente, onde a questão não é risco de perder dado e sim quem
+ * tem que ver honorários.
  *
  * <p>Não construímos um DaoAuthenticationProvider manualmente: com um bean PasswordEncoder e um
  * bean UserDetailsService (CustomUserDetailsService) no contexto, o próprio Spring Security monta o

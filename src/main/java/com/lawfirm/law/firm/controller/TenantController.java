@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>{@code GET /resolve?slug=...} — PÚBLICO: o front descobre o {@code tenantId} (UUID opaco) a
  *       partir do slug do subdomínio, antes do login, para enviá-lo no cabeçalho X-Tenant-Id.
  *   <li>{@code GET /current} — autenticado: dados do escritório da sessão. Listar TODOS os tenants
- *       é ação de admin de plataforma e fica para quando houver autorização por papel (ROADMAP).
+ *       é ação de admin de plataforma e continua sem endpoint (ROADMAP).
  * </ul>
  */
 @Tag(name = "Tenant", description = "Resolução pública por slug e catálogo do tenant corrente")

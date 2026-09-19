@@ -151,7 +151,10 @@ public class ClientController {
     @Operation(
             summary = "Buscar cliente por id",
             description =
-                    "Dados completos do cliente, incluindo a senha do INSS (descriptografada para o usuário autenticado).")
+                    """
+                    Dados completos do cliente, **exceto a senha do INSS** - ela saiu daqui e tem \
+                    rota própria, restrita a ADMIN/LAWYER e auditada a cada leitura: \
+                    `GET /clients/{clientId}/inss-password`.""")
     @GetMapping("/{clientId}")
     public ResponseEntity<ApiResponse<ClientDetailsDTO>> getById(@PathVariable UUID clientId) {
         ClientDetailsDTO dto =

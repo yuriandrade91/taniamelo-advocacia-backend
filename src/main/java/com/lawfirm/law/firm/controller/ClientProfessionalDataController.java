@@ -20,7 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
         name = "Cliente - Dados Profissionais",
         description =
                 "Aba 'Dados profissionais' do cliente: profissão, NIT/PIS, CTPS, tempo de "
-                        + "contribuição, benefício e senha do INSS")
+                        + "contribuição e número do benefício. A senha do INSS pode ser ESCRITA "
+                        + "aqui, mas não volta na resposta - para lê-la, "
+                        + "GET /clients/{clientId}/inss-password, restrito e auditado.")
 @RestController
 @RequestMapping("/api/v1/clients/{clientId}/professional-data")
 public class ClientProfessionalDataController {
@@ -34,8 +36,10 @@ public class ClientProfessionalDataController {
     @Operation(
             summary = "Dados profissionais do cliente",
             description =
-                    "Aba 'Dados profissionais': profissão, NIT/PIS, CTPS, tempo de contribuição (com total em "
-                            + "meses derivado no servidor), número do benefício e senha do INSS.")
+                    "Aba 'Dados profissionais': profissão, NIT/PIS, CTPS, tempo de contribuição "
+                            + "(anos/meses/dias, com o total em meses e a frase de exibição "
+                            + "derivados no servidor) e número do benefício. NÃO devolve a senha "
+                            + "do INSS.")
     @GetMapping
     public ResponseEntity<ApiResponse<ClientProfessionalDataResponseDTO>> get(
             @PathVariable UUID clientId) {
@@ -45,7 +49,11 @@ public class ClientProfessionalDataController {
 
     @Operation(
             summary = "Atualizar dados profissionais",
-            description = "Substituição completa só do subconjunto de dados profissionais.")
+            description =
+                    "Substituição completa só do subconjunto de dados profissionais. "
+                            + "`inssPassword` ausente ou em branco significa 'mantém a que está "
+                            + "gravada' - como ela não volta em resposta nenhuma, quem edita a aba "
+                            + "não a tem em mãos para devolver.")
     @PutMapping
     public ResponseEntity<ApiResponse<ClientProfessionalDataResponseDTO>> update(
             @PathVariable UUID clientId, @Valid @RequestBody ClientProfessionalDataRequestDTO dto) {

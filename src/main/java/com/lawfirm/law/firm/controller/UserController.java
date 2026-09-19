@@ -29,8 +29,11 @@ import org.springframework.web.bind.annotation.RestController;
  * lista uma vez para resolver todos os ids da página. Paginar aqui obrigaria o front a buscar de
  * novo a cada id não encontrado - mais requisições para servir menos dado.
  *
- * <p>Criar, editar e desativar usuário são ações de administração e dependem de autorização por
- * papel; ficam para quando ela existir (ver ROADMAP).
+ * <p>Listar exige ADMIN ou LAWYER ({@code @RequerAdvogado}): quem trabalha no escritório não é da
+ * conta de quem só opera.
+ *
+ * <p>Criar, editar e desativar usuário continuam sem endpoint - hoje o único caminho é o {@code
+ * AdminUserSeeder}, que sempre escreve ADMIN. Ver ROADMAP.
  */
 @Tag(name = "Usuários", description = "Usuários do escritório - consulta para resolver autoria")
 @SecurityRequirements({
