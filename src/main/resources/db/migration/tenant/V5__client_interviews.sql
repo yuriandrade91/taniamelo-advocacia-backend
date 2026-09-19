@@ -1,4 +1,4 @@
--- V6: entrevistas/atendimentos do cliente. content recebe o conteúdo do
+-- V5: entrevistas/atendimentos do cliente. content recebe o conteúdo do
 -- componente rich text do frontend (HTML/JSON), armazenado sem transformação.
 -- Soft delete: o conteúdo pode ser evidência relevante depois.
 CREATE TABLE client_interviews (

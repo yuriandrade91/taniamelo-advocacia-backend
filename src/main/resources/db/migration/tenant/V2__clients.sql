@@ -1,7 +1,7 @@
--- V3: clientes do escritório.
+-- V2: clientes do escritório.
 --
 -- Decisões de modelagem (ver docs/DATA_MODEL.md):
---  - Endereço NÃO fica embutido aqui: coleção 1:N em client_addresses (V4).
+--  - Endereço NÃO fica embutido aqui: coleção 1:N em client_addresses (V3).
 --  - Únicos: cpf, nit_pis e benefit_number (identificadores reais da pessoa/
 --    benefício). Telefone, e-mail, RG e CTPS podem se repetir legitimamente.
 --  - inss_password armazenada criptografada (AES-GCM) pela aplicação

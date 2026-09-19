@@ -1,4 +1,4 @@
--- V4: endereços do cliente como coleção 1:N (residencial/comercial/
+-- V3: endereços do cliente como coleção 1:N (residencial/comercial/
 -- correspondência), com exatamente um "principal" por cliente garantido por
 -- índice único parcial.
 CREATE TABLE client_addresses (

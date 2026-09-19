@@ -1,4 +1,4 @@
--- V5: histórico de mudanças de situação do cliente (trilha de auditoria do
+-- V4: histórico de mudanças de situação do cliente (trilha de auditoria do
 -- funil). Gravado automaticamente pela aplicação a cada mudança de situação.
 CREATE TABLE client_situation_history (
     id                 UUID PRIMARY KEY,

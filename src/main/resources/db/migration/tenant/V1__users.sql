@@ -1,4 +1,4 @@
--- V2: usuários do sistema (autenticação/autorização).
+-- V1: usuários do sistema (autenticação/autorização).
 -- Um usuário ADMIN inicial é criado pela aplicação (AdminUserSeeder) na
 -- primeira subida quando a tabela está vazia.
 --

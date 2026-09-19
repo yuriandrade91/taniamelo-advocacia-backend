@@ -1,4 +1,4 @@
--- V7: collection ÚNICA de arquivos do cliente, servindo as abas "Documentos"
+-- V6: collection ÚNICA de arquivos do cliente, servindo as abas "Documentos"
 -- e "Simulações" (discriminadas por kind = DOCUMENT | SIMULATION).
 --
 --  - O binário NUNCA fica no banco: só storage_key + metadados (o arquivo vive

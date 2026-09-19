@@ -1,4 +1,4 @@
--- V8: parcelas de honorários. Cada linha é UMA parcela (um contrato 6x vira 6
+-- V7: parcelas de honorários. Cada linha é UMA parcela (um contrato 6x vira 6
 -- linhas com installment_number 1..6). "Atrasado" nunca é persistido: é
 -- derivado em runtime (Pendente + due_date no passado).
 CREATE TABLE client_payments (

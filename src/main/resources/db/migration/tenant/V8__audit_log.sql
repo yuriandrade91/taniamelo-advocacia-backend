@@ -1,4 +1,4 @@
--- V9: trilha de auditoria genérica - quem criou/alterou/removeu qualquer
+-- V8: trilha de auditoria genérica - quem criou/alterou/removeu qualquer
 -- registro auditável (clientes e todos os sub-recursos), independente de
 -- created_by/updated_by já existirem em cada tabela.
 --
