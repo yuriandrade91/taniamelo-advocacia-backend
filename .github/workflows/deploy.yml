@@ -66,7 +66,53 @@ jobs:
             # Reinicia a aplicação
             bash /home/ec2-user/restart-app.sh
 
-            echo "✅ Deploy concluído!"
+            # ── Só agora o deploy pode se dizer concluído ──
+            #
+            # restart-app.sh devolve o controle assim que DISPARA a aplicação; o
+            # boot continua em segundo plano. Migration que quebra é exatamente
+            # isso: o Flyway aborta, o contexto do Spring não sobe e o processo
+            # morre - e o passo acima já terminou com sucesso. O job ficava verde
+            # com a instância fora do ar, que é o pior resultado possível: ninguém
+            # vai olhar um pipeline que passou.
+            #
+            # As migrations rodam no @PostConstruct do MultiTenantFlywayMigrator, a
+            # cada boot. Portanto "a aplicação respondeu UP" é, por construção,
+            # "as migrations desta versão aplicaram com sucesso".
+            ESPERADO=$(git rev-parse --short HEAD)
+            echo "Aguardando a aplicação responder (commit esperado: $ESPERADO)..."
+
+            SUBIU=nao
+            for _ in $(seq 1 30); do
+              # -f faz o curl falhar em 503, que é o que o Spring devolve quando
+              # o health está DOWN - não basta responder, tem de responder UP.
+              if curl -fsS -m 5 http://localhost:8080/actuator/health > /dev/null 2>&1; then
+                SUBIU=sim
+                break
+              fi
+              sleep 4
+            done
+
+            if [ "$SUBIU" != "sim" ]; then
+              echo "::error::A aplicação não respondeu UP em ~120s. Deploy considerado FALHO."
+              echo "--- Procurando o motivo (Flyway/Spring) no log da aplicação ---"
+              for LOG in ~/app.log ~/taniamelo-advocacia-backend/app.log /var/log/law-firm.log; do
+                [ -f "$LOG" ] && { echo "== $LOG =="; tail -n 80 "$LOG"; break; }
+              done
+              exit 1
+            fi
+
+            # A instância respondeu - mas é a versão que acabou de ser publicada?
+            # Sem esta checagem, um restart que não pegou o jar novo passa como
+            # deploy bem-sucedido e a investigação começa pelo lugar errado.
+            RODANDO=$(curl -fsS -m 5 http://localhost:8080/actuator/info \
+              | sed -n 's/.*"commit":"\([^"]*\)".*/\1/p')
+
+            if [ "$RODANDO" != "$ESPERADO" ]; then
+              echo "::error::A instância está rodando '$RODANDO', mas este deploy publicou '$ESPERADO'."
+              exit 1
+            fi
+
+            echo "✅ Deploy concluído: $ESPERADO no ar, health UP, migrations aplicadas."
 
       - name: Fechar porta 22 no Security Group
         if: always()
