@@ -63,8 +63,17 @@ jobs:
             # commit que acabou de passar.
             mvn -B clean package -DskipTests -Dgit.commit=$(git rev-parse --short HEAD)
 
-            # Reinicia a aplicação
-            bash /home/ec2-user/restart-app.sh
+            # Reinicia a aplicação.
+            #
+            # O script vem DO REPOSITÓRIO (o git reset --hard acima acabou de
+            # atualizá-lo), e não mais de /home/ec2-user/restart-app.sh, que
+            # vivia fora do versionamento: o passo mais importante do deploy não
+            # era revisado, não era reproduzível e sumiria com a instância.
+            #
+            # Ele recusa subir com secret de exemplo ou com a chave de
+            # criptografia de desenvolvimento - que a aplicação, sozinha, aceita
+            # com um log.warn.
+            bash scripts/restart-app.sh
 
             # ── Só agora o deploy pode se dizer concluído ──
             #
@@ -94,10 +103,8 @@ jobs:
 
             if [ "$SUBIU" != "sim" ]; then
               echo "::error::A aplicação não respondeu UP em ~120s. Deploy considerado FALHO."
-              echo "--- Procurando o motivo (Flyway/Spring) no log da aplicação ---"
-              for LOG in ~/app.log ~/taniamelo-advocacia-backend/app.log /var/log/law-firm.log; do
-                [ -f "$LOG" ] && { echo "== $LOG =="; tail -n 80 "$LOG"; break; }
-              done
+              echo "--- Últimas linhas do serviço (erro do Flyway aparece aqui) ---"
+              sudo journalctl -u law-firm -n 80 --no-pager || true
               exit 1
             fi
 

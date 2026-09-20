@@ -289,6 +289,18 @@ sudo systemctl status law-firm --no-pager
 
 Confira `ls target/*.jar` se o nome do jar mudar e ajuste o `ExecStart`.
 
+**O restart do deploy é `scripts/restart-app.sh`, no repositório.** Ele não
+substitui nada deste passo - o serviço systemd e o `law-firm.env` continuam
+sendo criados aqui, uma vez. O que o script faz a cada deploy é conferir que
+este ambiente está íntegro ANTES de reiniciar: jar gerado, variáveis
+obrigatórias preenchidas e - principalmente - nenhum placeholder nem a chave
+de criptografia de desenvolvimento. A aplicação sobe com essa chave sozinha,
+emitindo só um `log.warn`; o script transforma isso em deploy recusado.
+
+Antes, esse passo era um `restart-app.sh` solto em `/home/ec2-user/`, fora do
+git. Depois de confirmar um deploy verde com a versão do repositório, ele pode
+ser removido da instância.
+
 ### Passo 9 - Verificar logs
 
 ```bash
