@@ -60,6 +60,8 @@ test.describe("STAFF não destrói", () => {
     ["PATCH", `/api/v1/appointments/${UUID_INEXISTENTE}/restore`, "restaurar compromisso"],
     ["GET", `/api/v1/clients/${UUID_INEXISTENTE}/inss-password`, "ler a senha do INSS"],
     ["GET", "/api/v1/users", "listar os usuários do escritório"],
+    ["GET", "/api/v1/clients/deleted", "ver a lixeira de clientes"],
+    ["GET", "/api/v1/appointments/deleted", "ver a lixeira de compromissos"],
   ];
 
   for (const [metodo, rota, oque] of proibidas) {
@@ -81,6 +83,36 @@ test.describe("STAFF não destrói", () => {
   });
 });
 
+test.describe("STAFF não vê o financeiro - aqui o corte é dinheiro, não destruição", () => {
+  // Diferente de todo o resto: em excluir e restaurar, LAWYER passa. Honorários são
+  // do escritório, não do caso, e o recurso inteiro é ADMIN (@RequerAdmin na classe).
+  // Vale para LER também - por isso o GET está na lista.
+  const proibidasNoFinanceiro: Array<[string, string, string, unknown]> = [
+    ["GET", `/api/v1/clients/${UUID_INEXISTENTE}/payments`, "listar parcelas", undefined],
+    [
+      "POST",
+      `/api/v1/clients/${UUID_INEXISTENTE}/payments`,
+      "lançar parcela",
+      { description: "[api-test] Parcela", amount: 100, dueDate: "2027-01-10" },
+    ],
+    ["DELETE", `/api/v1/clients/${UUID_INEXISTENTE}/payments/${UUID_INEXISTENTE}`, "excluir parcela", undefined],
+  ];
+
+  for (const [metodo, rota, oque, corpo] of proibidasNoFinanceiro) {
+    test(`403 ao ${oque}`, async () => {
+      // O corpo do POST vai VÁLIDO de propósito: a validação do @RequestBody roda
+      // antes da autorização, e um corpo inválido daria 400 - passando o teste sem
+      // provar nada sobre o papel.
+      const resposta = await staff!.fetch(rota, {
+        method: metodo,
+        ...(corpo ? { data: corpo } : {}),
+      });
+      const erros = await errosDe(resposta, 403);
+      expect(erros.length).toBeGreaterThan(0);
+    });
+  }
+});
+
 test.describe("STAFF continua operando", () => {
   test("lista clientes e agenda", async () => {
     expect((await staff!.get("/api/v1/clients")).status()).toBe(200);
@@ -89,14 +121,17 @@ test.describe("STAFF continua operando", () => {
 
   test("cadastra e edita cliente", async ({ api }) => {
     const { novoCliente } = await import("../src/factories.js");
-    const criado = await dadosDe<{ id: string }>(
+    // clientId, e não id: é assim que o POST responde. Com `id` isto virava
+    // `undefined` na URL e o teste passava a exercitar /clients/undefined.
+    const criado = await dadosDe<{ clientId: string }>(
       await staff!.post("/api/v1/clients", { data: novoCliente() }),
       201,
     );
+    expect(criado.clientId, "POST /clients não devolveu clientId").toBeTruthy();
 
-    const ficha = await dadosDe<Record<string, unknown>>(await staff!.get(`/api/v1/clients/${criado.id}`));
+    const ficha = await dadosDe<Record<string, unknown>>(await staff!.get(`/api/v1/clients/${criado.clientId}`));
     await dadosDe(
-      await staff!.put(`/api/v1/clients/${criado.id}`, {
+      await staff!.put(`/api/v1/clients/${criado.clientId}`, {
         data: { ...ficha, fullName: "[api-test] Editado por STAFF" },
       }),
     );
@@ -104,7 +139,7 @@ test.describe("STAFF continua operando", () => {
     // Quem cria não pode excluir — é o corte entre operar e destruir aparecendo
     // no meio do fluxo normal. A limpeza sai pelo usuário com papel de advogado,
     // senão o teste deixaria resíduo justamente por estar certo.
-    expect((await staff!.delete(`/api/v1/clients/${criado.id}`)).status()).toBe(403);
-    await api.delete(`/api/v1/clients/${criado.id}`);
+    expect((await staff!.delete(`/api/v1/clients/${criado.clientId}`)).status()).toBe(403);
+    await api.delete(`/api/v1/clients/${criado.clientId}`);
   });
 });

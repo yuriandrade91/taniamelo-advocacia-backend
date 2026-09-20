@@ -144,7 +144,12 @@ test("compromisso concluído deixa de disputar horário", async ({ api }) => {
     201,
   );
 
-  await dadosDe(await api.patch(`/api/v1/appointments/${outro.id}/complete`));
+  // A fábrica cria no futuro, e concluir antes do horário exige ciência explícita
+  // (422 EARLY_COMPLETION_NOT_CONFIRMED sem ela). Aqui o que se testa é o conflito,
+  // não a regra de conclusão - então confirma e segue.
+  await dadosDe(
+    await api.patch(`/api/v1/appointments/${outro.id}/complete`, { data: { earlyCompletionAcknowledged: true } }),
+  );
   const depois = await dadosDe<Compromisso[]>(
     await conflitos(api, futuroIso(DIA + 3, 10, 0), futuroIso(DIA + 3, 11, 0)),
   );

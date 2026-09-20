@@ -103,3 +103,39 @@ test("editar cliente excluído devolve 404", async ({ api }) => {
   expect((await api.patch(`/api/v1/clients/${cliente.clientId}`, { data: { situation: "Análise documental" } })).status()).toBe(404);
   expect((await api.put(`/api/v1/clients/${cliente.clientId}`, { data: novoCliente() })).status()).toBe(404);
 });
+
+/**
+ * A lixeira.
+ *
+ * Antes dela, `PATCH /restore` só servia a quem tivesse anotado o UUID ANTES de
+ * excluir: nenhum endpoint listava excluídos e `deletedAt` não aparecia em
+ * resposta nenhuma. Desfazer existia na API e não era alcançável.
+ */
+test("cliente excluído aparece na lixeira, com deletedAt, e sai de lá no restore", async ({ api }) => {
+  const cliente = await dadosDe<Cliente>(await api.post("/api/v1/clients", { data: novoCliente() }), 201);
+
+  const naLixeiraAntes = await listaDe<Cliente>(await api.get("/api/v1/clients/deleted?pageSize=100"));
+  expect(naLixeiraAntes.itens.map((c) => c.clientId)).not.toContain(cliente.clientId);
+
+  await api.delete(`/api/v1/clients/${cliente.clientId}`);
+
+  const naLixeira = await listaDe<Cliente & { deletedAt: string | null }>(
+    await api.get("/api/v1/clients/deleted?pageSize=100"),
+  );
+  const achado = naLixeira.itens.find((c) => c.clientId === cliente.clientId);
+  expect(achado, "excluído não apareceu na lixeira").toBeDefined();
+  expect(achado?.deletedAt, "sem deletedAt não dá para saber quando saiu").toBeTruthy();
+
+  await api.patch(`/api/v1/clients/${cliente.clientId}/restore`);
+
+  const depois = await listaDe<Cliente>(await api.get("/api/v1/clients/deleted?pageSize=100"));
+  expect(depois.itens.map((c) => c.clientId)).not.toContain(cliente.clientId);
+
+  await api.delete(`/api/v1/clients/${cliente.clientId}`);
+});
+
+test("a listagem normal nunca traz deletedAt preenchido", async ({ api }) => {
+  // Se um excluído vazasse para a listagem comum, o @SQLRestriction teria caído.
+  const { itens } = await listaDe<{ deletedAt: string | null }>(await api.get("/api/v1/clients?pageSize=100"));
+  expect(itens.every((c) => !c.deletedAt), "excluído vazou para a listagem normal").toBe(true);
+});

@@ -70,8 +70,56 @@ test.describe("concluir", () => {
   test("marca como Concluído", async ({ api }) => {
     const c = await novo(api);
     try {
-      const concluido = await dadosDe<Compromisso>(await api.patch(`/api/v1/appointments/${c.id}/complete`));
+      const concluido = await dadosDe<Compromisso>(
+        await api.patch(`/api/v1/appointments/${c.id}/complete`, { data: { earlyCompletionAcknowledged: true } }),
+      );
       expect(concluido.status).toBe("Concluído");
+    } finally {
+      await api.delete(`/api/v1/appointments/${c.id}`);
+    }
+  });
+
+  test("concluir antes do horário exige ciência", async ({ api }) => {
+    // Dar por realizado o que a agenda diz que ainda vai acontecer é quase sempre
+    // linha errada da lista. A API recusa uma vez; a tela pergunta e reenvia.
+    const c = await novo(api);
+    try {
+      const erros = await errosDe(await api.patch(`/api/v1/appointments/${c.id}/complete`), 422);
+      expect(erros.map((e) => e.code)).toContain("EARLY_COMPLETION_NOT_CONFIRMED");
+
+      const concluido = await dadosDe<Compromisso>(
+        await api.patch(`/api/v1/appointments/${c.id}/complete`, { data: { earlyCompletionAcknowledged: true } }),
+      );
+      expect(concluido.status).toBe("Concluído");
+    } finally {
+      await api.delete(`/api/v1/appointments/${c.id}`);
+    }
+  });
+
+  test("concluir duas vezes é recusado", async ({ api }) => {
+    const c = await novo(api);
+    try {
+      await dadosDe(await api.patch(`/api/v1/appointments/${c.id}/complete`, { data: { earlyCompletionAcknowledged: true } }));
+      const erros = await errosDe(
+        await api.patch(`/api/v1/appointments/${c.id}/complete`, { data: { earlyCompletionAcknowledged: true } }),
+        422,
+      );
+      expect(erros.map((e) => e.code)).toContain("OPERATION_NOT_ALLOWED");
+    } finally {
+      await api.delete(`/api/v1/appointments/${c.id}`);
+    }
+  });
+
+  test("compromisso concluído não pode ser cancelado", async ({ api }) => {
+    // Concluído é terminal: cancelar depois desmentiria um fato já na trilha.
+    const c = await novo(api);
+    try {
+      await dadosDe(await api.patch(`/api/v1/appointments/${c.id}/complete`, { data: { earlyCompletionAcknowledged: true } }));
+      const erros = await errosDe(
+        await api.patch(`/api/v1/appointments/${c.id}/cancel`, { data: { justification: "[api-test] mudei de ideia" } }),
+        422,
+      );
+      expect(erros.map((e) => e.code)).toContain("OPERATION_NOT_ALLOWED");
     } finally {
       await api.delete(`/api/v1/appointments/${c.id}`);
     }
@@ -117,7 +165,7 @@ test.describe("guarda de estado na edição", () => {
   test("compromisso concluído não pode ser editado", async ({ api }) => {
     const c = await novo(api);
     try {
-      await dadosDe(await api.patch(`/api/v1/appointments/${c.id}/complete`));
+      await dadosDe(await api.patch(`/api/v1/appointments/${c.id}/complete`, { data: { earlyCompletionAcknowledged: true } }));
       const erros = await errosDe(
         await api.put(`/api/v1/appointments/${c.id}`, {
           data: novoCompromisso({ ...janelaLivre(), justification: "quero remarcar" }),
