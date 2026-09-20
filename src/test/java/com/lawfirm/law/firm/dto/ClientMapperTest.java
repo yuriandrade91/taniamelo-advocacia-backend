@@ -13,9 +13,9 @@ import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.support.TestFixtures;
+import com.lawfirm.law.firm.util.FusoDoEscritorio;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -209,7 +209,7 @@ class ClientMapperTest {
     @DisplayName("toDTO calcula a idade em UTC a partir da data de nascimento")
     void toDtoComputesAge() {
         Client entity = TestFixtures.client();
-        entity.setBirthDate(LocalDate.now(ZoneOffset.UTC).minusYears(30).minusDays(1));
+        entity.setBirthDate(FusoDoEscritorio.hoje().minusYears(30).minusDays(1));
 
         ClientDetailsDTO dto = mapper.toDTO(entity);
 
@@ -221,8 +221,11 @@ class ClientMapperTest {
     @Test
     @DisplayName("aniversário exatamente hoje conta o ano completo")
     void ageOnBirthday() {
+        // "Hoje" no fuso do ESCRITÓRIO, não no da JVM. Com LocalDate.now(UTC), entre 21h e
+        // meia-noite de São Paulo o teste montava o aniversário no dia seguinte e cobrava um
+        // ano que ainda não tinha chegado - falhava só nessas três horas, todo dia.
         Client entity = TestFixtures.client();
-        entity.setBirthDate(LocalDate.now(ZoneOffset.UTC).minusYears(40));
+        entity.setBirthDate(FusoDoEscritorio.hoje().minusYears(40));
 
         assertEquals(40, mapper.toDTO(entity).getAge());
     }

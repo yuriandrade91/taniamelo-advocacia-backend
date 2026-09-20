@@ -44,9 +44,9 @@ import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.security.UserPrincipal;
 import com.lawfirm.law.firm.support.TestFixtures;
+import com.lawfirm.law.firm.util.FusoDoEscritorio;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -809,7 +809,7 @@ class ClientServiceImplTest {
         @DisplayName("get calcula a idade a partir da data de nascimento")
         void getComputesAge() {
             Client client = TestFixtures.client();
-            client.setBirthDate(LocalDate.now(ZoneOffset.UTC).minusYears(45).minusDays(1));
+            client.setBirthDate(FusoDoEscritorio.hoje().minusYears(45).minusDays(1));
             when(repository.findById(TestFixtures.CLIENT_ID)).thenReturn(Optional.of(client));
 
             ClientPersonalDataResponseDTO dto = service.getPersonalData(TestFixtures.CLIENT_ID);

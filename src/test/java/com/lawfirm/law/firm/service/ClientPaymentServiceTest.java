@@ -24,6 +24,7 @@ import com.lawfirm.law.firm.repository.ClientPaymentRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.UserPrincipal;
 import com.lawfirm.law.firm.support.TestFixtures;
+import com.lawfirm.law.firm.util.FusoDoEscritorio;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -86,7 +87,7 @@ class ClientPaymentServiceTest {
         payment.setAmount(new BigDecimal("500.00"));
         payment.setInstallmentNumber(1);
         payment.setInstallmentTotal(3);
-        payment.setDueDate(LocalDate.now().plusDays(10));
+        payment.setDueDate(FusoDoEscritorio.hoje().plusDays(10));
         payment.setStatus(PaymentStatus.PENDENTE);
         payment.setPaymentMethod(PaymentMethod.PIX);
         return payment;
@@ -196,7 +197,7 @@ class ClientPaymentServiceTest {
         @DisplayName("Pendente com vencimento no passado é marcada como atrasada")
         void pendingPastDueIsOverdue() {
             ClientPayment payment = existing();
-            payment.setDueDate(LocalDate.now().minusDays(1));
+            payment.setDueDate(FusoDoEscritorio.hoje().minusDays(1));
             when(repository.findByIdAndClient_IdAndDeletedAtIsNull(
                             PAYMENT_ID, TestFixtures.CLIENT_ID))
                     .thenReturn(Optional.of(payment));
@@ -208,7 +209,7 @@ class ClientPaymentServiceTest {
         @DisplayName("Pendente vencendo hoje ainda não está atrasada")
         void pendingDueTodayIsNotOverdue() {
             ClientPayment payment = existing();
-            payment.setDueDate(LocalDate.now());
+            payment.setDueDate(FusoDoEscritorio.hoje());
             when(repository.findByIdAndClient_IdAndDeletedAtIsNull(
                             PAYMENT_ID, TestFixtures.CLIENT_ID))
                     .thenReturn(Optional.of(payment));
@@ -222,7 +223,7 @@ class ClientPaymentServiceTest {
             for (PaymentStatus status : List.of(PaymentStatus.PAGO, PaymentStatus.CANCELADO)) {
                 ClientPayment payment = existing();
                 payment.setStatus(status);
-                payment.setDueDate(LocalDate.now().minusYears(1));
+                payment.setDueDate(FusoDoEscritorio.hoje().minusYears(1));
                 when(repository.findByIdAndClient_IdAndDeletedAtIsNull(
                                 PAYMENT_ID, TestFixtures.CLIENT_ID))
                         .thenReturn(Optional.of(payment));
@@ -326,7 +327,7 @@ class ClientPaymentServiceTest {
         }
 
         @Test
-        @DisplayName("marcar como Pago sem data assume hoje")
+        @DisplayName("marcar como Pago sem data assume hoje - no fuso do escritório")
         void markingPaidWithoutDateAssumesToday() {
             ClientPaymentUpdateRequestDTO dto = new ClientPaymentUpdateRequestDTO();
             dto.setStatus("Pago");
@@ -334,7 +335,7 @@ class ClientPaymentServiceTest {
             service.update(TestFixtures.CLIENT_ID, PAYMENT_ID, dto);
 
             assertEquals(PaymentStatus.PAGO, payment.getStatus());
-            assertEquals(LocalDate.now(), payment.getPaidDate());
+            assertEquals(FusoDoEscritorio.hoje(), payment.getPaidDate());
         }
 
         @Test
