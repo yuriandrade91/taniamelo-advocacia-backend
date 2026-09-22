@@ -47,6 +47,13 @@ jobs:
           script: |
             set -e
             source ~/.bashrc 2>/dev/null || true
+            # O drone-ssh executa este script como shell NÃO-interativo - o
+            # ~/.bashrc de muita distro tem um guard ("case $- in *i*)...")
+            # que retorna cedo justamente nesse caso, então o PATH de login
+            # não é garantido aqui. Docker/Compose instalados via dnf caem em
+            # /usr/bin; isso evita "docker: command not found" mesmo quando o
+            # .bashrc não é aplicado.
+            export PATH="$PATH:/usr/bin:/usr/local/bin:/bin"
             cd ~/taniamelo-advocacia-backend
 
             # Atualiza o código
