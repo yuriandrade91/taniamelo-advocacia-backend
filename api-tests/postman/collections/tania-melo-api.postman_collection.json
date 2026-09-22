@@ -9,7 +9,7 @@
     "bearer": [
       {
         "key": "token",
-        "value": "",
+        "value": "{{token}}",
         "type": "string"
       }
     ]
@@ -849,10 +849,10 @@
                   "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
                   "});",
                   "const d = pm.response.json().data;",
-                  "pm.collectionVariables.set(\"clientId\", d.id);",
+                  "pm.collectionVariables.set(\"clientId\", d.clientId);",
                   "pm.test(\"nasce Potencial\", () => pm.expect(d.clientType).to.eql(\"Potencial\"));",
                   "pm.test(\"enum volta como label PT-BR\", () => pm.expect(d.situation).to.eql(\"Formulário preenchido\"));",
-                  "pm.test(\"header Location aponta o recurso\", () => pm.expect(pm.response.headers.get(\"Location\") || \"\").to.include(d.id));"
+                  "pm.test(\"header Location aponta o recurso\", () => pm.expect(pm.response.headers.get(\"Location\") || \"\").to.include(d.clientId));"
                 ]
               }
             }
@@ -921,7 +921,7 @@
                   "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
                   "});",
                   "const d = pm.response.json().data;",
-                  "pm.collectionVariables.set(\"clientIdMinimo\", d.id);",
+                  "pm.collectionVariables.set(\"clientIdMinimo\", d.clientId);",
                   "pm.test(\"padrões da coluna aparecem preenchidos\", () => {",
                   "  pm.expect(d.nationality).to.eql(\"Brasileira\");",
                   "  pm.expect(d.isWhatsapp).to.be.true;",
@@ -3979,7 +3979,12 @@
           "name": "Concluir compromisso",
           "request": {
             "method": "PATCH",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentClienteId}}/complete",
               "host": [
@@ -3992,7 +3997,17 @@
                 "{{appointmentClienteId}}",
                 "complete"
               ]
-            }
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"earlyCompletionAcknowledged\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Concluir antes da hora marcada exige confirmação explícita: sem earlyCompletionAcknowledged o backend responde 422 EARLY_COMPLETION_NOT_CONFIRMED. O compromisso desta pasta é futuro, então o corpo é obrigatório."
           },
           "event": [
             {
@@ -4000,6 +4015,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "// Sem o corpo de confirmação isto volta 422 EARLY_COMPLETION_NOT_CONFIRMED.",
                   "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"envelope de sucesso\", () => {",
                   "  const b = pm.response.json();",

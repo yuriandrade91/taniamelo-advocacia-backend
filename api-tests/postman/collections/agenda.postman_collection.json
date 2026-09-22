@@ -150,6 +150,35 @@
               }
             }
           ]
+        },
+        {
+          "name": "Setup: cliente para vincular",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/clients?page=1&pageSize=1",
+            "description": "A agenda vincula compromisso a cliente por id. O runner não recebe um clientId pronto, então a pasta pega o primeiro cliente do escritório de teste em vez de criar lixo que ninguém remove depois."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const lista = pm.response.json().data || [];",
+                  "pm.test('o escritório de teste tem ao menos um cliente (a carga de demonstração rodou?)', () => pm.expect(lista).to.not.be.empty);",
+                  "if (lista.length) pm.collectionVariables.set('clientId', lista[0].clientId);"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -328,12 +357,27 @@
             "method": "PATCH",
             "header": [
               {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
                 "key": "X-Tenant-Id",
                 "value": "{{tenant}}",
                 "type": "text"
               }
             ],
-            "url": "{{baseUrl}}/api/v1/appointments/{{apptId}}/complete"
+            "url": "{{baseUrl}}/api/v1/appointments/{{apptId}}/complete",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"earlyCompletionAcknowledged\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "O compromisso criado aqui é futuro; concluir antes da hora exige earlyCompletionAcknowledged, senão 422 EARLY_COMPLETION_NOT_CONFIRMED."
           },
           "event": [
             {
