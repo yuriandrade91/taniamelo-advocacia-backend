@@ -4577,7 +4577,474 @@
       "description": "Consulta somente leitura, para resolver autoria."
     },
     {
-      "name": "6. Exclusão lógica e limpeza",
+      "name": "6. Cobertura complementar (endpoints deployados sem teste)",
+      "item": [
+        {
+          "name": "Buscar endereço por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"id do endereço confere\", () => pm.expect(pm.response.json().data.id).to.eql(pm.collectionVariables.get(\"addressId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/addresses/{{addressId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "addresses",
+                "{{addressId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ler dados pessoais",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"traz o nome completo\", () => pm.expect(pm.response.json().data.fullName).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/personal-data",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "personal-data"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ler dados profissionais",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/professional-data",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "professional-data"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar entrevistas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"data é array\", () => pm.expect(pm.response.json().data).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/interviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "interviews"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buscar entrevista por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"id da entrevista confere\", () => pm.expect(pm.response.json().data.id).to.eql(pm.collectionVariables.get(\"interviewId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/interviews/{{interviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "interviews",
+                "{{interviewId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar pagamentos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"data é array\", () => pm.expect(pm.response.json().data).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buscar pagamento por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"id do pagamento confere\", () => pm.expect(pm.response.json().data.id).to.eql(pm.collectionVariables.get(\"paymentId\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Atualizar endereço",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"complemento atualizado\", () => pm.expect(pm.response.json().data.complement).to.eql(\"Apto 202\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/addresses/{{addressId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "addresses",
+                "{{addressId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addressType\": \"Residencial\",\n  \"street\": \"Rua Atualizada\",\n  \"addressNumber\": \"20\",\n  \"neighborhood\": \"Centro\",\n  \"city\": \"Belo Horizonte\",\n  \"state\": \"MG\",\n  \"zipCode\": \"30000-000\",\n  \"complement\": \"Apto 202\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Atualizar dados pessoais",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/personal-data",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "personal-data"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{marca}} Cliente\",\n  \"birthDate\": \"1970-05-20\",\n  \"cpf\": \"{{cpf}}\",\n  \"motherName\": \"Maria de Teste\",\n  \"gender\": \"Feminino\",\n  \"mobilePhone\": \"+5531999990000\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Atualizar cliente (completo, PUT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{marca}} Cliente\",\n  \"birthDate\": \"1970-05-20\",\n  \"cpf\": \"{{cpf}}\",\n  \"motherName\": \"Maria de Teste\",\n  \"mobilePhone\": \"+5531999990000\",\n  \"inssPassword\": \"senha-inss\",\n  \"gender\": \"Feminino\",\n  \"benefit\": \"Aposentadoria por idade\",\n  \"situation\": \"Formulário preenchido\",\n  \"clientType\": \"Potencial\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Excluir entrevista",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/interviews/{{interviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "interviews",
+                "{{interviewId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Excluir pagamento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
+          }
+        }
+      ],
+      "description": "Endpoints que existem no backend deployado e não eram exercitados: leitura/edição/remoção de sub-recursos, dados pessoais/profissionais e o PUT completo do cliente. Roda depois da criação dos sub-recursos e antes da limpeza; reutiliza clientId/addressId/interviewId/paymentId já capturados. (Upload/download de arquivos fica nos testes Playwright.)"
+    },
+    {
+      "name": "7. Exclusão lógica e limpeza",
       "item": [
         {
           "name": "Excluir cliente",
