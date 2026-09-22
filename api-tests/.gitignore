@@ -7,3 +7,6 @@ playwright/.cache/
 .env
 postman/reports/*
 !postman/reports/.gitkeep
+
+# Evidência gerada pelas execuções contra ambiente publicado.
+evidencia/
