@@ -4,12 +4,17 @@ services:
   db:
     container_name: database-postgress
     image: postgres:17.5
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # Só em loopback (127.0.0.1), nunca 0.0.0.0: dá pra conectar um client
+    # local (psql, DBeaver) na própria máquina/instância, mas o banco não
+    # fica alcançável pela rede - o "app" já conversa com "db" pela rede
+    # interna do compose, não precisa dessa porta publicada pra isso.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -30,7 +35,14 @@ services:
   app:
     container_name: java-application
     profiles: ["full"]
-    build: .
+    restart: unless-stopped
+    build:
+      context: .
+      # Carimba o SHA do commit em /actuator/info (ver Dockerfile/pom.xml).
+      # O deploy exporta GIT_COMMIT antes de rodar `docker compose ... up --build`;
+      # sem isso, cai no default "desconhecido" (build local, por exemplo).
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-desconhecido}
     environment:
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}

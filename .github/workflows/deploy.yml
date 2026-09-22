@@ -38,7 +38,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
 
-      - name: Atualizar e reiniciar o serviço (git pull + mvn package + restart)
+      - name: Atualizar e subir os containers (git pull + docker compose)
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -47,42 +47,33 @@ jobs:
           script: |
             set -e
             source ~/.bashrc 2>/dev/null || true
-            export PATH=$PATH:/opt/maven/bin:/usr/local/bin
             cd ~/taniamelo-advocacia-backend
 
             # Atualiza o código
             git fetch origin develop
             git reset --hard origin/develop
 
-            # Builda o projeto, carimbando o SHA que acabou de ser baixado.
-            # É o que faz /actuator/info dizer qual versão está rodando aqui.
-            #
-            # -DskipTests aqui é intencional e não é uma lacuna: a suíte já rodou
-            # no CI, que é o gate deste job. Repeti-la na instância exigiria Docker
-            # (Testcontainers) num t4g pequeno e só atrasaria o deploy do mesmo
-            # commit que acabou de passar.
-            mvn -B clean package -DskipTests -Dgit.commit=$(git rev-parse --short HEAD)
-
-            # Reinicia a aplicação.
+            # Sobe backend + Postgres via Docker Compose (perfil "full").
             #
             # O script vem DO REPOSITÓRIO (o git reset --hard acima acabou de
-            # atualizá-lo), e não mais de /home/ec2-user/restart-app.sh, que
-            # vivia fora do versionamento: o passo mais importante do deploy não
-            # era revisado, não era reproduzível e sumiria com a instância.
+            # atualizá-lo): o passo mais importante do deploy não é solto na
+            # instância, é revisado e reproduzível.
             #
-            # Ele recusa subir com secret de exemplo ou com a chave de
-            # criptografia de desenvolvimento - que a aplicação, sozinha, aceita
-            # com um log.warn.
-            bash scripts/restart-app.sh
+            # Ele recusa subir com .env ausente, secret de exemplo, chave de
+            # criptografia de desenvolvimento ou datasource ainda apontando
+            # pra localhost - e, depois que a aplicação responde UP, popula o
+            # banco de cada tenant (só na primeira vez: os deploys seguintes
+            # encontram usuário já cadastrado e pulam o seed).
+            bash scripts/restart-app-docker.sh
 
             # ── Só agora o deploy pode se dizer concluído ──
             #
-            # restart-app.sh devolve o controle assim que DISPARA a aplicação; o
-            # boot continua em segundo plano. Migration que quebra é exatamente
-            # isso: o Flyway aborta, o contexto do Spring não sobe e o processo
-            # morre - e o passo acima já terminou com sucesso. O job ficava verde
-            # com a instância fora do ar, que é o pior resultado possível: ninguém
-            # vai olhar um pipeline que passou.
+            # restart-app-docker.sh já espera a aplicação responder UP antes de
+            # popular o banco, mas a checagem abaixo é quem decide se o JOB
+            # falha - sem ela, um container que nunca ficou saudável (ou um
+            # Flyway que abortou) passava como deploy bem-sucedido. O job
+            # ficava verde com a instância fora do ar, que é o pior resultado
+            # possível: ninguém vai olhar um pipeline que passou.
             #
             # As migrations rodam no @PostConstruct do MultiTenantFlywayMigrator, a
             # cada boot. Portanto "a aplicação respondeu UP" é, por construção,
@@ -103,8 +94,8 @@ jobs:
 
             if [ "$SUBIU" != "sim" ]; then
               echo "::error::A aplicação não respondeu UP em ~120s. Deploy considerado FALHO."
-              echo "--- Últimas linhas do serviço (erro do Flyway aparece aqui) ---"
-              sudo journalctl -u law-firm -n 80 --no-pager || true
+              echo "--- Últimas linhas do container (erro do Flyway aparece aqui) ---"
+              docker compose logs --tail 80 app || true
               exit 1
             fi
 
