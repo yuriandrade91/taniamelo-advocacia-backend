@@ -272,7 +272,10 @@ test.describe("abas de dados pessoais e profissionais", () => {
         data: { ...base, rg: "MG-12.345.678", email: "teste@exemplo.com", referenceResponsible: "Irmã" },
       }),
     );
-    expect(salvo.rg).toBe("MG-12.345.678");
+    // O RG é documento de identidade: o backend guarda normalizado, de propósito,
+    // para que "mg 12.345.678" e "MG12345678" não virem dois cadastros da mesma
+    // pessoa. Pontuação é formatação e cabe à tela. Texto comum volta como veio.
+    expect(salvo.rg).toBe("MG12345678");
     expect(salvo.email).toBe("teste@exemplo.com");
     expect(salvo.referenceResponsible).toBe("Irmã");
   });
@@ -291,7 +294,7 @@ test.describe("abas de dados pessoais e profissionais", () => {
     const dados = await dadosDe<{ rg: string; email: string | null }>(
       await api.get(`/api/v1/clients/${clienteId}/personal-data`),
     );
-    expect(dados.rg).toBe("MG-99.999.999");
+    expect(dados.rg).toBe("MG99999999"); // normalizado na gravação, como acima
     // Isto NÃO é defeito: PUT substitui a aba inteira, aqui como em PUT /clients/{id}.
     // O teste existe porque o comportamento surpreende — quem manda só o RG numa
     // tela de edição apaga o e-mail sem perceber. Se um dia a rota virar PATCH,
