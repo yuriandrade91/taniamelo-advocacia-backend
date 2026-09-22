@@ -8,6 +8,24 @@ import newman from 'newman';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = path.join(root, 'postman', 'manifest.json');
 const reportsRoot = path.resolve(process.env.POSTMAN_REPORT_DIR || path.join(root, 'postman', 'reports'));
+// O README manda preencher api-tests/.env, e o Playwright já lia esse arquivo.
+// O runner do Postman não lia: quem seguia o README batia em "API_LOGIN é
+// obrigatório" e tinha de exportar tudo à mão. A variável já exportada no
+// ambiente continua vencendo o arquivo.
+function carregarDotEnv(arquivo) {
+  if (!fs.existsSync(arquivo)) return;
+  for (const linha of fs.readFileSync(arquivo, 'utf8').split(/\r?\n/)) {
+    const m = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(linha);
+    if (!m) continue;
+    let valor = m[2].trim();
+    if ((valor.startsWith('"') && valor.endsWith('"')) || (valor.startsWith("'") && valor.endsWith("'"))) {
+      valor = valor.slice(1, -1);
+    }
+    if (process.env[m[1]] === undefined || process.env[m[1]] === '') process.env[m[1]] = valor;
+  }
+}
+carregarDotEnv(path.join(root, '.env'));
+
 const args = new Set(process.argv.slice(2));
 const publicOnly = args.has('--public-only');
 const allowNonDemo = args.has('--allow-non-demo') || process.env.POSTMAN_ALLOW_NON_DEMO === 'true';
