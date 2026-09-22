@@ -3,8 +3,15 @@ version: "3.8"
 services:
   db:
     # keep data on a named volume (already declared in base compose) and add a robust healthcheck
+    #
+    # Corrigido: usava ${DB_USER:-login}/${DB_NAME:-system}, nomes de variável
+    # que não existem em lugar nenhum do projeto (o resto do compose usa
+    # POSTGRES_USER/POSTGRES_DB, que são as env vars reais da imagem postgres).
+    # Sem essa correção, o healthcheck testava sempre "pg_isready -U login -d
+    # system" contra um banco criado com outro usuário/nome - ficava
+    # eternamente unhealthy e o "app" nunca subia (depends_on: service_healthy).
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-login} -d ${DB_NAME:-system}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 2s
       retries: 10
@@ -15,18 +22,13 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./scripts/wait-for-db.sh:/app/wait-for-db.sh:ro
-      # mount external Spring config so you can edit without rebuilding the image
-      - ./src/main/resources/application-dev.yaml:/app/config/application-dev.yaml:ro
-    environment:
-      # ensure the app connects to the database service inside the compose network
-      # use the compose service name `db` as host so the container does not try localhost
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      # tell Spring to load external config file (overrides packaged resources)
-      SPRING_CONFIG_LOCATION: /app/config/application-dev.yaml
-  # healthcheck removed temporarily to avoid automatic unhealthy state during debugging
+    # Removido: SPRING_CONFIG_LOCATION + mount de application-dev.yaml externo.
+    # spring.config.location SUBSTITUI (não soma) os locais padrão de config -
+    # com ele setado só pro arquivo de profile, o app perdia application.yaml
+    # inteiro (JWT, admin seeder, CORS, storage, lista de schemas dos tenants).
+    # application-dev.yaml já é carregado normalmente, empacotado no jar, via
+    # SPRING_PROFILES_ACTIVE=dev (definido no docker-compose.yml/.env) - não
+    # precisa de mount nem de SPRING_CONFIG_LOCATION pra isso funcionar.
 
 volumes:
   # ensure the logs directory is available as a named volume on demand
