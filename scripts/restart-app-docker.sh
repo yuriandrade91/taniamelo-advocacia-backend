@@ -93,9 +93,12 @@ fi
 
 # ── 6. Popular o banco - só na primeira vez, por tenant ──
 # Idempotente: os scripts de seed fazem TRUNCATE, então só rodam quando o
-# schema do tenant ainda não tem usuário nenhum. Isso protege dados reais
-# criados depois do primeiro deploy containerizado - deploys seguintes não
-# reexecutam o seed.
+# schema do tenant ainda não tem CLIENTES. O guard olha clients (não users)
+# de propósito: o AdminUserSeeder cria um ADMIN em cada schema no boot, ANTES
+# desta etapa, então "tem usuário" seria sempre verdadeiro e a massa nunca
+# entraria. clients só é populado pela massa - é o sinal correto de "já
+# semeado". Assim, o primeiro deploy popula e os seguintes preservam dados
+# reais.
 set -a
 . "./$ENV_FILE"
 set +a
@@ -112,10 +115,10 @@ for tenant in tania demo; do
         continue
     fi
 
-    tem_usuario=$(PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc \
-        "SELECT 1 FROM ${schema}.users LIMIT 1" 2>/dev/null || true)
-    if [ -n "$tem_usuario" ]; then
-        echo "Schema $schema já tem usuários - pulando seed."
+    tem_clientes=$(PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc \
+        "SELECT 1 FROM ${schema}.clients LIMIT 1" 2>/dev/null || true)
+    if [ -n "$tem_clientes" ]; then
+        echo "Schema $schema já tem clientes - pulando seed (preserva dados reais)."
         continue
     fi
 
