@@ -40,10 +40,22 @@ jobs:
 
       - name: Atualizar e subir os containers (git pull + docker compose)
         uses: appleboy/ssh-action@v1.2.0
+        # `vars`, e não `secrets`: nome de bucket e região não são segredo, e
+        # escondê-los só dificultaria descobrir por que um deploy foi parar em
+        # disco local. Sem a variável definida no repositório, o deploy não
+        # opina sobre storage e o .env da instância fica como está.
+        env:
+          APP_STORAGE_TYPE: ${{ vars.APP_STORAGE_TYPE }}
+          APP_STORAGE_S3_BUCKET: ${{ vars.APP_STORAGE_S3_BUCKET }}
+          APP_STORAGE_S3_REGION: ${{ vars.APP_STORAGE_S3_REGION }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          # Leva as três para dentro do shell remoto. Credencial da AWS não
+          # vai junto de propósito: na EC2 quem responde por isso é a IAM Role
+          # da instância, não uma chave copiada para o .env.
+          envs: APP_STORAGE_TYPE,APP_STORAGE_S3_BUCKET,APP_STORAGE_S3_REGION
           script: |
             set -e
             source ~/.bashrc 2>/dev/null || true
@@ -71,6 +83,12 @@ jobs:
             # pra localhost - e, depois que a aplicação responde UP, popula o
             # banco de cada tenant (só na primeira vez: os deploys seguintes
             # encontram usuário já cadastrado e pulam o seed).
+            # Antes de subir: garante no .env da instância para onde vão os
+            # arquivos dos clientes. Vem do pipeline porque o .env é criado à
+            # mão uma vez e depois ninguém lembra dele — foi assim que a
+            # instância ficou em disco local contra o que a documentação dizia.
+            bash scripts/configurar-storage.sh
+
             bash scripts/restart-app-docker.sh
 
             # ── Só agora o deploy pode se dizer concluído ──
@@ -115,6 +133,31 @@ jobs:
             if [ "$RODANDO" != "$ESPERADO" ]; then
               echo "::error::A instância está rodando '$RODANDO', mas este deploy publicou '$ESPERADO'."
               exit 1
+            fi
+
+            # ── E está guardando arquivo onde deveria? ──
+            #
+            # A instância passou meses com APP_STORAGE_TYPE=local enquanto a
+            # documentação de deploy dizia s3. Nada denunciava: o upload
+            # funciona igual nos dois, porque o Content-Length do download vem
+            # dos metadados no banco, não do storage. O teste de arquivo passa
+            # verde com os documentos dos clientes num volume de uma máquina
+            # só, sem cópia no bucket.
+            #
+            # Por isso a checagem é do mesmo tipo da versão acima: o pipeline
+            # afirma o que subiu, em vez de confiar que subiu.
+            STORAGE_ESPERADO="${APP_STORAGE_TYPE:-}"
+            if [ -n "$STORAGE_ESPERADO" ]; then
+              STORAGE_RODANDO=$(curl -fsS -m 5 http://localhost:8080/actuator/info \
+                | sed -n 's/.*"storage":{"type":"\([^"]*\)".*/\1/p')
+
+              if [ "$STORAGE_RODANDO" != "$STORAGE_ESPERADO" ]; then
+                echo "::error::Storage esperado '$STORAGE_ESPERADO', mas a instância subiu com '$STORAGE_RODANDO'."
+                echo "Provável causa: bucket inexistente, região errada, ou a IAM Role da instância sem permissão no bucket."
+                docker compose logs --tail 40 app | grep -i "storage\|s3" || true
+                exit 1
+              fi
+              echo "Storage confirmado: $STORAGE_RODANDO"
             fi
 
             echo "✅ Deploy concluído: $ESPERADO no ar, health UP, migrations aplicadas."

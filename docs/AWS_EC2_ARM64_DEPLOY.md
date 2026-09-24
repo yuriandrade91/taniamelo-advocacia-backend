@@ -397,3 +397,109 @@ pré-requisito de `sudo` sem senha para `systemctl restart law-firm` estão em
 | Upload de arquivo falha com `AccessDenied` no S3 | Teste `aws s3 ls s3://SEU_BUCKET/` direto na instância - se falhar também, é a IAM Role (revisar Permissions no console, mesmo que a policy pareça anexada); se só a app falhar, é bug na aplicação |
 | `curl` externo não responde mas local funciona | Conferir a regra exata do SG (porta/CIDR) e os Network ACLs da subnet - app/firewall do SO não costumam ser a causa (confirme com `sudo ss -tlnp \| grep 8080` mostrando `*:8080`) |
 | Instância para sozinha | Budget travou a instância automaticamente - confira o alerta de billing antes de reiniciar |
+
+---
+
+## Storage dos arquivos: quem decide, e como se prova
+
+> Esta seção substitui, para a instância containerizada, o trecho do Passo 7
+> que colocava `APP_STORAGE_*` à mão no `/etc/law-firm/law-firm.env`. A
+> instância não roda mais como serviço systemd: roda via Docker Compose, lendo
+> o `.env` da raiz do repositório.
+
+### O problema que ela resolve
+
+O `.env` da EC2 é criado uma vez, à mão, e depois ninguém lembra dele. Foi
+assim que a instância ficou com `APP_STORAGE_TYPE=local` enquanto este mesmo
+documento mandava `s3` — os documentos dos clientes viveram num volume de uma
+máquina só, sem cópia no bucket, e **nada denunciava**: o upload funciona
+igual nos dois, porque o `Content-Length` do download vem dos metadados no
+banco, não do storage. O teste de arquivo passava verde.
+
+Agora a configuração vem do pipeline e é conferida no fim dele.
+
+### Pré-requisitos na AWS (uma vez, e não dá para o pipeline fazer)
+
+1. **O bucket existe** e está na região que você vai declarar.
+
+2. **A IAM Role da instância** (`role-ec2-s3-tm`) tem permissão no bucket. O
+   mínimo:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+         "Resource": "arn:aws:s3:::amz-s3-bucket-tm/*"
+       },
+       {
+         "Effect": "Allow",
+         "Action": ["s3:ListBucket"],
+         "Resource": "arn:aws:s3:::amz-s3-bucket-tm"
+       }
+     ]
+   }
+   ```
+
+   `ListBucket` no bucket (sem `/*`) e as demais nos objetos (com `/*`) — é a
+   distinção que mais gera "Access Denied" sem explicação.
+
+3. **O IMDSv2 precisa alcançar o container.** Esta é a pegadinha que mais
+   custa tempo: a aplicação roda **dentro do Docker**, e o
+   `DefaultCredentialsProvider` busca a credencial da Role no endpoint de
+   metadados da instância. O limite de saltos de rede padrão é `1`, que a
+   rede do container já consome — o SDK não recebe credencial nenhuma e a
+   mensagem fala de credencial, não de rede.
+
+   ```bash
+   aws ec2 modify-instance-metadata-options \
+     --instance-id i-xxxxxxxxxxxx \
+     --http-put-response-hop-limit 2 \
+     --http-tokens required
+   ```
+
+### O que configurar no GitHub
+
+Em **Settings → Secrets and variables → Actions → Variables** (não em
+Secrets: nome de bucket e região não são segredo, e escondê-los só dificulta
+descobrir por que um deploy foi parar em disco local):
+
+| Variável | Valor |
+|---|---|
+| `APP_STORAGE_TYPE` | `s3` |
+| `APP_STORAGE_S3_BUCKET` | `amz-s3-bucket-tm` |
+| `APP_STORAGE_S3_REGION` | `us-east-1` |
+
+Sem `APP_STORAGE_TYPE` definida, o deploy **não opina** sobre storage e o
+`.env` da instância fica como está — um pipeline que não quer decidir não
+deve apagar o que foi configurado na máquina.
+
+### O que acontece no deploy
+
+1. `scripts/configurar-storage.sh` grava as três chaves no `.env` da
+   instância. Ele recusa `s3` sem bucket e recusa tipo que não seja
+   `local`/`s3`. É idempotente: rodar de novo substitui a chave, não empilha.
+2. Os containers sobem.
+3. Depois do health e da conferência de commit, o job compara
+   `/actuator/info` com o que foi pedido:
+
+   ```
+   Storage esperado 's3', mas a instância subiu com 'local'.
+   ```
+
+   e **falha o deploy**. Sem isso, bucket inexistente, região errada ou Role
+   sem permissão viravam um fallback silencioso para disco local, com o
+   pipeline verde.
+
+### Conferindo depois
+
+```bash
+curl -s http://<host>:8080/actuator/info
+# {"build":{...},"storage":{"type":"s3","bucket":"amz-s3-bucket-tm","region":"us-east-1"}}
+```
+
+Com `type: s3` confirmado, a suíte de arquivos (`clients.files.spec.ts`) passa
+a valer como prova de bucket. Antes disso ela prova apenas que o arquivo vai e
+volta — o que é verdade em disco local também.
