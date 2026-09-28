@@ -40,9 +40,43 @@ mvn -q clean verify sonar:sonar \
 **SonarQube self-hosted:** suba o container e aponte `-Dsonar.host.url=http://SEU_HOST:9000`.
 
 O `mvn verify` gera a cobertura (JaCoCo) antes do `sonar:sonar`, então o Sonar
-já recebe o XML de cobertura. **Quality Gate:** configure no painel do Sonar
-(ex.: cobertura mínima em código novo, zero bugs/vulnerabilidades novas) — o
-`sonar:sonar` falha o build se o gate reprovar (bom para CI).
+já recebe o XML de cobertura.
+
+### Quality Gate (a convenção do projeto)
+
+O gate é avaliado sobre **código novo** (new code) — não travamos o legado de
+uma vez, mas todo código novo entra no padrão. Enforçado de duas formas:
+
+- No `pom.xml`: `sonar.qualitygate.wait=true` — o `sonar:sonar` **falha** o build
+  se o gate reprovar (não é só informativo).
+- No CI (`.github/workflows/ci.yml`, job `sonar`): roda `mvn verify sonar:sonar`
+  com `-Dsonar.qualitygate.wait=true` quando o secret `SONAR_TOKEN` existe.
+
+Configure o gate uma vez no painel do Sonar (Organization → Quality Gates),
+como **condições sobre New Code**:
+
+| Métrica (New Code) | Condição |
+|--------------------|----------|
+| Coverage | ≥ 80% |
+| Duplicated Lines (%) | ≤ 3% |
+| Maintainability Rating | A |
+| Reliability Rating | A (0 novos bugs) |
+| Security Rating | A (0 novas vulnerabilidades) |
+| Security Hotspots Reviewed | 100% |
+
+A cobertura exclui boilerplate (DTOs, `model`, `config`, `*Application`,
+`*ErrorCode`) via `sonar.coverage.exclusions` no `pom.xml`, para o número medir
+código com lógica de verdade.
+
+**Setup em CI:** crie o projeto no SonarCloud, gere um token e adicione o secret
+`SONAR_TOKEN` (Settings → Secrets) e a variável `SONAR_ORGANIZATION` (Settings →
+Variables) no repositório. Sem o secret, o job Sonar apenas avisa e passa (não
+quebra PRs de fork).
+
+**Auto-hospedar o SonarQube?** É serviço de CI, não roda junto do app na EC2
+pequena (SonarQube pede ~2 GB+ e um Postgres próprio). Se preferir self-hosted,
+suba num host separado e troque `sonar.host.url` — o restante da convenção
+(gate, wait, exclusões) é idêntico.
 
 **SonarLint no editor:** instale o plugin SonarLint (VS Code/IntelliJ) e conecte
 ao projeto Sonar ("connected mode") para ver as mesmas regras enquanto codifica —
