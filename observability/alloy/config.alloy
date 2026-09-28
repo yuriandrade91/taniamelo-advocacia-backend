@@ -1,0 +1,34 @@
+// Grafana Alloy: descobre os containers Docker e envia o stdout/stderr deles
+// para o Loki. Requer o socket do Docker montado (read-only).
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  // Nome do container (sem a "/" inicial) vira o label `container`.
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+  // Label fixo para filtrar tudo do projeto no Grafana.
+  rule {
+    target_label = "stack"
+    replacement  = "taniamelo"
+  }
+}
+
+loki.source.docker "default" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

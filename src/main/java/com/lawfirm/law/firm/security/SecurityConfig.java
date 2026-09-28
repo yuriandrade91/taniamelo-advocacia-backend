@@ -107,7 +107,10 @@ public class SecurityConfig {
                                                 "/swagger-ui.html",
                                                 "/webjars/**")
                                         .permitAll()
-                                        .requestMatchers("/actuator/health", "/actuator/info")
+                                        .requestMatchers(
+                                                "/actuator/health",
+                                                "/actuator/info",
+                                                "/actuator/prometheus")
                                         .permitAll()
                                         .anyRequest()
                                         .authenticated())

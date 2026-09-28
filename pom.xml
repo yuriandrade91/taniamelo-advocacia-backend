@@ -48,6 +48,17 @@
 		<sonar.projectKey>taniamelo-advocacia-backend</sonar.projectKey>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
 		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+		<!-- Quality Gate: o build/CI FALHA se o gate reprovar. É o que torna o
+		     gate "conforme a convenção" obrigatório, não apenas informativo.
+		     No CI o sonar:sonar recebe -Dsonar.token e -Dsonar.organization. -->
+		<sonar.qualitygate.wait>true</sonar.qualitygate.wait>
+		<!-- Cobertura só faz sentido sobre código com lógica. Boilerplate (DTOs,
+		     entidades JPA, enums, conversores, config, o main da app) é excluído
+		     do denominador de cobertura para o número não ser diluído por getters/
+		     setters - a análise de bugs/smells continua valendo para eles. -->
+		<sonar.coverage.exclusions>
+			**/dto/**,**/model/**,**/config/**,**/*Application.java,**/exception/*ErrorCode.java
+		</sonar.coverage.exclusions>
 	</properties>
 
 	<!-- BOM da AWS SDK v2: alinha as versões dos módulos AWS (s3, auth, regions).
@@ -86,6 +97,25 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
+		<!-- Observabilidade (versões gerenciadas pelo BOM do Spring Boot 4.1):
+		     - micrometer-registry-prometheus: expõe as métricas em /actuator/prometheus
+		       (Prometheus faz o scrape). Inclui http_server_requests (RED por endpoint).
+		     - micrometer-tracing-bridge-otel + opentelemetry-exporter-otlp: tracing
+		       distribuído, exportado via OTLP para o Tempo. O traceId/spanId também
+		       entram no MDC dos logs (correlação log<->trace no Grafana). -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-tracing-bridge-otel</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.opentelemetry</groupId>
+			<artifactId>opentelemetry-exporter-otlp</artifactId>
 		</dependency>
 
 		<!-- Spring Security + JWT authentication -->

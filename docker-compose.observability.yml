@@ -1,0 +1,100 @@
+# Stack de observabilidade (opt-in): Prometheus (métricas) + Loki (logs) +
+# Tempo (tracing) + Grafana (painéis) + Alloy (coletor de logs dos containers).
+#
+# Sobe junto do app, na MESMA rede do compose, com:
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml \
+#                  -f docker-compose.observability.yml --profile full up -d --build
+#
+# NÃO entra no deploy automático (restart-app-docker.sh) de propósito: é pesado
+# para uma instância pequena. Ligue sob demanda. Veja docs/OBSERVABILIDADE.md.
+
+services:
+  # Liga o tracing no app quando a stack está no ar (o compose base deixa em 0).
+  app:
+    environment:
+      MANAGEMENT_TRACING_SAMPLING: ${MANAGEMENT_TRACING_SAMPLING:-1.0}
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://tempo:4318/v1/traces
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    # Só loopback: acesso via Grafana (rede interna) ou túnel SSH.
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - app
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "127.0.0.1:3100:3100"
+
+  tempo:
+    image: grafana/tempo:2.7.0
+    container_name: tempo
+    restart: unless-stopped
+    command: -config.file=/etc/tempo/tempo.yaml
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    # OTLP (4317 grpc / 4318 http) e API (3200) ficam só na rede interna do compose.
+
+  alloy:
+    image: grafana/alloy:v1.5.1
+    container_name: alloy
+    restart: unless-stopped
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy/data
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      # Socket do Docker (read-only) para ler os logs dos containers. Dá acesso
+      # amplo ao daemon - aceitável numa instância dev de dono único.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy/data
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      # Defina GRAFANA_ADMIN_PASSWORD no .env (o :? falha o up se estiver vazio).
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?defina GRAFANA_ADMIN_PASSWORD no .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      # Exposto para você acessar a UI. Abra a porta 3000 no Security Group SÓ
+      # para o seu IP - ou, mais seguro, deixe em 127.0.0.1 e use túnel SSH.
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
+volumes:
+  prometheus-data:
+  loki-data:
+  tempo-data:
+  alloy-data:
+  grafana-data:

@@ -1,0 +1,32 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      # Correlação log -> trace: transforma o traceId do log num link para o Tempo.
+      derivedFields:
+        - name: TraceID
+          matcherRegex: "traceId=(\\w+)"
+          datasourceUid: tempo
+          url: "$${__value.raw}"
+
+  - name: Tempo
+    uid: tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    jsonData:
+      # Correlação trace -> logs (do mesmo container/serviço).
+      tracesToLogsV2:
+        datasourceUid: loki

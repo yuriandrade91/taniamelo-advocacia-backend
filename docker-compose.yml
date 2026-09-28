@@ -68,6 +68,10 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       # CORS: default "*" para teste; troque pelo domínio do frontend em produção.
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-*}
+      # Tracing DESLIGADO por padrão (sem a stack de observabilidade no ar, exportar
+      # spans para o Tempo geraria só ruído no log). O docker-compose.observability.yml
+      # liga o sampling. Métricas Prometheus independem disto (são pull).
+      MANAGEMENT_TRACING_SAMPLING: ${MANAGEMENT_TRACING_SAMPLING:-0}
     volumes:
       - app-storage:/app/storage
     ports:

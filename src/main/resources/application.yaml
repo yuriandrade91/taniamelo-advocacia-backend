@@ -78,7 +78,31 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # prometheus: scrape das métricas (Micrometer). health/info seguem
+        # abertos (ver SecurityConfig); os demais endpoints continuam exigindo auth.
+        include: health,info,prometheus
+  metrics:
+    tags:
+      # Toda métrica carrega application=law-firm - separa este serviço de outros
+      # no mesmo Prometheus/Grafana.
+      application: ${spring.application.name}
+    distribution:
+      # Liga o histograma de http_server_requests para dar p50/p95/p99 por rota
+      # no Grafana (histogram_quantile sobre os buckets).
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 50ms,100ms,200ms,300ms,500ms,1s,2s
+  tracing:
+    # Amostragem do tracing. 10% por padrão (baixo overhead em produção);
+    # suba para 1.0 em dev, ou 0 para desligar. Ver application-dev.yaml.
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING:0.1}
+  otlp:
+    tracing:
+      # Exporta spans via OTLP para o Tempo (stack de observabilidade no compose).
+      # Sem a stack no ar, deixe MANAGEMENT_TRACING_SAMPLING=0 para não gerar ruído.
+      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://tempo:4318/v1/traces}
   endpoint:
     health:
       show-details: never
