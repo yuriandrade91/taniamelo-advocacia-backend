@@ -12,7 +12,8 @@ SET search_path TO tenant_demo, public;
 
 BEGIN;
 
-TRUNCATE refresh_tokens, client_payments, client_files, client_interviews,
+TRUNCATE office_revenues, office_expenses,
+         refresh_tokens, client_payments, client_files, client_interviews,
          client_situation_history, client_addresses, clients, users RESTART IDENTITY CASCADE;
 
 -- ── Usuários ── (hash BCrypt de "password")
@@ -63,10 +64,39 @@ INSERT INTO client_interviews (client_id, occurred_at, duration_minutes, content
 INSERT INTO client_files (client_id, kind, original_filename, storage_key, mime_type, file_size_bytes, document_type, uploaded_by) VALUES
  ('c0000001-0000-4000-8000-000000000001', 'DOCUMENT', 'rg_paulo.pdf', 'demo/mock/rg_paulo.pdf', 'application/pdf', 84210, 'Documentos de identificação do segurado', 'a1a1a1a1-0000-4000-8000-000000000001');
 
--- ── Pagamentos ── (um atrasado, um a vencer - útil para testar notificações)
-INSERT INTO client_payments (client_id, description, amount, installment_number, installment_total, due_date, status, payment_method, created_by) VALUES
- ('c0000001-0000-4000-8000-000000000001', 'Honorários - parcela 1/3', 500.00, 1, 3, CURRENT_DATE - 12, 'Pendente', 'Pix', 'a1a1a1a1-0000-4000-8000-000000000001'),
- ('c0000001-0000-4000-8000-000000000002', 'Honorários - parcela 1/6', 300.00, 1, 6, CURRENT_DATE, 'Pendente', 'Boleto', 'a1a1a1a1-0000-4000-8000-000000000001');
+-- ── Pagamentos do INSS ao cliente ──
+--
+-- Um vencido, um vencendo hoje e um pago: os três baldes do resumo com
+-- conteúdo, em qualquer dia. Datas relativas de propósito — massa com data
+-- fixa cai inteira em "vencido" alguns meses depois.
+--
+-- Não é honorário: este dinheiro é do cliente. Honorário é receita do
+-- escritório e está em office_revenues, mais abaixo.
+INSERT INTO client_payments (client_id, description, amount, installment_number, installment_total, due_date, paid_date, status, payment_method, created_by) VALUES
+ ('c0000001-0000-4000-8000-000000000001', 'Atrasados da concessão — parcela 1/3', 500.00, 1, 3, CURRENT_DATE - 12, NULL, 'Pendente', 'Pix', 'a1a1a1a1-0000-4000-8000-000000000001'),
+ ('c0000001-0000-4000-8000-000000000002', 'Benefício mensal — competência corrente', 300.00, 1, 6, CURRENT_DATE, NULL, 'Pendente', 'Boleto', 'a1a1a1a1-0000-4000-8000-000000000001'),
+ ('c0000001-0000-4000-8000-000000000001', 'Atrasados da concessão — parcela anterior', 500.00, NULL, NULL, CURRENT_DATE - 42, CURRENT_DATE - 42, 'Pago', 'Pix', 'a1a1a1a1-0000-4000-8000-000000000001');
+
+-- ── Carteira do escritório (demo) ──
+--
+-- Menor que a do tenant tania de propósito: aqui o que importa é a tela abrir
+-- com os três baldes preenchidos e o gráfico com mais de um ponto, não o
+-- volume.
+INSERT INTO office_expenses (description, amount, category, supplier, due_date, paid_date, status, payment_method, created_by) VALUES
+ ('Aluguel da sala', 2400.00, 'Aluguel e condomínio', 'Imobiliária Demo', date_trunc('month', CURRENT_DATE - interval '2 months')::date + 4, date_trunc('month', CURRENT_DATE - interval '2 months')::date + 4, 'Pago', 'Boleto', 'a1a1a1a1-0000-4000-8000-000000000001'),
+ ('Aluguel da sala', 2400.00, 'Aluguel e condomínio', 'Imobiliária Demo', date_trunc('month', CURRENT_DATE - interval '1 months')::date + 4, date_trunc('month', CURRENT_DATE - interval '1 months')::date + 4, 'Pago', 'Boleto', 'a1a1a1a1-0000-4000-8000-000000000001'),
+ ('Aluguel da sala', 2400.00, 'Aluguel e condomínio', 'Imobiliária Demo', date_trunc('month', CURRENT_DATE)::date + 4, NULL, 'Pendente', 'Boleto', 'a1a1a1a1-0000-4000-8000-000000000001'),
+ ('Salários e encargos', 6200.00, 'Salários e encargos', NULL, date_trunc('month', CURRENT_DATE - interval '1 months')::date + 4, date_trunc('month', CURRENT_DATE - interval '1 months')::date + 4, 'Pago', 'Transferência', 'a1a1a1a1-0000-4000-8000-000000000001'),
+ ('Assinatura do sistema jurídico', 389.90, 'Software e assinaturas', 'Jurisoft', CURRENT_DATE + 8, NULL, 'Pendente', 'Cartão', 'a1a1a1a1-0000-4000-8000-000000000001'),
+ ('Taxa de alvará em atraso', 318.00, 'Impostos e taxas', 'Prefeitura', CURRENT_DATE - 15, NULL, 'Pendente', 'Boleto', 'a1a1a1a1-0000-4000-8000-000000000002'),
+ ('Assinatura cancelada no teste', 99.90, 'Software e assinaturas', 'Ferramenta Y', CURRENT_DATE + 3, NULL, 'Cancelado', 'Cartão', 'a1a1a1a1-0000-4000-8000-000000000001');
+
+INSERT INTO office_revenues (description, amount, due_date, paid_date, status, payment_method, client_id, created_by) VALUES
+ ('Honorário contratual — entrada', 1800.00, date_trunc('month', CURRENT_DATE - interval '2 months')::date + 10, date_trunc('month', CURRENT_DATE - interval '2 months')::date + 10, 'Pago', 'Pix', 'c0000001-0000-4000-8000-000000000001', 'a1a1a1a1-0000-4000-8000-000000000001'),
+ ('Honorário contratual — parcela 2/3', 1800.00, date_trunc('month', CURRENT_DATE - interval '1 months')::date + 10, date_trunc('month', CURRENT_DATE - interval '1 months')::date + 10, 'Pago', 'Pix', 'c0000001-0000-4000-8000-000000000001', 'a1a1a1a1-0000-4000-8000-000000000001'),
+ ('Honorário contratual — parcela 3/3', 1800.00, CURRENT_DATE + 11, NULL, 'Pendente', 'Pix', 'c0000001-0000-4000-8000-000000000001', 'a1a1a1a1-0000-4000-8000-000000000001'),
+ ('Honorário de êxito — 30% dos atrasados', 3260.00, CURRENT_DATE - 20, NULL, 'Pendente', 'Transferência', 'c0000001-0000-4000-8000-000000000002', 'a1a1a1a1-0000-4000-8000-000000000001'),
+ ('Parecer técnico avulso', 640.00, CURRENT_DATE - 5, CURRENT_DATE - 5, 'Pago', 'Pix', NULL, 'a1a1a1a1-0000-4000-8000-000000000002');
 
 -- ── Histórico de situação ──
 INSERT INTO client_situation_history (id, client_id, previous_situation, new_situation, changed_at, changed_by) VALUES
