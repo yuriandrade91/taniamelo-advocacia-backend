@@ -193,7 +193,21 @@ class SecuredEndpointsContractTest {
                     // tem que ver honorário e despesa do escritório.
                     Map.entry("PaymentController#list", ADMIN),
                     Map.entry("PaymentController#summary", ADMIN),
-                    Map.entry("PaymentController#timeline", ADMIN));
+                    Map.entry("PaymentController#timeline", ADMIN),
+                    Map.entry("OfficeExpenseController#list", ADMIN),
+                    Map.entry("OfficeExpenseController#get", ADMIN),
+                    Map.entry("OfficeExpenseController#create", ADMIN),
+                    Map.entry("OfficeExpenseController#update", ADMIN),
+                    Map.entry("OfficeExpenseController#delete", ADMIN),
+                    Map.entry("OfficeExpenseController#summary", ADMIN),
+                    Map.entry("OfficeExpenseController#timeline", ADMIN),
+                    Map.entry("OfficeRevenueController#list", ADMIN),
+                    Map.entry("OfficeRevenueController#get", ADMIN),
+                    Map.entry("OfficeRevenueController#create", ADMIN),
+                    Map.entry("OfficeRevenueController#update", ADMIN),
+                    Map.entry("OfficeRevenueController#delete", ADMIN),
+                    Map.entry("OfficeRevenueController#summary", ADMIN),
+                    Map.entry("OfficeRevenueController#timeline", ADMIN));
 
     @Test
     @DisplayName("toda rota está classificada, e com o papel que se decidiu")
