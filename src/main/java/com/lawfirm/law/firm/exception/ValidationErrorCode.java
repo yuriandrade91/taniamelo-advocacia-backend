@@ -11,7 +11,12 @@ public enum ValidationErrorCode {
     INVALID_SITUATION("Situação inválida"),
     INVALID_BENEFIT("Benefício inválido"),
     INVALID_CLIENT_TYPE("Tipo de cliente inválido"),
-    DUPLICATE_VALUE("Valor duplicado para campo único");
+    DUPLICATE_VALUE("Valor duplicado para campo único"),
+    /**
+     * Intervalo de datas impossível ou ambíguo — inclui pedir competência e caixa na mesma
+     * consulta, que não tem resposta certa.
+     */
+    INVALID_DATE_RANGE("Intervalo de datas inválido");
 
     private final String message;
 

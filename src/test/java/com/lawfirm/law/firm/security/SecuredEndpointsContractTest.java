@@ -183,7 +183,17 @@ class SecuredEndpointsContractTest {
                     Map.entry("ClientPaymentController#delete", ADMIN),
 
                     // ── Usuários do escritório ──
-                    Map.entry("UserController#list", ADVOGADO));
+                    Map.entry("UserController#list", ADVOGADO),
+
+                    //
+
+                    // ── Financeiro: dinheiro é só de ADMIN, advogado inclusive ──
+                    //
+                    // Mesmo corte de ClientPaymentController. Não é risco de perder dado: é quem
+                    // tem que ver honorário e despesa do escritório.
+                    Map.entry("PaymentController#list", ADMIN),
+                    Map.entry("PaymentController#summary", ADMIN),
+                    Map.entry("PaymentController#timeline", ADMIN));
 
     @Test
     @DisplayName("toda rota está classificada, e com o papel que se decidiu")
