@@ -185,7 +185,15 @@ class SecuredEndpointsContractTest {
                     // ── Usuários do escritório ──
                     Map.entry("UserController#list", ADVOGADO),
 
+                    // ── Meus dados: de quem está autenticado, sem exigir papel ──
                     //
+                    // ABERTO aqui não é descuido. Exigir papel deixaria o atendente sem tela de
+                    // perfil e sem como trocar a própria senha — justamente a conta mais usada, no
+                    // balcão. O recorte não é de papel: o service lê o usuário de CurrentUser e
+                    // não aceita id na URL, então ninguém alcança a ficha de outra pessoa.
+                    Map.entry("UserController#meusDados", ABERTO),
+                    Map.entry("UserController#atualizarMeusDados", ABERTO),
+                    Map.entry("UserController#trocarMinhaSenha", ABERTO),
 
                     // ── Financeiro: dinheiro é só de ADMIN, advogado inclusive ──
                     //

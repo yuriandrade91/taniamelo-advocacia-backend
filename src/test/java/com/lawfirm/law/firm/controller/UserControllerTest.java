@@ -27,13 +27,15 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class UserControllerTest {
 
     @Mock private UserRepository userRepository;
+    @Mock private com.lawfirm.law.firm.service.MyProfileService myProfileService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc =
-                MockMvcBuilders.standaloneSetup(new UserController(userRepository))
+                MockMvcBuilders.standaloneSetup(
+                                new UserController(userRepository, myProfileService))
                         .setControllerAdvice(new GlobalExceptionHandler())
                         .build();
     }
