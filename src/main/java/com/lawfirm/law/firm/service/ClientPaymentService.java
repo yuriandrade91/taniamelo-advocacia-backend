@@ -26,9 +26,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Parcelas de honorários por cliente. Cada linha é uma parcela individual (não um contrato inteiro)
- * - ver comentário em {@link ClientPayment}. "Atrasado" nunca é persistido: é calculado na leitura
- * a partir de status=PENDENTE + vencimento no passado.
+ * O que um cliente tem a receber - atrasados, benefício, parcela de acordo. Cada linha é uma
+ * parcela individual (não um contrato inteiro) - ver comentário em {@link ClientPayment}.
+ *
+ * <p>Não confundir com o faturamento do escritório, que é {@code OfficeRevenueService}: este
+ * dinheiro é do cliente e não entra na Carteira.
+ *
+ * <p>"Atrasado" nunca é persistido: é calculado na leitura a partir de status=PENDENTE + vencimento
+ * no passado.
  */
 @Service
 public class ClientPaymentService {

@@ -52,7 +52,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-@DisplayName("ClientPaymentService: parcelas de honorários e o 'atrasado' derivado")
+@DisplayName("ClientPaymentService: o que o cliente tem a receber e o 'atrasado' derivado")
 class ClientPaymentServiceTest {
 
     private static final UUID PAYMENT_ID = UUID.fromString("cccccccc-0000-0000-0000-000000000001");
@@ -110,7 +110,7 @@ class ClientPaymentServiceTest {
 
         private ClientPaymentRequestDTO dto() {
             ClientPaymentRequestDTO dto = new ClientPaymentRequestDTO();
-            dto.setDescription("Honorários - entrada");
+            dto.setDescription("Atrasados da concessão - entrada");
             dto.setAmount(new BigDecimal("1500.50"));
             dto.setInstallmentNumber(1);
             dto.setInstallmentTotal(3);

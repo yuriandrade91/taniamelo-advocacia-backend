@@ -7,7 +7,11 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Corpo de POST de uma parcela de honorários. Sempre nasce como PENDENTE. */
+/**
+ * Corpo de POST de uma parcela que o cliente tem a receber. Sempre nasce como PENDENTE.
+ *
+ * <p>Honorário não entra aqui - é {@code OfficeRevenueRequestDTO}.
+ */
 public class ClientPaymentRequestDTO {
 
     @Size(max = 255)

@@ -19,13 +19,20 @@ import org.springframework.web.bind.annotation.*;
 /**
  * Financeiro do cliente - <b>o recurso inteiro é ADMIN</b>.
  *
+ * <p>São as parcelas que o <b>cliente</b> tem a receber: atrasados da concessão, benefício, parcela
+ * de acordo. Dinheiro do cliente, não do escritório - o faturamento está em {@code
+ * /api/v1/revenues}, e somar um como se fosse o outro já fez a Carteira mostrar saldo falso.
+ *
  * <p>A anotação está na classe, e não método a método, porque a regra é do recurso: qualquer rota
  * nova aqui já nasce fechada. O corte é diferente do resto da API (onde STAFF opera e ADMIN/LAWYER
- * destrói) porque aqui não se trata de risco de perder dado, e sim de quem tem que ver honorários.
+ * destrói) porque aqui não se trata de risco de perder dado, e sim de quem tem que ver o
+ * financeiro.
  */
 @Tag(
         name = "Cliente - Financeiro",
-        description = "Parcelas de honorários cobradas do cliente. Acesso restrito a ADMIN.")
+        description =
+                "O que o cliente tem a receber - atrasados, benefício, acordo. Não é honorário: o"
+                        + " faturamento do escritório está em /api/v1/revenues. Restrito a ADMIN.")
 @RestController
 @RequestMapping("/api/v1/clients/{clientId}/payments")
 @RequerAdmin
@@ -38,8 +45,10 @@ public class ClientPaymentController {
     }
 
     @Operation(
-            summary = "Lançar parcela de honorários",
-            description = "Toda parcela nasce com status Pendente.")
+            summary = "Lançar parcela a receber",
+            description =
+                    "Toda parcela nasce com status Pendente. Para lançar honorário (receita do"
+                            + " escritório), use POST /api/v1/revenues.")
     @PostMapping
     public ResponseEntity<ApiResponse<ClientPaymentResponseDTO>> create(
             @PathVariable UUID clientId, @Valid @RequestBody ClientPaymentRequestDTO dto) {
