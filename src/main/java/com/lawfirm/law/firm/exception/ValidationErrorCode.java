@@ -16,7 +16,13 @@ public enum ValidationErrorCode {
      * Intervalo de datas impossível ou ambíguo — inclui pedir competência e caixa na mesma
      * consulta, que não tem resposta certa.
      */
-    INVALID_DATE_RANGE("Intervalo de datas inválido");
+    INVALID_DATE_RANGE("Intervalo de datas inválido"),
+
+    /**
+     * Dois parâmetros que se contradizem na mesma requisição. Escolher um por conta própria
+     * devolveria uma resposta plausível para uma pergunta que ninguém fez.
+     */
+    CONFLICTING_PARAMETERS("Parâmetros conflitantes");
 
     private final String message;
 

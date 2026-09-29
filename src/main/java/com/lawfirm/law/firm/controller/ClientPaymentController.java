@@ -4,12 +4,14 @@ import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.dto.ClientPaymentRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentUpdateRequestDTO;
+import com.lawfirm.law.firm.dto.PaymentSearchParams;
 import com.lawfirm.law.firm.security.RequerAdmin;
 import com.lawfirm.law.firm.service.ClientPaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -48,13 +50,14 @@ public class ClientPaymentController {
     @Operation(
             summary = "Listar parcelas do cliente",
             description =
-                    "Ordenadas por vencimento, paginadas no envelope padrão; inclui 'overdue' calculado em runtime.")
+                    """
+                    Mesmos filtros de `GET /api/v1/payments` — período por vencimento                     (`dueFrom`/`dueTo`) **ou** por pagamento (`paidFrom`/`paidTo`, nunca os dois),                     `status`, `paymentMethod` e `searchTerm` — só que recortados neste cliente.
+
+                    Ordenadas por vencimento, paginadas no envelope padrão, com `overdue`                     calculado na leitura. O `clientId` sai da URL: mandá-lo também na query com                     outro valor responde 400 em vez de escolher um dos dois.""")
     @GetMapping
     public ResponseEntity<ApiResponse<ClientPaymentResponseDTO>> list(
-            @PathVariable UUID clientId,
-            @RequestParam(defaultValue = "1") int pageNumber,
-            @RequestParam(defaultValue = "10") int pageSize) {
-        var page = service.list(clientId, pageNumber, pageSize);
+            @PathVariable UUID clientId, @ParameterObject PaymentSearchParams params) {
+        var page = service.list(clientId, params);
         return ResponseEntity.ok(
                 ApiResponse.successList(
                         page.getContent(), com.lawfirm.law.firm.dto.Pagination.of(page)));

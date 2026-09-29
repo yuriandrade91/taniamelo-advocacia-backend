@@ -1,5 +1,6 @@
 package com.lawfirm.law.firm.controller;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -23,6 +24,7 @@ import com.lawfirm.law.firm.dto.ClientInterviewResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPersonalDataResponseDTO;
 import com.lawfirm.law.firm.dto.ClientProfessionalDataResponseDTO;
+import com.lawfirm.law.firm.dto.PaymentSearchParams;
 import com.lawfirm.law.firm.exception.GlobalExceptionHandler;
 import com.lawfirm.law.firm.exception.NotFoundException;
 import com.lawfirm.law.firm.model.Gender;
@@ -41,6 +43,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -377,12 +380,36 @@ class ClientSubResourceControllersTest {
         void listReturnsPaged() throws Exception {
             ClientPaymentResponseDTO overdue = responseDto();
             overdue.setOverdue(true);
-            when(paymentService.list(eq(CLIENT), anyInt(), anyInt()))
+            when(paymentService.list(eq(CLIENT), any(PaymentSearchParams.class)))
                     .thenReturn(new PageImpl<>(List.of(overdue), PageRequest.of(0, 10), 1));
 
             mockMvc.perform(get("/api/v1/clients/{clientId}/payments", CLIENT))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data[0].overdue").value(true));
+        }
+
+        @Test
+        @DisplayName("GET repassa os filtros da lista geral para o serviço")
+        void listForwardsFilters() throws Exception {
+            when(paymentService.list(eq(CLIENT), any(PaymentSearchParams.class)))
+                    .thenReturn(new PageImpl<>(List.of(responseDto()), PageRequest.of(0, 10), 1));
+
+            mockMvc.perform(
+                            get("/api/v1/clients/{clientId}/payments", CLIENT)
+                                    .param("status", "Pendente")
+                                    .param("dueFrom", "2026-01-01")
+                                    .param("dueTo", "2026-12-31")
+                                    .param("searchTerm", "acordo"))
+                    .andExpect(status().isOk());
+
+            ArgumentCaptor<PaymentSearchParams> captor =
+                    ArgumentCaptor.forClass(PaymentSearchParams.class);
+            verify(paymentService).list(eq(CLIENT), captor.capture());
+            PaymentSearchParams enviado = captor.getValue();
+            assertEquals(List.of("Pendente"), enviado.getStatus());
+            assertEquals(LocalDate.of(2026, 1, 1), enviado.getDueFrom());
+            assertEquals(LocalDate.of(2026, 12, 31), enviado.getDueTo());
+            assertEquals("acordo", enviado.getSearchTerm());
         }
 
         @Test

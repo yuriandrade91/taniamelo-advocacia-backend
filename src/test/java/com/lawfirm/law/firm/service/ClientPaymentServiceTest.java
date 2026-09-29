@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import com.lawfirm.law.firm.dto.ClientPaymentRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentUpdateRequestDTO;
+import com.lawfirm.law.firm.dto.PaymentSearchParams;
 import com.lawfirm.law.firm.exception.NotFoundException;
 import com.lawfirm.law.firm.exception.ValidationErrorCode;
 import com.lawfirm.law.firm.exception.ValidationException;
@@ -22,6 +23,7 @@ import com.lawfirm.law.firm.model.PaymentMethod;
 import com.lawfirm.law.firm.model.PaymentStatus;
 import com.lawfirm.law.firm.repository.ClientPaymentRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
+import com.lawfirm.law.firm.repository.PaymentQueryRepository;
 import com.lawfirm.law.firm.security.UserPrincipal;
 import com.lawfirm.law.firm.support.TestFixtures;
 import com.lawfirm.law.firm.util.FusoDoEscritorio;
@@ -37,12 +39,14 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -55,12 +59,13 @@ class ClientPaymentServiceTest {
 
     @Mock private ClientPaymentRepository repository;
     @Mock private ClientRepository clientRepository;
+    @Mock private PaymentQueryRepository consultaRepository;
 
     private ClientPaymentService service;
 
     @BeforeEach
     void setUp() {
-        service = new ClientPaymentService(repository, clientRepository);
+        service = new ClientPaymentService(repository, clientRepository, consultaRepository);
         when(clientRepository.findById(TestFixtures.CLIENT_ID))
                 .thenReturn(Optional.of(TestFixtures.client()));
         when(repository.save(any(ClientPayment.class))).thenAnswer(i -> i.getArgument(0));
@@ -178,19 +183,68 @@ class ClientPaymentServiceTest {
         @Test
         @DisplayName("ordena por vencimento crescente e normaliza a paginação")
         void listSortsByDueDate() {
-            when(repository.findByClient_IdAndDeletedAtIsNull(any(), any(Pageable.class)))
+            when(consultaRepository.findAll(
+                            ArgumentMatchers.<Specification<ClientPayment>>any(),
+                            any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of(existing())));
 
-            assertEquals(1, service.list(TestFixtures.CLIENT_ID, 0, 0).getContent().size());
+            assertEquals(
+                    1,
+                    service.list(TestFixtures.CLIENT_ID, new PaymentSearchParams())
+                            .getContent()
+                            .size());
 
             ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-            verify(repository).findByClient_IdAndDeletedAtIsNull(any(), pageable.capture());
-            assertEquals(
-                    org.springframework.data.domain.Sort.by(
-                            org.springframework.data.domain.Sort.Direction.ASC, "dueDate"),
-                    pageable.getValue().getSort());
+            verify(consultaRepository)
+                    .findAll(
+                            ArgumentMatchers.<Specification<ClientPayment>>any(),
+                            pageable.capture());
+            assertEquals(FiltrosDePagamento.ORDEM, pageable.getValue().getSort());
             assertEquals(0, pageable.getValue().getPageNumber());
             assertEquals(10, pageable.getValue().getPageSize());
+        }
+
+        @Test
+        @DisplayName("clientId da query diferente do da URL é 400, não silêncio")
+        void conflictingClientIdIsRejected() {
+            PaymentSearchParams params = new PaymentSearchParams();
+            params.setClientId(UUID.fromString("dddddddd-0000-0000-0000-000000000009"));
+
+            ValidationException ex =
+                    assertThrows(
+                            ValidationException.class,
+                            () -> service.list(TestFixtures.CLIENT_ID, params));
+
+            assertEquals("clientId", ex.getField());
+            assertEquals(ValidationErrorCode.CONFLICTING_PARAMETERS, ex.getValidationErrorCode());
+            verify(consultaRepository, never())
+                    .findAll(
+                            ArgumentMatchers.<Specification<ClientPayment>>any(),
+                            any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("clientId repetido igual ao da URL passa - não é conflito")
+        void sameClientIdIsFine() {
+            when(consultaRepository.findAll(
+                            ArgumentMatchers.<Specification<ClientPayment>>any(),
+                            any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(existing())));
+            PaymentSearchParams params = new PaymentSearchParams();
+            params.setClientId(TestFixtures.CLIENT_ID);
+
+            assertEquals(1, service.list(TestFixtures.CLIENT_ID, params).getContent().size());
+        }
+
+        @Test
+        @DisplayName("competência e caixa na mesma chamada é 400, igual na lista geral")
+        void dueAndPaidRangesTogetherAreRejected() {
+            PaymentSearchParams params = new PaymentSearchParams();
+            params.setDueFrom(LocalDate.of(2026, 1, 1));
+            params.setPaidFrom(LocalDate.of(2026, 1, 1));
+
+            assertThrows(
+                    ValidationException.class, () -> service.list(TestFixtures.CLIENT_ID, params));
         }
 
         @Test
@@ -441,7 +495,8 @@ class ClientPaymentServiceTest {
         when(clientRepository.findById(unknown)).thenReturn(Optional.empty());
         ClientPaymentUpdateRequestDTO dto = new ClientPaymentUpdateRequestDTO();
 
-        assertThrows(NotFoundException.class, () -> service.list(unknown, 1, 10));
+        assertThrows(
+                NotFoundException.class, () -> service.list(unknown, new PaymentSearchParams()));
         assertThrows(NotFoundException.class, () -> service.get(unknown, PAYMENT_ID));
         assertThrows(NotFoundException.class, () -> service.update(unknown, PAYMENT_ID, dto));
         assertThrows(NotFoundException.class, () -> service.delete(unknown, PAYMENT_ID));

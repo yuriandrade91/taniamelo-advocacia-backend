@@ -5,6 +5,7 @@ import com.lawfirm.law.firm.audit.IntencaoDeAuditoria;
 import com.lawfirm.law.firm.dto.ClientPaymentRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentUpdateRequestDTO;
+import com.lawfirm.law.firm.dto.PaymentSearchParams;
 import com.lawfirm.law.firm.exception.NotFoundException;
 import com.lawfirm.law.firm.exception.ValidationErrorCode;
 import com.lawfirm.law.firm.exception.ValidationException;
@@ -14,11 +15,13 @@ import com.lawfirm.law.firm.model.PaymentMethod;
 import com.lawfirm.law.firm.model.PaymentStatus;
 import com.lawfirm.law.firm.repository.ClientPaymentRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
+import com.lawfirm.law.firm.repository.PaymentQueryRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
 import com.lawfirm.law.firm.util.FusoDoEscritorio;
 import com.lawfirm.law.firm.util.PageRequests;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,11 +35,15 @@ public class ClientPaymentService {
 
     private final ClientPaymentRepository repository;
     private final ClientRepository clientRepository;
+    private final PaymentQueryRepository consultaRepository;
 
     public ClientPaymentService(
-            ClientPaymentRepository repository, ClientRepository clientRepository) {
+            ClientPaymentRepository repository,
+            ClientRepository clientRepository,
+            PaymentQueryRepository consultaRepository) {
         this.repository = repository;
         this.clientRepository = clientRepository;
+        this.consultaRepository = consultaRepository;
     }
 
     @Transactional
@@ -58,16 +65,38 @@ public class ClientPaymentService {
         return toDTO(repository.save(entity));
     }
 
-    public org.springframework.data.domain.Page<ClientPaymentResponseDTO> list(
-            UUID clientId, int pageNumber, int pageSize) {
+    /**
+     * A aba financeira da ficha: as mesmas parcelas de {@code GET /payments}, recortadas neste
+     * cliente. Os filtros vêm do mesmo {@link FiltrosDePagamento} que a lista geral usa — a aba não
+     * responde diferente da lista sobre a mesma parcela, e um filtro novo nasce nas duas.
+     *
+     * <p>O 404 de cliente inexistente continua vindo antes da consulta: sem ele, um id errado
+     * devolveria página vazia com 200, que é indistinguível de "cliente sem parcelas".
+     */
+    public Page<ClientPaymentResponseDTO> list(UUID clientId, PaymentSearchParams params) {
         findClientOrThrow(clientId);
+        params.setClientId(exigirMesmoCliente(clientId, params.getClientId()));
+
         var pageable =
                 PageRequests.of(
-                        pageNumber,
-                        pageSize,
-                        org.springframework.data.domain.Sort.by(
-                                org.springframework.data.domain.Sort.Direction.ASC, "dueDate"));
-        return repository.findByClient_IdAndDeletedAtIsNull(clientId, pageable).map(this::toDTO);
+                        params.getPageNumber(), params.getPageSize(), FiltrosDePagamento.ORDEM);
+        return consultaRepository.findAll(FiltrosDePagamento.de(params), pageable).map(this::toDTO);
+    }
+
+    /**
+     * O cliente da URL manda. Mandar {@code ?clientId=} de outro cliente é 400, e não silêncio: as
+     * duas leituras possíveis ("a URL ganha" ou "a query ganha") devolvem listas diferentes, e quem
+     * escreveu a chamada não vai saber qual recebeu.
+     */
+    private static UUID exigirMesmoCliente(UUID daUrl, UUID daQuery) {
+        if (daQuery != null && !daQuery.equals(daUrl)) {
+            throw new ValidationException(
+                    "clientId",
+                    ValidationErrorCode.CONFLICTING_PARAMETERS,
+                    "O cliente da URL e o do parâmetro clientId são diferentes. "
+                            + "Para listar outro cliente, use GET /api/v1/payments?clientId=.");
+        }
+        return daUrl;
     }
 
     public ClientPaymentResponseDTO get(UUID clientId, UUID paymentId) {
@@ -181,10 +210,7 @@ public class ClientPaymentService {
         dto.setPaymentMethod(
                 entity.getPaymentMethod() != null ? entity.getPaymentMethod().getLabel() : null);
         dto.setNotes(entity.getNotes());
-        dto.setOverdue(
-                entity.getStatus() == PaymentStatus.PENDENTE
-                        && entity.getDueDate() != null
-                        && entity.getDueDate().isBefore(FusoDoEscritorio.hoje()));
+        dto.setOverdue(RegrasDeVencimento.estaAtrasado(entity.getStatus(), entity.getDueDate()));
         dto.setCreatedBy(entity.getCreatedBy());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedBy(entity.getUpdatedBy());

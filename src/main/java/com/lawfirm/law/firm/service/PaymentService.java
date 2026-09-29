@@ -5,19 +5,13 @@ import com.lawfirm.law.firm.dto.FinanceTimelinePointDTO;
 import com.lawfirm.law.firm.dto.PaymentListItemDTO;
 import com.lawfirm.law.firm.dto.PaymentSearchParams;
 import com.lawfirm.law.firm.model.ClientPayment;
-import com.lawfirm.law.firm.model.PaymentMethod;
-import com.lawfirm.law.firm.model.PaymentStatus;
-import com.lawfirm.law.firm.repository.FinanceSpecifications;
 import com.lawfirm.law.firm.repository.PaymentQueryRepository;
 import com.lawfirm.law.firm.util.PageRequests;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 /**
@@ -54,35 +48,12 @@ public class PaymentService {
     }
 
     public Page<PaymentListItemDTO> list(PaymentSearchParams params) {
-        RecorteDeData.exigirUmRecorte(
-                params.getDueFrom(), params.getDueTo(), params.getPaidFrom(), params.getPaidTo());
-
-        Specification<ClientPayment> spec =
-                Specification.allOf(
-                        ativos(),
-                        FinanceSpecifications.<ClientPayment>dueBetween(
-                                params.getDueFrom(), params.getDueTo()),
-                        FinanceSpecifications.<ClientPayment>paidBetween(
-                                params.getPaidFrom(), params.getPaidTo()),
-                        FinanceSpecifications.<ClientPayment>statusIn(
-                                EnumsDeRequisicao.lista(
-                                        "status", params.getStatus(), PaymentStatus::fromLabel)),
-                        FinanceSpecifications.<ClientPayment>methodIn(
-                                EnumsDeRequisicao.lista(
-                                        "paymentMethod",
-                                        params.getPaymentMethod(),
-                                        PaymentMethod::fromLabel)),
-                        doCliente(params.getClientId()),
-                        FinanceSpecifications.<ClientPayment>textoEm(
-                                params.getSearchTerm(), "description", "client.fullName"));
-
-        // O caso de uso principal é cobrança: o que vence primeiro aparece primeiro.
         var pageable =
                 PageRequests.of(
-                        params.getPageNumber(),
-                        params.getPageSize(),
-                        Sort.by(Sort.Direction.ASC, "dueDate").and(Sort.by("createdAt")));
-        return repository.findAll(spec, pageable).map(PaymentService::toDTO);
+                        params.getPageNumber(), params.getPageSize(), FiltrosDePagamento.ORDEM);
+        return repository
+                .findAll(FiltrosDePagamento.de(params), pageable)
+                .map(PaymentService::toDTO);
     }
 
     public FinanceSummaryDTO summary(PaymentSearchParams params) {
@@ -115,15 +86,6 @@ public class PaymentService {
     public List<FinanceTimelinePointDTO> timeline(
             LocalDate de, LocalDate ate, boolean porPagamento) {
         return consultas.serieMensal(ENTIDADE, SOMENTE_ATIVOS, Map.of(), de, ate, porPagamento);
-    }
-
-    private static Specification<ClientPayment> ativos() {
-        return (root, query, cb) -> cb.isNull(root.get("deletedAt"));
-    }
-
-    private static Specification<ClientPayment> doCliente(UUID clientId) {
-        return (root, query, cb) ->
-                clientId == null ? null : cb.equal(root.get("client").get("id"), clientId);
     }
 
     private static PaymentListItemDTO toDTO(ClientPayment entity) {
