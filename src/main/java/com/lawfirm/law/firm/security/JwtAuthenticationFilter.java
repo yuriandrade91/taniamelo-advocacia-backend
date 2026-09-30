@@ -7,8 +7,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -71,18 +74,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(PREFIX.length());
             try {
                 if (jwtService.isValid(token)
-                        && tokenPerteceAoEscritorioDaRequisicao(token)
                         && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    String email = jwtService.extractEmail(token);
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-                    if (userDetails.isEnabled()) {
-                        UsernamePasswordAuthenticationToken authToken =
-                                new UsernamePasswordAuthenticationToken(
-                                        userDetails, null, userDetails.getAuthorities());
-                        authToken.setDetails(
-                                new WebAuthenticationDetailsSource().buildDetails(request));
-                        SecurityContextHolder.getContext().setAuthentication(authToken);
-                    }
+                    autenticar(token, request);
                 }
             } catch (Exception ex) {
                 // Invalid/expired token: leave context unauthenticated, let Spring Security respond
@@ -92,5 +85,77 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /** Despacha pelo tipo de token: plataforma (suporte), sessão de suporte, ou usuário do tenant. */
+    private void autenticar(String token, HttpServletRequest request) {
+        String scope = jwtService.extractScope(token);
+        if ("platform".equals(scope)) {
+            autenticarPlataforma(token, request);
+        } else if (jwtService.extractActingSupportId(token) != null) {
+            autenticarSessaoDeSuporte(token, request);
+        } else {
+            autenticarUsuarioDoTenant(token, request);
+        }
+    }
+
+    /**
+     * Token de plataforma do suporte: só vale nos endpoints /api/v1/support/** (abrir sessão). Não
+     * carrega tenant e não pode agir sobre dado de escritório - por isso é recusado em qualquer
+     * outra rota.
+     */
+    private void autenticarPlataforma(String token, HttpServletRequest request) {
+        if (!request.getRequestURI().startsWith("/api/v1/support")) {
+            return;
+        }
+        UUID supportId = jwtService.extractUid(token);
+        if (supportId == null) {
+            return;
+        }
+        var authToken =
+                new UsernamePasswordAuthenticationToken(
+                        supportId, null, List.of(new SimpleGrantedAuthority("ROLE_PLATFORM")));
+        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(authToken);
+    }
+
+    /**
+     * Sessão de suporte (impersonation): o token traz o tenant alvo e role ADMIN. Vale a mesma
+     * regra de isolamento (o tenant do token tem de bater com o da requisição), mas o principal é
+     * SINTÉTICO - o agente de suporte não existe na tabela users do escritório, então nada é
+     * carregado do banco. O id do ator viaja no principal para a auditoria.
+     */
+    private void autenticarSessaoDeSuporte(String token, HttpServletRequest request) {
+        if (!tokenPerteceAoEscritorioDaRequisicao(token)) {
+            return;
+        }
+        UUID actingSupportId = jwtService.extractActingSupportId(token);
+        String role = jwtService.extractRole(token);
+        String email = jwtService.extractEmail(token);
+        if (actingSupportId == null || role == null) {
+            return;
+        }
+        UserPrincipal principal = UserPrincipal.impersonation(actingSupportId, email, role);
+        var authToken =
+                new UsernamePasswordAuthenticationToken(
+                        principal, null, principal.getAuthorities());
+        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(authToken);
+    }
+
+    /** Fluxo normal: usuário real do schema do tenant, carregado por e-mail. */
+    private void autenticarUsuarioDoTenant(String token, HttpServletRequest request) {
+        if (!tokenPerteceAoEscritorioDaRequisicao(token)) {
+            return;
+        }
+        String email = jwtService.extractEmail(token);
+        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+        if (userDetails.isEnabled()) {
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+        }
     }
 }

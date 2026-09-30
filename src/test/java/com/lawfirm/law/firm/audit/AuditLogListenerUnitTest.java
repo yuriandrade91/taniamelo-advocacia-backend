@@ -219,12 +219,21 @@ class AuditLogListenerUnitTest {
         UUID entityId = UUID.randomUUID();
         UUID performedBy = UUID.randomUUID();
 
-        AuditLog log = new AuditLog("Client", entityId, AuditAction.DELETE, performedBy, "detalhe");
+        UUID actingSupport = UUID.randomUUID();
+        AuditLog log =
+                new AuditLog(
+                        "Client",
+                        entityId,
+                        AuditAction.DELETE,
+                        performedBy,
+                        actingSupport,
+                        "detalhe");
 
         assertEquals("Client", log.getEntityName());
         assertEquals(entityId, log.getEntityId());
         assertEquals(AuditAction.DELETE, log.getAction());
         assertEquals(performedBy, log.getPerformedBy());
+        assertEquals(actingSupport, log.getActingSupportUserId());
         assertEquals("detalhe", log.getDetail());
     }
 

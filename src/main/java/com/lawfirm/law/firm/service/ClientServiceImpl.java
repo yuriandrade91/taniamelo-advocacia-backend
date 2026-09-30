@@ -267,6 +267,7 @@ public class ClientServiceImpl implements ClientService {
                         existing.getId(),
                         AuditAction.READ,
                         CurrentUser.id(),
+                        CurrentUser.actingSupportId(),
                         "Senha do INSS consultada"));
         return new ClientInssPasswordDTO(existing.getInssPassword());
     }

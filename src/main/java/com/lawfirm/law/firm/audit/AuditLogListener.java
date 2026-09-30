@@ -86,6 +86,9 @@ public class AuditLogListener {
         String entityName = entity.getClass().getSimpleName();
         UUID entityId = auditable.getId();
         UUID performedBy = CurrentUser.id();
+        // Numa sessão de suporte, performedBy é null (o agente não é usuário do tenant); o ator
+        // real vai aqui e é gravado em audit_log.acting_support_user_id.
+        UUID actingSupportId = CurrentUser.actingSupportId();
 
         Runnable persistAuditRow =
                 () -> {
@@ -100,6 +103,7 @@ public class AuditLogListener {
                                                     entityId,
                                                     action,
                                                     performedBy,
+                                                    actingSupportId,
                                                     null)));
                 };
 

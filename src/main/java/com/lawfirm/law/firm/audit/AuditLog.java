@@ -41,6 +41,12 @@ public class AuditLog {
     @Column(name = "performed_by")
     private UUID performedBy;
 
+    // Agente de suporte (public.support_users) quando a ação veio de uma sessão de suporte
+    // (impersonation). Nesse caso performed_by fica NULL (o agente não existe em users deste
+    // schema, e a coluna tem FK para users); a atribuição real é esta. Sem FK de propósito.
+    @Column(name = "acting_support_user_id")
+    private UUID actingSupportUserId;
+
     @Column(name = "performed_at", nullable = false)
     private Instant performedAt;
 
@@ -50,11 +56,17 @@ public class AuditLog {
     public AuditLog() {}
 
     public AuditLog(
-            String entityName, UUID entityId, AuditAction action, UUID performedBy, String detail) {
+            String entityName,
+            UUID entityId,
+            AuditAction action,
+            UUID performedBy,
+            UUID actingSupportUserId,
+            String detail) {
         this.entityName = entityName;
         this.entityId = entityId;
         this.action = action;
         this.performedBy = performedBy;
+        this.actingSupportUserId = actingSupportUserId;
         this.performedAt = Instant.now();
         this.detail = detail;
     }
@@ -77,6 +89,10 @@ public class AuditLog {
 
     public UUID getPerformedBy() {
         return performedBy;
+    }
+
+    public UUID getActingSupportUserId() {
+        return actingSupportUserId;
     }
 
     public Instant getPerformedAt() {

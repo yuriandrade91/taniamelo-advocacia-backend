@@ -126,6 +126,15 @@ app:
     expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:480}
     # TTL do refresh token (cookie httpOnly). Rotacionado a cada /auth/refresh.
     refresh-expiration-days: ${APP_JWT_REFRESH_EXPIRATION_DAYS:14}
+    # Acesso de suporte (impersonation): token de plataforma (abre sessões) e
+    # token de sessão (curto, acessa o escritório). Ver docs/SUPORTE_MULTITENANT.md.
+    support-platform-minutes: ${APP_JWT_SUPPORT_PLATFORM_MINUTES:60}
+    support-session-minutes: ${APP_JWT_SUPPORT_SESSION_MINUTES:20}
+  # Agente de suporte inicial (public.support_users), criado no boot se a tabela
+  # estiver vazia. Troque a senha e defina as variáveis em produção.
+  support:
+    email: ${APP_SUPPORT_EMAIL:suporte@plataforma.adv.br}
+    password: ${APP_SUPPORT_PASSWORD:changeme123}
   # Multi-tenancy por schema. Cada tenant = um schema Postgres autocontido.
   # O identificador do tenant é o próprio nome do schema; o frontend informa via
   # cabeçalho X-Tenant-Id (necessário no login). Só schemas listados são aceitos.

@@ -19,7 +19,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
  * Autenticação stateless via JWT, com autorização por papel ligada ({@code @EnableMethodSecurity}
  * logo abaixo).
  *
- * <p>Dois cortes, e eles são diferentes: {@code @RequerAdvogado} (ADMIN/LAWYER) separa operar de
+ * <p>Dois cortes, e eles são diferentes: {@code @RequerAdvogado} (ADMIN/SUPPORT) separa operar de
  * destruir - STAFF faz o dia a dia, excluir e restaurar exigem advogado; {@code @RequerAdmin} é só
  * ADMIN e vale para todo o financeiro - o do cliente e o do escritório -, onde a questão não é
  * risco de perder dado e sim quem tem que ver dinheiro.
@@ -92,6 +92,13 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/api/v1/auth/**")
                                         .permitAll()
+                                        // Login de suporte é público; o resto de /support exige o
+                                        // token de plataforma (ROLE_PLATFORM). O token de sessão
+                                        // emitido lá é um Bearer normal e cai nas regras do tenant.
+                                        .requestMatchers("/api/v1/support/login")
+                                        .permitAll()
+                                        .requestMatchers("/api/v1/support/**")
+                                        .hasRole("PLATFORM")
                                         // Resolução pública de tenant por slug (pré-login).
                                         .requestMatchers(HttpMethod.GET, "/api/v1/tenants/resolve")
                                         .permitAll()
