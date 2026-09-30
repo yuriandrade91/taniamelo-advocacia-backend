@@ -1,4 +1,4 @@
--- V18 (por tenant): atribuição do agente de suporte na trilha de auditoria.
+-- V20 (por tenant): atribuição do agente de suporte na trilha de auditoria.
 --
 -- Quando um usuário de suporte da plataforma age dentro de um tenant
 -- (impersonation), ele NÃO existe na tabela users deste schema - então
