@@ -121,6 +121,9 @@ public class ClientDisabilityPeriodService {
             line.setFactor(DisabilityTimeConversion.factor(period.getGrade(), target, gender));
             line.setConvertedDays(
                     DisabilityTimeConversion.convertDays(days, period.getGrade(), target, gender));
+            line.setStartedOn(period.getStartedOn());
+            line.setEndedOn(period.effectiveEnd(today));
+            line.setOngoing(period.isOngoing());
             lines.add(line);
         }
 

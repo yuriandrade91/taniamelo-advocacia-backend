@@ -1,7 +1,9 @@
 package com.lawfirm.law.firm.dto;
 
 import com.lawfirm.law.firm.model.DisabilityGrade;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -37,6 +39,48 @@ public class DisabilityConversionDTO {
         private long days;
         private BigDecimal factor;
         private long convertedDays;
+
+        @Schema(description = "Início do intervalo", example = "2000-01-01")
+        private LocalDate startedOn;
+
+        /**
+         * O fim que ENTROU na conta.
+         *
+         * <p>Num intervalo em aberto é o dia de hoje no fuso do escritório, não {@code null}: a
+         * linha existe para mostrar de onde saiu o número de dias, e "até hoje" sem dizer que dia é
+         * hoje deixa a conta sem conferência — ela seria irreproduzível amanhã.
+         */
+        @Schema(
+                description = "Fim considerado; num intervalo em aberto, hoje",
+                example = "2005-12-31")
+        private LocalDate endedOn;
+
+        @Schema(description = "Se o intervalo não tem data de cessação")
+        private boolean ongoing;
+
+        public LocalDate getStartedOn() {
+            return startedOn;
+        }
+
+        public void setStartedOn(LocalDate startedOn) {
+            this.startedOn = startedOn;
+        }
+
+        public LocalDate getEndedOn() {
+            return endedOn;
+        }
+
+        public void setEndedOn(LocalDate endedOn) {
+            this.endedOn = endedOn;
+        }
+
+        public boolean isOngoing() {
+            return ongoing;
+        }
+
+        public void setOngoing(boolean ongoing) {
+            this.ongoing = ongoing;
+        }
 
         public DisabilityGrade getGrade() {
             return grade;
