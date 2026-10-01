@@ -23,9 +23,22 @@ class JwtServiceTest {
 
     private JwtService jwtService;
 
+    /**
+     * Fábrica dos testes de access token.
+     *
+     * O construtor passou a receber também os minutos dos tokens de suporte
+     * (plataforma e sessão impersonada). Nenhum teste daqui fala deles — o que
+     * se verifica aqui é emissão, validação e expiração do access token — então
+     * eles ficam num valor fixo e fora de vista, em vez de repetidos em cada
+     * `new JwtService(...)` dando a entender que importam.
+     */
+    private static JwtService comExpiracao(String secret, long minutos) {
+        return new JwtService(secret, minutos, 60, 20);
+    }
+
     @BeforeEach
     void setUp() {
-        jwtService = new JwtService(SECRET, 480);
+        jwtService = comExpiracao(SECRET, 480);
     }
 
     @Test
@@ -44,13 +57,13 @@ class JwtServiceTest {
     @DisplayName("expiração é derivada dos minutos configurados")
     void expirationDerivesFromConfiguredMinutes() {
         assertEquals(480L * 60_000, jwtService.getExpirationMillis());
-        assertEquals(60_000L, new JwtService(SECRET, 1).getExpirationMillis());
+        assertEquals(60_000L, comExpiracao(SECRET, 1).getExpirationMillis());
     }
 
     @Test
     @DisplayName("segredo curto é preenchido para 256 bits em vez de derrubar a subida")
     void shortSecretIsPaddedInsteadOfFailing() {
-        JwtService shortSecret = new JwtService("curto", 10);
+        JwtService shortSecret = comExpiracao("curto", 10);
         String token = shortSecret.generateToken(USER_ID, "a@b.com", "STAFF", "t");
         assertTrue(shortSecret.isValid(token));
         assertEquals("a@b.com", shortSecret.extractEmail(token));
@@ -60,7 +73,7 @@ class JwtServiceTest {
     @DisplayName("token assinado com outra chave é inválido")
     void tokenFromAnotherKeyIsRejected() {
         String foreign =
-                new JwtService("outra-chave-completamente-diferente-com-32-chars", 480)
+                comExpiracao("outra-chave-completamente-diferente-com-32-chars", 480)
                         .generateToken(USER_ID, "a@b.com", "ADMIN", "t");
 
         assertFalse(jwtService.isValid(foreign));
@@ -70,7 +83,7 @@ class JwtServiceTest {
     @Test
     @DisplayName("token expirado é inválido")
     void expiredTokenIsInvalid() {
-        JwtService expiring = new JwtService(SECRET, 0);
+        JwtService expiring = comExpiracao(SECRET, 0);
         String token = expiring.generateToken(USER_ID, "a@b.com", "ADMIN", "t");
         assertFalse(expiring.isValid(token));
     }

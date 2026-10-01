@@ -206,12 +206,16 @@ class EntityContractTest {
                         entityId,
                         com.lawfirm.law.firm.audit.AuditAction.UPDATE,
                         performedBy,
+                        null,
                         "detalhe");
 
         assertEquals("Client", log.getEntityName());
         assertEquals(entityId, log.getEntityId());
         assertEquals(com.lawfirm.law.firm.audit.AuditAction.UPDATE, log.getAction());
         assertEquals(performedBy, log.getPerformedBy());
+        assertNull(
+                log.getActingSupportUserId(),
+                "ação do próprio escritório não tem agente de suporte no comando");
         assertEquals("detalhe", log.getDetail());
         assertNull(log.getId(), "id só existe após a persistência");
     }
