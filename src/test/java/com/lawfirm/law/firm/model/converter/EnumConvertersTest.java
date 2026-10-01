@@ -3,6 +3,7 @@ package com.lawfirm.law.firm.model.converter;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.lawfirm.law.firm.model.AddressType;
 import com.lawfirm.law.firm.model.AppointmentModality;
@@ -10,21 +11,31 @@ import com.lawfirm.law.firm.model.AppointmentStatus;
 import com.lawfirm.law.firm.model.AppointmentType;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.ClientType;
+import com.lawfirm.law.firm.model.DisabilityGrade;
 import com.lawfirm.law.firm.model.DocumentType;
+import com.lawfirm.law.firm.model.ExpenseCategory;
 import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
 import com.lawfirm.law.firm.model.PaymentMethod;
 import com.lawfirm.law.firm.model.PaymentStatus;
 import com.lawfirm.law.firm.model.Situation;
 import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
+import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 /**
  * Todos os AttributeConverter de enum seguem a mesma regra: grava o label, lê pelo label e devolve
@@ -41,7 +52,11 @@ class EnumConvertersTest {
                 Arguments.of(new AppointmentTypeConverter(), AppointmentType.class),
                 Arguments.of(new BenefitTypeConverter(), BenefitType.class),
                 Arguments.of(new ClientTypeConverter(), ClientType.class),
+                Arguments.of(new DisabilityGradeConverter(), DisabilityGrade.class),
                 Arguments.of(new DocumentTypeConverter(), DocumentType.class),
+                // Estava de fora: a varredura do pacote o encontrou. Com o número
+                // fixo no lugar dela, o round-trip dele nunca rodou.
+                Arguments.of(new ExpenseCategoryConverter(), ExpenseCategory.class),
                 Arguments.of(new GenderConverter(), Gender.class),
                 Arguments.of(new MaritalStatusConverter(), MaritalStatus.class),
                 Arguments.of(new PaymentMethodConverter(), PaymentMethod.class),
@@ -92,10 +107,55 @@ class EnumConvertersTest {
                 new BenefitTypeConverter().convertToEntityAttribute("APOSENTADORIA_RURAL"));
     }
 
+    /**
+     * Converters de enum que existem no pacote, por varredura.
+     *
+     * <p>{@code CryptoConverter} fica de fora porque não é de enum: ele cifra {@code String}, e o
+     * contrato verificado aqui (rótulo ↔ constante) não se aplica a ele. Tem teste próprio.
+     */
+    private static List<Class<?>> convertersNoPacote() {
+        ClassPathScanningCandidateComponentProvider scanner =
+                new ClassPathScanningCandidateComponentProvider(false);
+        scanner.addIncludeFilter(new AnnotationTypeFilter(Converter.class));
+        List<Class<?>> encontrados = new ArrayList<>();
+        for (BeanDefinition definition :
+                scanner.findCandidateComponents("com.lawfirm.law.firm.model.converter")) {
+            try {
+                Class<?> type = Class.forName(definition.getBeanClassName());
+                if (type != CryptoConverter.class) encontrados.add(type);
+            } catch (ClassNotFoundException ex) {
+                throw new IllegalStateException(ex);
+            }
+        }
+        return encontrados;
+    }
+
     @Test
     @DisplayName("a lista coberta contempla todos os converters de enum do pacote")
     void coversEveryConverterInThePackage() {
-        List<Arguments> covered = converters().toList();
-        assertEquals(12, covered.size());
+        // Varredura, e não um número fixo. O teste já se chamava "contempla
+        // todos os converters do pacote" mas só comparava `size()` com um
+        // literal: um converter novo e não registrado aqui passava assim que
+        // alguém subisse o número para fazer o build voltar ao verde — sem
+        // nunca rodar o round-trip dele. É o mesmo motivo pelo qual
+        // SecuredEndpointsContractTest varre os controllers em vez de listar
+        // as rotas de hoje: o defeito que importa é o de amanhã.
+        Set<Class<?>> cobertos =
+                converters()
+                        .map(arguments -> arguments.get()[0].getClass())
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<String> faltando =
+                convertersNoPacote().stream()
+                        .filter(type -> !cobertos.contains(type))
+                        .map(Class::getSimpleName)
+                        .sorted()
+                        .toList();
+
+        assertTrue(
+                faltando.isEmpty(),
+                "converter de enum sem round-trip verificado - acrescente em converters(): "
+                        + faltando);
+        assertEquals(convertersNoPacote().size(), cobertos.size());
     }
 }

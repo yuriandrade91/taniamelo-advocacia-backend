@@ -34,6 +34,7 @@ class EntityContractTest {
                     AppointmentHistory.class,
                     Client.class,
                     ClientAddress.class,
+                    ClientDisabilityPeriod.class,
                     ClientFile.class,
                     ClientInterview.class,
                     ClientPayment.class,

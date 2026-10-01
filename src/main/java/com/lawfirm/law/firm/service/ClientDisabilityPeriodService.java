@@ -24,11 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * CRUD dos intervalos de deficiência e a conversão de tempo da LC 142/2013.
  *
- * <p>As regras que este serviço defende existem porque o cálculo depende delas,
- * não por capricho de formulário: intervalos sobrepostos fariam o mesmo dia
- * contar duas vezes, e dois intervalos em aberto significariam dois graus
- * vigentes hoje — em ambos os casos o total sairia errado com cara de certo, que
- * é o pior defeito possível num número que vai para dentro de um requerimento.
+ * <p>As regras que este serviço defende existem porque o cálculo depende delas, não por capricho de
+ * formulário: intervalos sobrepostos fariam o mesmo dia contar duas vezes, e dois intervalos em
+ * aberto significariam dois graus vigentes hoje — em ambos os casos o total sairia errado com cara
+ * de certo, que é o pior defeito possível num número que vai para dentro de um requerimento.
  */
 @Service
 public class ClientDisabilityPeriodService {
@@ -152,8 +151,7 @@ public class ClientDisabilityPeriodService {
                 + parts.get(parts.size() - 1);
     }
 
-    private void applyFields(
-            ClientDisabilityPeriod entity, ClientDisabilityPeriodRequestDTO dto) {
+    private void applyFields(ClientDisabilityPeriod entity, ClientDisabilityPeriodRequestDTO dto) {
         DisabilityGrade grade =
                 RequestEnums.single("grade", dto.getGrade(), DisabilityGrade::fromLabel);
         if (grade == null) {
@@ -203,18 +201,18 @@ public class ClientDisabilityPeriodService {
     /**
      * Recusa intervalo que invada outro do mesmo cliente.
      *
-     * <p>Sobreposição faria o mesmo dia contar duas vezes na soma, e com graus
-     * diferentes contaria duas vezes com fatores diferentes. O banco não tem
-     * como expressar isso num CHECK, então a regra mora aqui — e a mensagem
-     * nomeia o intervalo conflitante, porque "datas inválidas" não diz a quem
-     * cadastrou qual das linhas ele precisa olhar.
+     * <p>Sobreposição faria o mesmo dia contar duas vezes na soma, e com graus diferentes contaria
+     * duas vezes com fatores diferentes. O banco não tem como expressar isso num CHECK, então a
+     * regra mora aqui — e a mensagem nomeia o intervalo conflitante, porque "datas inválidas" não
+     * diz a quem cadastrou qual das linhas ele precisa olhar.
      */
     private void rejectOverlap(UUID clientId, ClientDisabilityPeriod candidate, UUID ignoringId) {
         LocalDate today = OfficeClock.today();
         LocalDate newStart = candidate.getStartedOn();
         LocalDate newEnd = candidate.effectiveEnd(today);
 
-        for (ClientDisabilityPeriod other : repository.findByClient_IdOrderByStartedOnAsc(clientId)) {
+        for (ClientDisabilityPeriod other :
+                repository.findByClient_IdOrderByStartedOnAsc(clientId)) {
             if (ignoringId != null && other.getId().equals(ignoringId)) continue;
 
             LocalDate otherEnd = other.effectiveEnd(today);

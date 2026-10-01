@@ -1018,9 +1018,85 @@ UPDATE office_revenues r
   JOIN candidatos c ON c.n = ((e.n - 1) % c.total) + 1
  WHERE r.id = e.id;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Períodos de deficiência (LC 142/2013) — V21
+-- ─────────────────────────────────────────────────────────────────────────────
+--
+-- Massa para a seção "Períodos de deficiência" do cadastro e para a rota de
+-- conversão. Cobre os três casos que a tela precisa saber desenhar, e não um
+-- intervalo genérico repetido 28 vezes:
+--
+--   1. um intervalo EM ABERTO (sem data de cessação) — o caso mais comum;
+--   2. DOIS intervalos em graus diferentes, um fechado e um aberto — é o caso
+--      que justifica a conversão existir, porque não há grau único que
+--      descreva a carreira;
+--   3. um intervalo FECHADO, deficiência que cessou.
+--
+-- Todas as datas são relativas a CURRENT_DATE. Datas fixas envelheceriam: um
+-- seed escrito com "2024-01-01" vira "três anos atrás" sozinho, e um escrito
+-- com data futura passa a ser recusado pela própria validação da API.
+--
+-- Os intervalos do caso 2 encostam sem se tocar (um termina no dia anterior ao
+-- início do outro): sobreposição faria o mesmo dia contar duas vezes na soma, e
+-- é exatamente o que a API recusa com 400.
+--
+-- Um dos clientes com deficiência passa a ser não-binário, de propósito.
+--
+-- A massa só tinha "Feminino" e "Masculino", então a única coisa que a
+-- conversão NÃO sabe fazer não tinha nenhum dado para ser exercitada: a LC
+-- 142/2013 tem duas colunas, e para os outros sexos a API responde 400 em vez
+-- de escolher uma por conta própria. Sem um cliente assim, esse caminho só
+-- apareceria em produção — e aparece como erro numa tela, que é o pior lugar
+-- para descobri-lo.
+--
+-- Os intervalos dele são gravados normalmente; é só a conversão que recusa.
+-- Determinístico (o PCD mais antigo), para a massa ser a mesma em toda máquina.
+UPDATE clients
+   SET gender = 'Não-binário'
+ WHERE id = (
+   SELECT id FROM clients
+    WHERE deleted_at IS NULL AND benefit = 'Aposentadoria por deficiência'
+    ORDER BY created_at, id
+    LIMIT 1
+ );
+
+WITH pcd AS (
+  SELECT id, row_number() OVER (ORDER BY created_at, id) AS n
+    FROM clients
+   WHERE deleted_at IS NULL
+     AND benefit = 'Aposentadoria por deficiência'
+)
+INSERT INTO client_disability_periods (client_id, grade, started_on, ended_on)
+-- Caso 1 (n % 3 = 1): deficiência grave, em curso há 15 anos.
+SELECT id, 'Grave', (CURRENT_DATE - interval '15 years')::date, NULL
+  FROM pcd WHERE n % 3 = 1
+UNION ALL
+-- Caso 2 (n % 3 = 2): moderada por dez anos, depois leve até hoje.
+SELECT id, 'Moderada', (CURRENT_DATE - interval '20 years')::date,
+       (CURRENT_DATE - interval '10 years 1 day')::date
+  FROM pcd WHERE n % 3 = 2
+UNION ALL
+SELECT id, 'Leve', (CURRENT_DATE - interval '10 years')::date, NULL
+  FROM pcd WHERE n % 3 = 2
+UNION ALL
+-- Caso 3 (n % 3 = 0): leve, cessada há dois anos.
+SELECT id, 'Leve', (CURRENT_DATE - interval '12 years')::date,
+       (CURRENT_DATE - interval '2 years')::date
+  FROM pcd WHERE n % 3 = 0;
+
+-- A chave "pessoa com deficiência" acompanha o fato: quem tem intervalo
+-- gravado tem deficiência reconhecida. Sem isto, a ficha mostraria períodos de
+-- deficiência com a chave desmarcada — e a seção do cadastro, que aparece por
+-- benefício OU por essa chave, ficaria contando duas verdades diferentes.
+UPDATE clients c
+   SET has_disability = true
+ WHERE EXISTS (SELECT 1 FROM client_disability_periods d WHERE d.client_id = c.id);
+
 COMMIT;
 
 -- Conferência rápida:
 --   SELECT count(*) FROM clients;                              -- 125 (5 baseline + 120 de massa)
 --   SELECT kind, count(*) FROM client_files GROUP BY kind;
 --   SELECT client_id, count(*) FROM client_files WHERE kind='SIMULATION' AND is_principal GROUP BY client_id;  -- 1 por cliente
+--   SELECT grade, count(*) FROM client_disability_periods GROUP BY grade;
+--   SELECT count(*) FROM client_disability_periods WHERE ended_on IS NULL;  -- um por cliente, no máximo

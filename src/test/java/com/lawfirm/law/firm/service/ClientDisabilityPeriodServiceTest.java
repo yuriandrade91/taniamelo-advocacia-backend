@@ -78,9 +78,7 @@ class ClientDisabilityPeriodServiceTest {
         void acceptsLabelAndEnumName() {
             assertEquals(
                     DisabilityGrade.MODERADA,
-                    service.create(
-                                    CLIENT_ID,
-                                    request("Moderada", LocalDate.of(2000, 1, 1), null))
+                    service.create(CLIENT_ID, request("Moderada", LocalDate.of(2000, 1, 1), null))
                             .getGrade());
             assertEquals(
                     DisabilityGrade.GRAVE,
@@ -114,7 +112,8 @@ class ClientDisabilityPeriodServiceTest {
                     ValidationException.class,
                     () ->
                             service.create(
-                                    CLIENT_ID, request("Gravíssima", LocalDate.of(2000, 1, 1), null)));
+                                    CLIENT_ID,
+                                    request("Gravíssima", LocalDate.of(2000, 1, 1), null)));
         }
     }
 
@@ -175,7 +174,8 @@ class ClientDisabilityPeriodServiceTest {
         @Test
         @DisplayName("sem data de cessação é intervalo em aberto, não erro")
         void absentEndIsOngoing() {
-            var created = service.create(CLIENT_ID, request("Grave", LocalDate.of(2000, 1, 1), null));
+            var created =
+                    service.create(CLIENT_ID, request("Grave", LocalDate.of(2000, 1, 1), null));
             assertTrue(created.isOngoing());
             assertEquals(null, created.getEndedOn());
         }
@@ -288,7 +288,8 @@ class ClientDisabilityPeriodServiceTest {
         @DisplayName("sem destino, converte para a regra geral")
         void defaultsToGeneralRule() {
             assertEquals(
-                    DisabilityGrade.SEM_DEFICIENCIA, service.conversion(CLIENT_ID, null).getConvertedTo());
+                    DisabilityGrade.SEM_DEFICIENCIA,
+                    service.conversion(CLIENT_ID, null).getConvertedTo());
         }
 
         @Test
@@ -311,8 +312,7 @@ class ClientDisabilityPeriodServiceTest {
         @DisplayName("omite o que é zero e usa singular quando é um")
         void omitsZeroAndSingularises() {
             assertEquals(
-                    "33 anos, 11 meses e 5 dias",
-                    ClientDisabilityPeriodService.label(33, 11, 5));
+                    "33 anos, 11 meses e 5 dias", ClientDisabilityPeriodService.label(33, 11, 5));
             assertEquals("1 ano, 1 mês e 1 dia", ClientDisabilityPeriodService.label(1, 1, 1));
             assertEquals("20 anos", ClientDisabilityPeriodService.label(20, 0, 0));
             assertEquals("5 meses e 2 dias", ClientDisabilityPeriodService.label(0, 5, 2));

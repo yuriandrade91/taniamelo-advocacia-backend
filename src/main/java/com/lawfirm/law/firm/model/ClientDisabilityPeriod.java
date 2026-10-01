@@ -5,8 +5,6 @@ import com.lawfirm.law.firm.audit.Auditable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -23,15 +21,14 @@ import org.hibernate.annotations.UuidGenerator;
 /**
  * Um intervalo em que a deficiência do cliente foi reconhecida, num grau.
  *
- * <p>{@code endedOn} nulo significa "a deficiência se mantém até a presente
- * data", opção que a tela oferece com essas palavras. Não é dado faltando: é a
- * informação de que não houve cessação, e o índice único parcial da V21 garante
- * que só exista um desses por cliente.
+ * <p>{@code endedOn} nulo significa "a deficiência se mantém até a presente data", opção que a tela
+ * oferece com essas palavras. Não é dado faltando: é a informação de que não houve cessação, e o
+ * índice único parcial da V21 garante que só exista um desses por cliente.
  *
- * <p>Para o cálculo, o fim de um intervalo aberto é hoje no fuso do escritório
- * — ver {@link #effectiveEnd(LocalDate)}. Em UTC, entre 21h e meia-noite
- * "hoje" já era amanhã, e o intervalo rendia um dia a mais do que tinha; é o
- * mesmo motivo pelo qual a idade do cliente é calculada no fuso do escritório.
+ * <p>Para o cálculo, o fim de um intervalo aberto é hoje no fuso do escritório — ver {@link
+ * #effectiveEnd(LocalDate)}. Em UTC, entre 21h e meia-noite "hoje" já era amanhã, e o intervalo
+ * rendia um dia a mais do que tinha; é o mesmo motivo pelo qual a idade do cliente é calculada no
+ * fuso do escritório.
  */
 @Entity
 @Table(name = "client_disability_periods")
@@ -48,7 +45,15 @@ public class ClientDisabilityPeriod implements Auditable {
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
 
-    @Enumerated(EnumType.STRING)
+    /**
+     * O grau, gravado como RÓTULO no banco ("Grave", não "GRAVE").
+     *
+     * <p>Sem {@code @Enumerated}: quem traduz é {@code DisabilityGradeConverter}, {@code
+     * autoApply}, como todos os outros enums do modelo. Não é detalhe de estilo — era um defeito.
+     * Com {@code @Enumerated(EnumType.STRING)} o Hibernate grava e lê o NOME da constante, e a
+     * aplicação passava porque lia de volta o que ela mesma havia escrito. Qualquer outra origem de
+     * dado — seed, correção manual, importação — virava 500 na leitura.
+     */
     @Column(name = "grade", nullable = false, length = 20)
     private DisabilityGrade grade;
 
@@ -89,12 +94,12 @@ public class ClientDisabilityPeriod implements Auditable {
     }
 
     /**
-     * O fim que vale para o cálculo: a data de cessação, ou {@code today} se o
-     * intervalo está em aberto.
+     * O fim que vale para o cálculo: a data de cessação, ou {@code today} se o intervalo está em
+     * aberto.
      *
-     * <p>O "hoje" entra por parâmetro em vez de ser lido aqui dentro para que o
-     * cálculo seja verificável sem relógio — e para que todas as linhas de um
-     * mesmo cálculo usem o mesmo dia, em vez de cada uma ler o seu.
+     * <p>O "hoje" entra por parâmetro em vez de ser lido aqui dentro para que o cálculo seja
+     * verificável sem relógio — e para que todas as linhas de um mesmo cálculo usem o mesmo dia, em
+     * vez de cada uma ler o seu.
      */
     public LocalDate effectiveEnd(LocalDate today) {
         return endedOn != null ? endedOn : today;

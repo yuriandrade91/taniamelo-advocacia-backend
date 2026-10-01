@@ -14,33 +14,30 @@ import java.util.Collection;
  *
  * <h2>Por que é cálculo e não tabela</h2>
  *
- * A tabela de multiplicadores que circula em material de escritório tem 16
- * células por sexo, e todas as 32 saem de uma divisão: <strong>o fator é o
- * tempo exigido no destino dividido pelo tempo exigido na origem</strong>.
+ * A tabela de multiplicadores que circula em material de escritório tem 16 células por sexo, e
+ * todas as 32 saem de uma divisão: <strong>o fator é o tempo exigido no destino dividido pelo tempo
+ * exigido na origem</strong>.
  *
- * <p>Mulher, de grave (20 anos) para a regra geral (30): 30 ÷ 20 = 1,50. De
- * moderada (24) para leve (28): 28 ÷ 24 = 1,17. Homem, de 25 para 35: 1,40. As
- * 32 células da tabela estão verificadas em
- * {@code DisabilityTimeConversionTest} — não como números decorados, mas
- * conferindo que a divisão as reproduz.
+ * <p>Mulher, de grave (20 anos) para a regra geral (30): 30 ÷ 20 = 1,50. De moderada (24) para leve
+ * (28): 28 ÷ 24 = 1,17. Homem, de 25 para 35: 1,40. As 32 células da tabela estão verificadas em
+ * {@code DisabilityTimeConversionTest} — não como números decorados, mas conferindo que a divisão
+ * as reproduz.
  *
- * <p>Isso importa por dois motivos. O primeiro é que tabela transcrita à mão
- * erra: a versão que recebemos vinha com a última coluna masculina ("Para 35")
- * faltando, e ninguém notou porque 1,40 / 1,21 / 1,06 / 1,00 não são valores
- * que chamem atenção pela ausência. O segundo é que o sentido da divisão é
- * verificável pelo significado: dez anos trabalhados com deficiência grave são
- * metade de uma carreira de 20 anos, e meia carreira de 30 são 15 — então o
- * fator de 20 para 30 tem de ser maior que 1. Tempo cumprido sob deficiência
- * mais severa vale <em>mais</em> quando convertido para uma base menos severa.
+ * <p>Isso importa por dois motivos. O primeiro é que tabela transcrita à mão erra: a versão que
+ * recebemos vinha com a última coluna masculina ("Para 35") faltando, e ninguém notou porque 1,40 /
+ * 1,21 / 1,06 / 1,00 não são valores que chamem atenção pela ausência. O segundo é que o sentido da
+ * divisão é verificável pelo significado: dez anos trabalhados com deficiência grave são metade de
+ * uma carreira de 20 anos, e meia carreira de 30 são 15 — então o fator de 20 para 30 tem de ser
+ * maior que 1. Tempo cumprido sob deficiência mais severa vale <em>mais</em> quando convertido para
+ * uma base menos severa.
  *
  * <h2>Por que aritmética inteira</h2>
  *
- * O fator é uma razão exata entre dois inteiros pequenos. Guardar 1,1666… como
- * {@code double} e depois multiplicar introduz uma diferença que não se explica
- * para quem contesta o cálculo. Aqui o tempo convertido é
- * {@code dias × exigidoNoDestino ÷ exigidoNaOrigem}, com arredondamento ao dia
- * mais próximo numa única operação. O fator decimal existe apenas para ser
- * exibido ({@link #factor}), nunca como passo intermediário.
+ * O fator é uma razão exata entre dois inteiros pequenos. Guardar 1,1666… como {@code double} e
+ * depois multiplicar introduz uma diferença que não se explica para quem contesta o cálculo. Aqui o
+ * tempo convertido é {@code dias × exigidoNoDestino ÷ exigidoNaOrigem}, com arredondamento ao dia
+ * mais próximo numa única operação. O fator decimal existe apenas para ser exibido ({@link
+ * #factor}), nunca como passo intermediário.
  */
 public final class DisabilityTimeConversion {
 
@@ -52,12 +49,10 @@ public final class DisabilityTimeConversion {
     private DisabilityTimeConversion() {}
 
     /**
-     * Tempo de contribuição em anos, meses e dias, com o total em dias que o
-     * originou.
+     * Tempo de contribuição em anos, meses e dias, com o total em dias que o originou.
      *
-     * <p>O total em dias fica visível de propósito: é ele que foi somado e
-     * convertido, e é por ele que duas contas se conferem. A decomposição em
-     * anos/meses/dias é apresentação.
+     * <p>O total em dias fica visível de propósito: é ele que foi somado e convertido, e é por ele
+     * que duas contas se conferem. A decomposição em anos/meses/dias é apresentação.
      */
     public record ConvertedTime(long totalDays, int years, int months, int days) {
 
@@ -72,11 +67,11 @@ public final class DisabilityTimeConversion {
     }
 
     /**
-     * O multiplicador entre dois graus, arredondado a duas casas — é este o
-     * número que a tabela mostra e que a tela exibe ao lado do intervalo.
+     * O multiplicador entre dois graus, arredondado a duas casas — é este o número que a tabela
+     * mostra e que a tela exibe ao lado do intervalo.
      *
-     * <p>Serve para explicar o resultado, não para produzi-lo: a conversão usa
-     * {@link #convertDays}, que não passa por este decimal.
+     * <p>Serve para explicar o resultado, não para produzi-lo: a conversão usa {@link
+     * #convertDays}, que não passa por este decimal.
      */
     public static BigDecimal factor(DisabilityGrade from, DisabilityGrade to, Gender gender) {
         return BigDecimal.valueOf(to.requiredYears(gender))
@@ -86,9 +81,8 @@ public final class DisabilityTimeConversion {
     /**
      * Converte uma quantidade de dias de um grau para outro.
      *
-     * <p>Uma multiplicação e uma divisão, arredondando ao dia mais próximo.
-     * Converter para o mesmo grau devolve o valor intacto, sem passar pelo
-     * arredondamento.
+     * <p>Uma multiplicação e uma divisão, arredondando ao dia mais próximo. Converter para o mesmo
+     * grau devolve o valor intacto, sem passar pelo arredondamento.
      */
     public static long convertDays(
             long days, DisabilityGrade from, DisabilityGrade to, Gender gender) {
@@ -108,11 +102,10 @@ public final class DisabilityTimeConversion {
     /**
      * Soma os intervalos convertendo cada um pelo seu próprio grau.
      *
-     * <p>É o ponto do mecanismo: cada intervalo entra na soma já traduzido para
-     * a base de destino, porque um ano sob deficiência grave e um ano sob
-     * deficiência leve não valem o mesmo. Somar primeiro e converter depois
-     * daria um número diferente — e errado, porque não existe um grau único que
-     * descreva a carreira toda.
+     * <p>É o ponto do mecanismo: cada intervalo entra na soma já traduzido para a base de destino,
+     * porque um ano sob deficiência grave e um ano sob deficiência leve não valem o mesmo. Somar
+     * primeiro e converter depois daria um número diferente — e errado, porque não existe um grau
+     * único que descreva a carreira toda.
      */
     public static ConvertedTime totalConverted(
             Collection<ClientDisabilityPeriod> periods,

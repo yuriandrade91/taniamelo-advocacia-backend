@@ -53,8 +53,7 @@ public class ClientDisabilityPeriodController {
                     Intervalos não podem se sobrepor. O erro nomeia o intervalo conflitante.""")
     @PostMapping
     public ResponseEntity<ApiResponse<ClientDisabilityPeriodResponseDTO>> create(
-            @PathVariable UUID clientId,
-            @Valid @RequestBody ClientDisabilityPeriodRequestDTO dto) {
+            @PathVariable UUID clientId, @Valid @RequestBody ClientDisabilityPeriodRequestDTO dto) {
         var created = service.create(clientId, dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.successObject(created));
     }
@@ -94,8 +93,7 @@ public class ClientDisabilityPeriodController {
     public ResponseEntity<ApiResponse<DisabilityConversionDTO>> conversion(
             @PathVariable UUID clientId, @RequestParam(required = false) String to) {
         DisabilityGrade target = RequestEnums.single("to", to, DisabilityGrade::fromLabel);
-        return ResponseEntity.ok(
-                ApiResponse.successObject(service.conversion(clientId, target)));
+        return ResponseEntity.ok(ApiResponse.successObject(service.conversion(clientId, target)));
     }
 
     @Operation(summary = "Detalhe de um intervalo")

@@ -14,10 +14,9 @@ public interface ClientDisabilityPeriodRepository
     /**
      * Todos os intervalos do cliente, do mais antigo para o mais recente.
      *
-     * <p>Sem paginação de propósito. O cálculo da LC 142/2013 soma a carreira
-     * inteira: uma página seria um total errado com cara de certo. São poucas
-     * linhas por cliente — o índice único parcial já limita a um intervalo em
-     * aberto — e nenhum caminho precisa de meia lista.
+     * <p>Sem paginação de propósito. O cálculo da LC 142/2013 soma a carreira inteira: uma página
+     * seria um total errado com cara de certo. São poucas linhas por cliente — o índice único
+     * parcial já limita a um intervalo em aberto — e nenhum caminho precisa de meia lista.
      */
     List<ClientDisabilityPeriod> findByClient_IdOrderByStartedOnAsc(UUID clientId);
 

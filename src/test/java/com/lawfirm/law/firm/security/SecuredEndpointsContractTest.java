@@ -65,8 +65,8 @@ class SecuredEndpointsContractTest {
     }
 
     @Test
-    @DisplayName("todo @DeleteMapping exige ADMIN ou LAWYER (ou só ADMIN, que é mais estrito)")
-    void everyDeleteRequiresLawyer() {
+    @DisplayName("todo @DeleteMapping exige ADMIN ou SUPPORT (ou só ADMIN, que é mais estrito)")
+    void everyDeleteRequiresSupport() {
         List<Class<?>> alvos = controllers();
         assertTrue(alvos.size() >= 8, "a varredura não encontrou os controllers: " + alvos);
 
@@ -82,7 +82,7 @@ class SecuredEndpointsContractTest {
                 if (EXCECOES.contains(nome)) {
                     continue;
                 }
-                // RequerAdmin também vale: é um subconjunto de ADMIN/LAWYER, não uma
+                // RequerAdmin também vale: é um subconjunto de ADMIN/SUPPORT, não uma
                 // brecha. O financeiro usa ele no nível da classe.
                 boolean exige =
                         temAnotacao(metodo, controller, RequerAdvogado.class)
@@ -121,6 +121,18 @@ class SecuredEndpointsContractTest {
                     Map.entry("TenantController#resolve", ABERTO),
                     Map.entry("TenantController#current", ABERTO),
 
+                    // ── Suporte (control-plane): restrito por SecurityConfig, não por papel ──
+                    //
+                    // `ABERTO` aqui é o vocabulário deste mapa, não a regra real, e a
+                    // diferença importa: `/support/login` é `permitAll()` e todo o resto de
+                    // `/support/**` exige `hasRole("PLATFORM")`. Nenhum dos dois é
+                    // alcançável por usuário de escritório, papel nenhum — o token de
+                    // plataforma é de outra autoridade. Este mapa só sabe falar de ADMIN e
+                    // SUPPORT do tenant, então a decisão fica escrita aqui e o teste que a
+                    // verifica é `SecurityConfig`, não este.
+                    Map.entry("SupportController#login", ABERTO),
+                    Map.entry("SupportController#openSession", ABERTO),
+
                     // ── Clientes: STAFF opera ──
                     Map.entry("ClientController#list", ABERTO),
                     Map.entry("ClientController#getById", ABERTO),
@@ -144,6 +156,18 @@ class SecuredEndpointsContractTest {
                     Map.entry("ClientAddressController#createBatch", ABERTO),
                     Map.entry("ClientAddressController#update", ABERTO),
                     Map.entry("ClientAddressController#delete", ADVOGADO),
+                    // ── Períodos de deficiência: STAFF opera, advogado destrói ──
+                    //
+                    // Mesmo corte dos endereços, e `conversion` é leitura: o atendente que
+                    // cadastra o intervalo precisa ver o tempo convertido para conferir o
+                    // que digitou. Exigir papel para ler deixaria quem preenche sem o
+                    // número que o preenchimento produz.
+                    Map.entry("ClientDisabilityPeriodController#list", ABERTO),
+                    Map.entry("ClientDisabilityPeriodController#get", ABERTO),
+                    Map.entry("ClientDisabilityPeriodController#conversion", ABERTO),
+                    Map.entry("ClientDisabilityPeriodController#create", ABERTO),
+                    Map.entry("ClientDisabilityPeriodController#update", ABERTO),
+                    Map.entry("ClientDisabilityPeriodController#delete", ADVOGADO),
                     Map.entry("ClientInterviewController#list", ABERTO),
                     Map.entry("ClientInterviewController#get", ABERTO),
                     Map.entry("ClientInterviewController#create", ABERTO),
@@ -278,7 +302,7 @@ class SecuredEndpointsContractTest {
 
     @Test
     @DisplayName("restaurar e ler dado sensível também exigem advogado")
-    void restoreAndSensitiveReadsRequireLawyer() throws Exception {
+    void restoreAndSensitiveReadsRequireSupport() throws Exception {
         assertRequerAdvogado(
                 "com.lawfirm.law.firm.controller.ClientController",
                 "restore",
@@ -321,6 +345,6 @@ class SecuredEndpointsContractTest {
         Method alvo = Class.forName(classe).getDeclaredMethod(metodo, parametros);
         assertTrue(
                 AnnotatedElementUtils.hasAnnotation(alvo, RequerAdvogado.class),
-                classe + "#" + metodo + " deveria exigir ADMIN/LAWYER");
+                classe + "#" + metodo + " deveria exigir ADMIN/SUPPORT");
     }
 }

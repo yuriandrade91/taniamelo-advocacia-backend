@@ -134,6 +134,9 @@ public class OpenApiConfig {
                         "Cliente - Dados Pessoais",
                         "Cliente - Endereço(s)",
                         "Cliente - Dados Profissionais",
+                        // Logo depois de Dados Profissionais: é ali que mora o tempo de
+                        // contribuição que a conversão da LC 142/2013 transforma.
+                        "Cliente - Períodos de deficiência",
                         "Cliente - Entrevista",
                         "Cliente - Arquivos",
                         "Cliente - Situação",

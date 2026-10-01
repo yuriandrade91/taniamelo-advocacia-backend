@@ -39,8 +39,8 @@ class DisabilityTimeConversionTest {
     class MultiplierTable {
 
         /**
-         * As 16 células da tabela feminina, na ordem grave/moderada/leve/geral
-         * — ou seja, "de 20, 24, 28, 30 anos" para "para 20, 24, 28, 30".
+         * As 16 células da tabela feminina, na ordem grave/moderada/leve/geral — ou seja, "de 20,
+         * 24, 28, 30 anos" para "para 20, 24, 28, 30".
          */
         private static final String[][] WOMAN = {
             {"1.00", "1.20", "1.40", "1.50"},
@@ -52,10 +52,9 @@ class DisabilityTimeConversionTest {
         /**
          * As 16 masculinas — "de 25, 29, 33, 35" para "para 25, 29, 33, 35".
          *
-         * <p>A última coluna não vinha no material de origem: estava truncada
-         * em três valores por linha. Estes quatro (1,40 / 1,21 / 1,06 / 1,00)
-         * saem da mesma divisão que as outras doze, e é por reproduzirem as
-         * doze conhecidas que se pode confiar nos quatro que faltavam.
+         * <p>A última coluna não vinha no material de origem: estava truncada em três valores por
+         * linha. Estes quatro (1,40 / 1,21 / 1,06 / 1,00) saem da mesma divisão que as outras doze,
+         * e é por reproduzirem as doze conhecidas que se pode confiar nos quatro que faltavam.
          */
         private static final String[][] MAN = {
             {"1.00", "1.16", "1.32", "1.40"},

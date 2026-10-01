@@ -8,20 +8,18 @@ import java.util.List;
 /**
  * Grau da deficiência e o tempo de contribuição que ele exige (LC 142/2013).
  *
- * Os números não são parâmetro de negócio: estão no art. 3º da LC 142/2013 —
- * 20/24/28 anos para a mulher e 25/29/33 para o homem, conforme a deficiência
- * seja grave, moderada ou leve. {@link #SEM_DEFICIENCIA} carrega 30 e 35, que
- * é a regra geral de tempo de contribuição, e existe aqui por um motivo só:
- * ser origem ou destino de uma conversão.
+ * <p>Os números não são parâmetro de negócio: estão no art. 3º da LC 142/2013 — 20/24/28 anos para
+ * a mulher e 25/29/33 para o homem, conforme a deficiência seja grave, moderada ou leve. {@link
+ * #SEM_DEFICIENCIA} carrega 30 e 35, que é a regra geral de tempo de contribuição, e existe aqui
+ * por um motivo só: ser origem ou destino de uma conversão.
  *
- * <p>Por isso ele <strong>não</strong> é um grau que se possa gravar num
- * intervalo — "período de deficiência sem deficiência" é contradição, e
- * {@link #asDisability()} é o filtro que a API e a tela usam para oferecer
- * apenas os três reais.
+ * <p>Por isso ele <strong>não</strong> é um grau que se possa gravar num intervalo — "período de
+ * deficiência sem deficiência" é contradição, e {@link #asDisability()} é o filtro que a API e a
+ * tela usam para oferecer apenas os três reais.
  *
- * <p>O par de números por grau é o que torna a conversão um cálculo em vez de
- * uma tabela decorada: o fator é o tempo exigido no destino dividido pelo
- * tempo exigido na origem. Ver {@code DisabilityTimeConversion}.
+ * <p>O par de números por grau é o que torna a conversão um cálculo em vez de uma tabela decorada:
+ * o fator é o tempo exigido no destino dividido pelo tempo exigido na origem. Ver {@code
+ * DisabilityTimeConversion}.
  */
 public enum DisabilityGrade {
     GRAVE("Grave", 20, 25),
@@ -52,10 +50,9 @@ public enum DisabilityGrade {
     /**
      * Anos de contribuição exigidos neste grau, para o sexo informado.
      *
-     * <p>A LC 142/2013 tem duas colunas, mulher e homem — não há linha para
-     * "não-binário" nem "outro". Cair no masculino por omissão seria um
-     * arbítrio jurídico invisível: o número sairia certo na tela e errado no
-     * processo. Então aqui recusa, e quem chama decide o que dizer a quem
+     * <p>A LC 142/2013 tem duas colunas, mulher e homem — não há linha para "não-binário" nem
+     * "outro". Cair no masculino por omissão seria um arbítrio jurídico invisível: o número sairia
+     * certo na tela e errado no processo. Então aqui recusa, e quem chama decide o que dizer a quem
      * cadastrou.
      */
     public int requiredYears(Gender gender) {

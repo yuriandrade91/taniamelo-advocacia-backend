@@ -7,12 +7,10 @@ import java.util.List;
 /**
  * O tempo de deficiência convertido para uma base, com a conta aberta.
  *
- * <p>A conta vem aberta de propósito. Este número vai para dentro de um
- * requerimento, e quem o defende precisa poder mostrar de onde saiu: cada
- * intervalo traz o próprio fator e o próprio resultado, e o total é a soma do
- * que está visível. Devolver só o total obrigaria o escritório a refazer o
- * cálculo à mão para conferir — e aí a tela seria um palpite a mais, não uma
- * ferramenta.
+ * <p>A conta vem aberta de propósito. Este número vai para dentro de um requerimento, e quem o
+ * defende precisa poder mostrar de onde saiu: cada intervalo traz o próprio fator e o próprio
+ * resultado, e o total é a soma do que está visível. Devolver só o total obrigaria o escritório a
+ * refazer o cálculo à mão para conferir — e aí a tela seria um palpite a mais, não uma ferramenta.
  */
 public class DisabilityConversionDTO {
 

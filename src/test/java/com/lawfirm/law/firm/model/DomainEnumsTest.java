@@ -39,7 +39,8 @@ class DomainEnumsTest {
                     PaymentStatus.class,
                     AppointmentType.class,
                     AppointmentStatus.class,
-                    AppointmentModality.class);
+                    AppointmentModality.class,
+                    DisabilityGrade.class);
 
     static Stream<Class<? extends Enum<?>>> labelledEnums() {
         return LABELLED_ENUMS.stream();
@@ -88,7 +89,7 @@ class DomainEnumsTest {
         assertSame(AuditAction.CREATE, AuditAction.valueOf("CREATE"));
         assertSame(AuditAction.UPDATE, AuditAction.valueOf("UPDATE"));
         // DELETE e RESTORE valem também para exclusão LÓGICA, que no banco é um update - quem
-        // diz qual é qual é o service, via IntencaoDeAuditoria.
+        // diz qual é qual é o service, via AuditIntent.
         assertSame(AuditAction.DELETE, AuditAction.valueOf("DELETE"));
         assertSame(AuditAction.RESTORE, AuditAction.valueOf("RESTORE"));
         // READ é a exceção à regra "só mutação gera auditoria": existe para a leitura da
