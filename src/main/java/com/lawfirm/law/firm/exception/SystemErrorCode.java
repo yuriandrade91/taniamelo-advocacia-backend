@@ -4,6 +4,7 @@ package com.lawfirm.law.firm.exception;
 public enum SystemErrorCode {
     DATABASE_INTEGRITY_ERROR("Violação de integridade no banco de dados"),
     FILE_STORAGE_ERROR("Falha ao processar arquivo no storage"),
+    EXTERNAL_SERVICE_ERROR("Serviço externo indisponível. Tente novamente em instantes."),
     SYSTEM_ERROR("Erro interno do sistema. Tente novamente; se persistir, contate o suporte.");
 
     private final String message;

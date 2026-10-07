@@ -7,6 +7,7 @@ public enum ValidationErrorCode {
     REQUIRED_FIELD("Campo obrigatório não informado"),
     INVALID_DATE("Data em formato inválido"),
     INVALID_PHONE("Telefone em formato inválido"),
+    INVALID_ZIP_CODE("CEP em formato inválido"),
     INVALID_ENUM_VALUE("Valor de enum inválido"),
     INVALID_SITUATION("Situação inválida"),
     INVALID_BENEFIT("Benefício inválido"),

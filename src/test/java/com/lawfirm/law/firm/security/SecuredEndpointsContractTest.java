@@ -184,6 +184,8 @@ class SecuredEndpointsContractTest {
                     Map.entry("ClientFileController#updateSimulation", ABERTO),
                     Map.entry("ClientFileController#markPrincipal", ABERTO),
                     Map.entry("ClientFileController#delete", ADVOGADO),
+                    // Consulta de CEP: leitura de dado público, exige só estar autenticado.
+                    Map.entry("CepController#lookup", ABERTO),
 
                     // ── Agenda: STAFF marca, cancela e conclui; advogado exclui e restaura ──
                     Map.entry("AppointmentController#list", ABERTO),
