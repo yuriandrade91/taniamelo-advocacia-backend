@@ -2,7 +2,10 @@ package com.lawfirm.law.firm.repository;
 
 import com.lawfirm.law.firm.model.PaymentMethod;
 import com.lawfirm.law.firm.model.PaymentStatus;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Root;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.util.List;
@@ -51,6 +54,49 @@ public final class FinanceSpecifications {
     public static <T> Specification<T> methodIn(List<PaymentMethod> valores) {
         return (root, query, cb) ->
                 CollectionUtils.isEmpty(valores) ? null : root.get("paymentMethod").in(valores);
+    }
+
+    /**
+     * A ordem das três listas: vencido, a vencer, cancelado, pago.
+     *
+     * <p>Vem como {@code Specification} e não como {@code Sort} porque "vencido" não é valor de
+     * coluna: é {@code Pendente} com vencimento no passado, e {@code Sort} só sabe nomear campos. O
+     * {@code CASE} abaixo ordena pelos três status que existem no banco e deixa o {@code dueDate}
+     * fazer o resto — dentro de Pendente, o que venceu tem data menor e sobe sozinho. Vencido antes
+     * de a vencer sai de graça, sem um segundo critério.
+     *
+     * <p>É também por isso que aqui não aparece {@code CURRENT_DATE}. Se aparecesse, o SQL cortaria
+     * o atraso pelo dia do banco enquanto {@link com.lawfirm.law.firm.util.DueDateRules#isOverdue}
+     * corta pelo dia do escritório: das 21h à meia-noite de Brasília a linha voltaria {@code
+     * overdue=true} ordenada no balde de quem ainda não venceu.
+     *
+     * <p>O {@code createdAt} desempata. Sem ele, lançamentos do mesmo vencimento saem na ordem que
+     * o banco escolher, e a mesma linha pode aparecer na página 1 e faltar na 2.
+     */
+    public static <T> Specification<T> orderByStatusThenDueDate() {
+        return (root, query, cb) -> {
+            // A consulta de contagem que o Pageable dispara não tem ORDER BY, e alguns bancos
+            // recusam ordenar por coluna fora do SELECT de um count.
+            if (isCountQuery(query)) return null;
+            query.orderBy(
+                    cb.asc(statusRank(root, cb)),
+                    cb.asc(root.get("dueDate")),
+                    cb.asc(root.get("createdAt")));
+            return null;
+        };
+    }
+
+    /** Pendente (onde vive o vencido) primeiro, Pago por último — Cancelado entre os dois. */
+    private static <T> Expression<Integer> statusRank(Root<T> root, CriteriaBuilder cb) {
+        return cb.<PaymentStatus, Integer>selectCase(root.<PaymentStatus>get("status"))
+                .when(PaymentStatus.PENDENTE, 0)
+                .when(PaymentStatus.CANCELADO, 1)
+                .otherwise(2);
+    }
+
+    private static boolean isCountQuery(CriteriaQuery<?> query) {
+        Class<?> tipo = query.getResultType();
+        return tipo == Long.class || tipo == long.class;
     }
 
     /**

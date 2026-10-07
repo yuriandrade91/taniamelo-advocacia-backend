@@ -24,6 +24,7 @@ import com.lawfirm.law.firm.dto.ClientInterviewResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPersonalDataResponseDTO;
 import com.lawfirm.law.firm.dto.ClientProfessionalDataResponseDTO;
+import com.lawfirm.law.firm.dto.PaymentListItemDTO;
 import com.lawfirm.law.firm.dto.PaymentSearchParams;
 import com.lawfirm.law.firm.exception.GlobalExceptionHandler;
 import com.lawfirm.law.firm.exception.NotFoundException;
@@ -337,6 +338,22 @@ class ClientSubResourceControllersTest {
             mockMvc = mvcFor(new ClientPaymentController(paymentService));
         }
 
+        /** A aba lista com a projeção de grade; o detalhe é que usa o DTO cheio. */
+        private PaymentListItemDTO listItemDto() {
+            PaymentListItemDTO dto = new PaymentListItemDTO();
+            dto.setId(SUB_ID);
+            dto.setClientId(CLIENT);
+            dto.setClientName("Maria Aparecida");
+            dto.setDescription("Parcela 1/3");
+            dto.setInstallmentNumber(1);
+            dto.setInstallmentTotal(3);
+            dto.setDueDate(LocalDate.of(2026, 9, 10));
+            dto.setAmount(new BigDecimal("500.00"));
+            dto.setStatus("Pendente");
+            dto.setOverdue(false);
+            return dto;
+        }
+
         private ClientPaymentResponseDTO responseDto() {
             ClientPaymentResponseDTO dto = new ClientPaymentResponseDTO();
             dto.setId(SUB_ID);
@@ -378,7 +395,7 @@ class ClientSubResourceControllersTest {
         @Test
         @DisplayName("GET lista paginada com overdue calculado")
         void listReturnsPaged() throws Exception {
-            ClientPaymentResponseDTO overdue = responseDto();
+            PaymentListItemDTO overdue = listItemDto();
             overdue.setOverdue(true);
             when(paymentService.list(eq(CLIENT), any(PaymentSearchParams.class)))
                     .thenReturn(new PageImpl<>(List.of(overdue), PageRequest.of(0, 10), 1));
@@ -392,7 +409,7 @@ class ClientSubResourceControllersTest {
         @DisplayName("GET repassa os filtros da lista geral para o serviço")
         void listForwardsFilters() throws Exception {
             when(paymentService.list(eq(CLIENT), any(PaymentSearchParams.class)))
-                    .thenReturn(new PageImpl<>(List.of(responseDto()), PageRequest.of(0, 10), 1));
+                    .thenReturn(new PageImpl<>(List.of(listItemDto()), PageRequest.of(0, 10), 1));
 
             mockMvc.perform(
                             get("/api/v1/clients/{clientId}/payments", CLIENT)

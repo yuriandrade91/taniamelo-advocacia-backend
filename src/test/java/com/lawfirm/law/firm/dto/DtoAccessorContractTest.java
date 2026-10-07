@@ -61,6 +61,8 @@ class DtoAccessorContractTest {
                     ClientUpdateRequestDTO.class,
                     LoginRequestDTO.class,
                     LoginResponseDTO.class,
+                    OfficeExpenseListItemDTO.class,
+                    OfficeRevenueListItemDTO.class,
                     TenantResponseDTO.class);
 
     static Stream<Class<?>> dtos() {

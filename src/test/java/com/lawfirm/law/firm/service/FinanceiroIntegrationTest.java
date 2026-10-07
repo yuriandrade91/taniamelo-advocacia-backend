@@ -6,12 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.lawfirm.law.firm.dto.FinanceSummaryDTO;
 import com.lawfirm.law.firm.dto.FinanceTimelinePointDTO;
+import com.lawfirm.law.firm.dto.OfficeExpenseListItemDTO;
 import com.lawfirm.law.firm.dto.OfficeExpenseRequestDTO;
+import com.lawfirm.law.firm.dto.OfficeExpenseResponseDTO;
 import com.lawfirm.law.firm.dto.OfficeExpenseSearchParams;
 import com.lawfirm.law.firm.exception.ValidationException;
 import com.lawfirm.law.firm.repository.OfficeExpenseRepository;
 import com.lawfirm.law.firm.support.PostgresIntegrationTest;
-import com.lawfirm.law.firm.util.FusoDoEscritorio;
+import com.lawfirm.law.firm.util.OfficeClock;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -29,9 +31,9 @@ import org.springframework.beans.factory.annotation.Autowired;
  * método certo e não diria nada sobre a conta — que é a única coisa que importa aqui.
  *
  * <p>A despesa serve de cobaia das três: pagamento, despesa e receita compartilham {@link
- * ConsultasFinanceiras}, então a regra provada aqui é literalmente a mesma que roda nas outras
- * duas. Repetir os mesmos casos três vezes custaria três vezes o tempo de container para afirmar o
- * mesmo código.
+ * FinanceQueries}, então a regra provada aqui é literalmente a mesma que roda nas outras duas.
+ * Repetir os mesmos casos três vezes custaria três vezes o tempo de container para afirmar o mesmo
+ * código.
  */
 @DisplayName("Financeiro: os três baldes são disjuntos e o total fecha")
 class FinanceiroIntegrationTest extends PostgresIntegrationTest {
@@ -47,7 +49,7 @@ class FinanceiroIntegrationTest extends PostgresIntegrationTest {
     @Test
     @DisplayName("vencido, a vencer e pago não se sobrepõem; Cancelado fica fora do total")
     void baldesDisjuntos() {
-        LocalDate hoje = FusoDoEscritorio.hoje();
+        LocalDate hoje = OfficeClock.today();
 
         lancar("Vencida", "100.00", hoje.minusDays(3), null, null);
         lancar("Vence hoje", "200.00", hoje, null, null);
@@ -83,15 +85,14 @@ class FinanceiroIntegrationTest extends PostgresIntegrationTest {
     @Test
     @DisplayName("marcar como paga sem informar a data assume hoje")
     void pagaSemDataAssumeHoje() {
-        var criada =
-                lancar("Paga agora", "150.00", FusoDoEscritorio.hoje().minusDays(2), null, "Pago");
-        assertEquals(FusoDoEscritorio.hoje(), criada.getPaidDate());
+        var criada = lancar("Paga agora", "150.00", OfficeClock.today().minusDays(2), null, "Pago");
+        assertEquals(OfficeClock.today(), criada.getPaidDate());
     }
 
     @Test
     @DisplayName("a série mensal traz os meses sem movimento, zerados e em ordem")
     void serieMensalPreencheMesesVazios() {
-        LocalDate hoje = FusoDoEscritorio.hoje();
+        LocalDate hoje = OfficeClock.today();
         LocalDate deTresMeses = hoje.minusMonths(3);
 
         lancar("Antiga", "100.00", deTresMeses, deTresMeses, "Pago");
@@ -113,7 +114,7 @@ class FinanceiroIntegrationTest extends PostgresIntegrationTest {
     @Test
     @DisplayName("no regime de caixa, vencido e a vencer vêm zerados por definição")
     void caixaZeraOsOutrosDoisBaldes() {
-        LocalDate hoje = FusoDoEscritorio.hoje();
+        LocalDate hoje = OfficeClock.today();
         lancar("Vencida e não paga", "700.00", hoje.minusDays(30), null, null);
         lancar("Paga", "120.00", hoje.minusDays(2), hoje.minusDays(2), "Pago");
 
@@ -145,7 +146,7 @@ class FinanceiroIntegrationTest extends PostgresIntegrationTest {
     @Test
     @DisplayName("a composição por categoria cobre só o que foi pago")
     void categoriaSoContaPago() {
-        LocalDate hoje = FusoDoEscritorio.hoje();
+        LocalDate hoje = OfficeClock.today();
         lancarCategoria(
                 "Aluguel pago",
                 "1000.00",
@@ -168,7 +169,42 @@ class FinanceiroIntegrationTest extends PostgresIntegrationTest {
                 0, new BigDecimal("1000.00").compareTo(resumo.getByCategory().get(0).getAmount()));
     }
 
-    private com.lawfirm.law.firm.dto.OfficeExpenseResponseDTO lancar(
+    @Test
+    @DisplayName("a lista ordena vencido, a vencer, cancelado e pago - nessa ordem")
+    void listaOrdenaPorStatus() {
+        LocalDate hoje = OfficeClock.today();
+
+        // Lançadas fora de ordem de propósito: criadas já na sequência certa, o teste passaria
+        // mesmo se a ordenação não existisse.
+        lancar("Paga", "400.00", hoje.minusDays(20), hoje.minusDays(20), "Pago");
+        lancar("Cancelada", "999.00", hoje.minusDays(15), null, "Cancelado");
+        lancar("A vencer", "300.00", hoje.plusDays(10), null, null);
+        lancar("Vencida recente", "200.00", hoje.minusDays(1), null, null);
+        lancar("Vencida antiga", "100.00", hoje.minusDays(30), null, null);
+        lancar("Vence hoje", "250.00", hoje, null, null);
+
+        List<OfficeExpenseListItemDTO> linhas =
+                service.list(new OfficeExpenseSearchParams()).getContent();
+
+        assertEquals(
+                List.of(
+                        "Vencida antiga",
+                        "Vencida recente",
+                        "Vence hoje",
+                        "A vencer",
+                        "Cancelada",
+                        "Paga"),
+                linhas.stream().map(OfficeExpenseListItemDTO::getDescription).toList());
+
+        // A cancelada vence DEPOIS da paga (-15 contra -20) e ainda assim vem antes: quem manda é o
+        // status, e o vencimento só desempata dentro dele. Sem o CASE, esta dupla sairia trocada.
+        assertEquals(
+                List.of(true, true, false, false, false, false),
+                linhas.stream().map(OfficeExpenseListItemDTO::isOverdue).toList(),
+                "a ordem e a flag overdue precisam contar a mesma história");
+    }
+
+    private OfficeExpenseResponseDTO lancar(
             String descricao,
             String valor,
             LocalDate vencimento,
@@ -177,7 +213,7 @@ class FinanceiroIntegrationTest extends PostgresIntegrationTest {
         return lancarCategoria(descricao, valor, vencimento, pagamento, status, "Outros");
     }
 
-    private com.lawfirm.law.firm.dto.OfficeExpenseResponseDTO lancarCategoria(
+    private OfficeExpenseResponseDTO lancarCategoria(
             String descricao,
             String valor,
             LocalDate vencimento,

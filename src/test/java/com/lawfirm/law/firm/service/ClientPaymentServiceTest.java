@@ -26,7 +26,7 @@ import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.repository.PaymentQueryRepository;
 import com.lawfirm.law.firm.security.UserPrincipal;
 import com.lawfirm.law.firm.support.TestFixtures;
-import com.lawfirm.law.firm.util.FusoDoEscritorio;
+import com.lawfirm.law.firm.util.OfficeClock;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -92,7 +92,7 @@ class ClientPaymentServiceTest {
         payment.setAmount(new BigDecimal("500.00"));
         payment.setInstallmentNumber(1);
         payment.setInstallmentTotal(3);
-        payment.setDueDate(FusoDoEscritorio.hoje().plusDays(10));
+        payment.setDueDate(OfficeClock.today().plusDays(10));
         payment.setStatus(PaymentStatus.PENDENTE);
         payment.setPaymentMethod(PaymentMethod.PIX);
         return payment;
@@ -181,8 +181,8 @@ class ClientPaymentServiceTest {
     class Reading {
 
         @Test
-        @DisplayName("ordena por vencimento crescente e normaliza a paginação")
-        void listSortsByDueDate() {
+        @DisplayName("deixa a ordem para a especificação e normaliza a paginação")
+        void listLeavesOrderToSpecification() {
             when(consultaRepository.findAll(
                             ArgumentMatchers.<Specification<ClientPayment>>any(),
                             any(Pageable.class)))
@@ -199,7 +199,9 @@ class ClientPaymentServiceTest {
                     .findAll(
                             ArgumentMatchers.<Specification<ClientPayment>>any(),
                             pageable.capture());
-            assertEquals(FiltrosDePagamento.ORDEM, pageable.getValue().getSort());
+            // Sem ordenação no Pageable é o contrato, não descuido: a ordem (vencido, a vencer,
+            // cancelado, pago) vem da especificação, e um Sort aqui a substituiria.
+            assertTrue(pageable.getValue().getSort().isUnsorted());
             assertEquals(0, pageable.getValue().getPageNumber());
             assertEquals(10, pageable.getValue().getPageSize());
         }
@@ -251,7 +253,7 @@ class ClientPaymentServiceTest {
         @DisplayName("Pendente com vencimento no passado é marcada como atrasada")
         void pendingPastDueIsOverdue() {
             ClientPayment payment = existing();
-            payment.setDueDate(FusoDoEscritorio.hoje().minusDays(1));
+            payment.setDueDate(OfficeClock.today().minusDays(1));
             when(repository.findByIdAndClient_IdAndDeletedAtIsNull(
                             PAYMENT_ID, TestFixtures.CLIENT_ID))
                     .thenReturn(Optional.of(payment));
@@ -263,7 +265,7 @@ class ClientPaymentServiceTest {
         @DisplayName("Pendente vencendo hoje ainda não está atrasada")
         void pendingDueTodayIsNotOverdue() {
             ClientPayment payment = existing();
-            payment.setDueDate(FusoDoEscritorio.hoje());
+            payment.setDueDate(OfficeClock.today());
             when(repository.findByIdAndClient_IdAndDeletedAtIsNull(
                             PAYMENT_ID, TestFixtures.CLIENT_ID))
                     .thenReturn(Optional.of(payment));
@@ -277,7 +279,7 @@ class ClientPaymentServiceTest {
             for (PaymentStatus status : List.of(PaymentStatus.PAGO, PaymentStatus.CANCELADO)) {
                 ClientPayment payment = existing();
                 payment.setStatus(status);
-                payment.setDueDate(FusoDoEscritorio.hoje().minusYears(1));
+                payment.setDueDate(OfficeClock.today().minusYears(1));
                 when(repository.findByIdAndClient_IdAndDeletedAtIsNull(
                                 PAYMENT_ID, TestFixtures.CLIENT_ID))
                         .thenReturn(Optional.of(payment));
@@ -389,7 +391,7 @@ class ClientPaymentServiceTest {
             service.update(TestFixtures.CLIENT_ID, PAYMENT_ID, dto);
 
             assertEquals(PaymentStatus.PAGO, payment.getStatus());
-            assertEquals(FusoDoEscritorio.hoje(), payment.getPaidDate());
+            assertEquals(OfficeClock.today(), payment.getPaidDate());
         }
 
         @Test

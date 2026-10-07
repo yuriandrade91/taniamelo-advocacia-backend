@@ -13,11 +13,11 @@ import java.time.LocalDate;
  * "quanto vence em maio", com números plausíveis e uma diferença que só aparece na conferência com
  * o extrato.
  */
-public final class RecorteDeData {
+public final class PeriodBasis {
 
-    private RecorteDeData() {}
+    private PeriodBasis() {}
 
-    public static void exigirUmRecorte(
+    public static void requireSingleRange(
             LocalDate dueFrom, LocalDate dueTo, LocalDate paidFrom, LocalDate paidTo) {
         boolean porVencimento = dueFrom != null || dueTo != null;
         boolean porPagamento = paidFrom != null || paidTo != null;
@@ -32,7 +32,7 @@ public final class RecorteDeData {
     }
 
     /** {@code true} quando a pergunta é de caixa (recorte por data de pagamento). */
-    public static boolean ehCaixa(LocalDate paidFrom, LocalDate paidTo) {
+    public static boolean isCashBasis(LocalDate paidFrom, LocalDate paidTo) {
         return paidFrom != null || paidTo != null;
     }
 }

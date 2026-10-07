@@ -189,6 +189,7 @@ class SecuredEndpointsContractTest {
                     Map.entry("AppointmentController#list", ABERTO),
                     Map.entry("AppointmentController#get", ABERTO),
                     Map.entry("AppointmentController#summary", ABERTO),
+                    Map.entry("AppointmentController#timeline", ABERTO),
                     Map.entry("AppointmentController#conflicts", ABERTO),
                     Map.entry("AppointmentController#history", ABERTO),
                     Map.entry("AppointmentController#create", ABERTO),

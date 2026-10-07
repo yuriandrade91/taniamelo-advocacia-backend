@@ -3,7 +3,7 @@ package com.lawfirm.law.firm.service;
 import com.lawfirm.law.firm.dto.FinanceSummaryDTO;
 import com.lawfirm.law.firm.dto.FinanceTimelinePointDTO;
 import com.lawfirm.law.firm.model.PaymentStatus;
-import com.lawfirm.law.firm.util.FusoDoEscritorio;
+import com.lawfirm.law.firm.util.OfficeClock;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
@@ -32,12 +32,12 @@ import org.springframework.stereotype.Component;
  * valores possíveis estão no código, nunca numa requisição. Não é concatenação de entrada do
  * usuário em consulta.
  *
- * <p>"Hoje" vem de {@link FusoDoEscritorio}, e não do relógio da JVM: com o servidor em UTC, entre
- * 21h e 24h de Brasília o dia já virou lá e não aqui — e uma parcela que vence amanhã apareceria
- * como vencida.
+ * <p>"Hoje" vem de {@link OfficeClock}, e não do relógio da JVM: com o servidor em UTC, entre 21h e
+ * 24h de Brasília o dia já virou lá e não aqui — e uma parcela que vence amanhã apareceria como
+ * vencida.
  */
 @Component
-public class ConsultasFinanceiras {
+public class FinanceQueries {
 
     @PersistenceContext private EntityManager em;
 
@@ -48,22 +48,22 @@ public class ConsultasFinanceiras {
      * @param where predicado adicional já com o alias {@code x}, ou {@code null}
      * @param params parâmetros nomeados usados em {@code where}
      */
-    public FinanceSummaryDTO resumo(String entidade, String where, Map<String, Object> params) {
-        LocalDate hoje = FusoDoEscritorio.hoje();
+    public FinanceSummaryDTO summary(String entidade, String where, Map<String, Object> params) {
+        LocalDate hoje = OfficeClock.today();
 
         String jpql =
                 "SELECT "
-                        + soma("x.status = :pendente AND x.dueDate < :hoje")
+                        + sum("x.status = :pendente AND x.dueDate < :hoje")
                         + ", "
-                        + contagem("x.status = :pendente AND x.dueDate < :hoje")
+                        + count("x.status = :pendente AND x.dueDate < :hoje")
                         + ", "
-                        + soma("x.status = :pendente AND x.dueDate >= :hoje")
+                        + sum("x.status = :pendente AND x.dueDate >= :hoje")
                         + ", "
-                        + contagem("x.status = :pendente AND x.dueDate >= :hoje")
+                        + count("x.status = :pendente AND x.dueDate >= :hoje")
                         + ", "
-                        + soma("x.status = :pago")
+                        + sum("x.status = :pago")
                         + ", "
-                        + contagem("x.status = :pago")
+                        + count("x.status = :pago")
                         + " FROM "
                         + entidade
                         + " x WHERE 1 = 1"
@@ -73,17 +73,17 @@ public class ConsultasFinanceiras {
         query.setParameter("pendente", PaymentStatus.PENDENTE);
         query.setParameter("pago", PaymentStatus.PAGO);
         query.setParameter("hoje", hoje);
-        aplicar(query, params);
+        bind(query, params);
 
         Object[] linha = (Object[]) query.getSingleResult();
 
         FinanceSummaryDTO dto = new FinanceSummaryDTO();
-        dto.setOverdueAmount(valor(linha[0]));
-        dto.setOverdueCount(quantidade(linha[1]));
-        dto.setUpcomingAmount(valor(linha[2]));
-        dto.setUpcomingCount(quantidade(linha[3]));
-        dto.setPaidAmount(valor(linha[4]));
-        dto.setPaidCount(quantidade(linha[5]));
+        dto.setOverdueAmount(amountOf(linha[0]));
+        dto.setOverdueCount(countOf(linha[1]));
+        dto.setUpcomingAmount(amountOf(linha[2]));
+        dto.setUpcomingCount(countOf(linha[3]));
+        dto.setPaidAmount(amountOf(linha[4]));
+        dto.setPaidCount(countOf(linha[5]));
         dto.setTotalAmount(
                 dto.getOverdueAmount().add(dto.getUpcomingAmount()).add(dto.getPaidAmount()));
         return dto;
@@ -95,7 +95,7 @@ public class ConsultasFinanceiras {
      * @param porPagamento {@code true} agrupa por data de pagamento e só conta o que foi pago
      *     (regime de caixa); {@code false} agrupa por vencimento (competência).
      */
-    public List<FinanceTimelinePointDTO> serieMensal(
+    public List<FinanceTimelinePointDTO> monthlySeries(
             String entidade,
             String where,
             Map<String, Object> params,
@@ -103,7 +103,7 @@ public class ConsultasFinanceiras {
             LocalDate ate,
             boolean porPagamento) {
 
-        LocalDate hoje = FusoDoEscritorio.hoje();
+        LocalDate hoje = OfficeClock.today();
         String campoData = porPagamento ? "x.paidDate" : "x.dueDate";
 
         StringBuilder jpql = new StringBuilder("SELECT EXTRACT(YEAR FROM ");
@@ -112,13 +112,13 @@ public class ConsultasFinanceiras {
             // Atrasado e a vencer não existem no regime de caixa: o que foi pago não está nem um
             // nem outro. Zerados aqui em vez de omitidos, para o formato da resposta não mudar
             // conforme o parâmetro — quem consome tipa uma coisa só.
-            jpql.append("0, 0, ").append(soma("x.status = :pago"));
+            jpql.append("0, 0, ").append(sum("x.status = :pago"));
         } else {
-            jpql.append(soma("x.status = :pendente AND x.dueDate < :hoje"))
+            jpql.append(sum("x.status = :pendente AND x.dueDate < :hoje"))
                     .append(", ")
-                    .append(soma("x.status = :pendente AND x.dueDate >= :hoje"))
+                    .append(sum("x.status = :pendente AND x.dueDate >= :hoje"))
                     .append(", ")
-                    .append(soma("x.status = :pago"));
+                    .append(sum("x.status = :pago"));
         }
         jpql.append(" FROM ").append(entidade).append(" x WHERE ").append(campoData);
         jpql.append(" BETWEEN :de AND :ate");
@@ -142,9 +142,9 @@ public class ConsultasFinanceiras {
         }
         query.setParameter("de", de);
         query.setParameter("ate", ate);
-        aplicar(query, params);
+        bind(query, params);
 
-        Map<String, FinanceTimelinePointDTO> porMes = mesesVazios(de, ate);
+        Map<String, FinanceTimelinePointDTO> porMes = emptyMonths(de, ate);
         for (Object linha : query.getResultList()) {
             Object[] col = (Object[]) linha;
             String chave = YearMonth.of(quantidadeInt(col[0]), quantidadeInt(col[1])).toString();
@@ -152,9 +152,9 @@ public class ConsultasFinanceiras {
             // Fora da janela pedida não deveria acontecer (o BETWEEN já recorta), mas um mês que
             // aparecesse aqui sem lugar no mapa sumiria em silêncio — e some justamente o valor.
             if (ponto == null) continue;
-            ponto.setOverdueAmount(valor(col[2]));
-            ponto.setUpcomingAmount(valor(col[3]));
-            ponto.setPaidAmount(valor(col[4]));
+            ponto.setOverdueAmount(amountOf(col[2]));
+            ponto.setUpcomingAmount(amountOf(col[3]));
+            ponto.setPaidAmount(amountOf(col[4]));
         }
         return new ArrayList<>(porMes.values());
     }
@@ -165,7 +165,7 @@ public class ConsultasFinanceiras {
      * <p>É o que garante que mês sem movimento apareça no gráfico. Sem ele, dois meses distantes
      * ficam colados lado a lado e o mês vazio — que costuma ser a informação — desaparece.
      */
-    private static Map<String, FinanceTimelinePointDTO> mesesVazios(LocalDate de, LocalDate ate) {
+    private static Map<String, FinanceTimelinePointDTO> emptyMonths(LocalDate de, LocalDate ate) {
         Map<String, FinanceTimelinePointDTO> meses = new LinkedHashMap<>();
         YearMonth atual = YearMonth.from(de);
         YearMonth fim = YearMonth.from(ate);
@@ -176,25 +176,25 @@ public class ConsultasFinanceiras {
         return meses;
     }
 
-    private static String soma(String condicao) {
+    private static String sum(String condicao) {
         return "COALESCE(SUM(CASE WHEN " + condicao + " THEN x.amount ELSE 0 END), 0)";
     }
 
-    private static String contagem(String condicao) {
+    private static String count(String condicao) {
         return "COALESCE(SUM(CASE WHEN " + condicao + " THEN 1L ELSE 0L END), 0L)";
     }
 
-    private static void aplicar(Query query, Map<String, Object> params) {
+    private static void bind(Query query, Map<String, Object> params) {
         if (params == null) return;
         params.forEach(query::setParameter);
     }
 
-    private static BigDecimal valor(Object bruto) {
+    private static BigDecimal amountOf(Object bruto) {
         if (bruto == null) return BigDecimal.ZERO;
         return bruto instanceof BigDecimal b ? b : new BigDecimal(bruto.toString());
     }
 
-    private static long quantidade(Object bruto) {
+    private static long countOf(Object bruto) {
         return bruto == null ? 0L : ((Number) bruto).longValue();
     }
 

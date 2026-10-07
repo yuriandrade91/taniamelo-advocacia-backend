@@ -18,6 +18,7 @@ import com.lawfirm.law.firm.dto.AppointmentRequestDTO;
 import com.lawfirm.law.firm.dto.AppointmentResponseDTO;
 import com.lawfirm.law.firm.dto.AppointmentSearchParams;
 import com.lawfirm.law.firm.dto.AppointmentSummaryDTO;
+import com.lawfirm.law.firm.dto.AppointmentTimelinePointDTO;
 import com.lawfirm.law.firm.exception.BusinessErrorCode;
 import com.lawfirm.law.firm.exception.BusinessException;
 import com.lawfirm.law.firm.exception.NotFoundException;
@@ -36,6 +37,7 @@ import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.UserPrincipal;
 import com.lawfirm.law.firm.support.TestFixtures;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -77,7 +79,7 @@ class AppointmentServiceTest {
         service = new AppointmentService(repository, historyRepository, clientRepository);
         when(repository.save(any(Appointment.class))).thenAnswer(i -> i.getArgument(0));
         // saveAndFlush é usado onde a intenção de auditoria precisa que o @PostUpdate dispare
-        // dentro do bloco (exclusão e restauração) - ver IntencaoDeAuditoria.
+        // dentro do bloco (exclusão e restauração) - ver AuditIntent.
         lenient()
                 .when(repository.saveAndFlush(any(Appointment.class)))
                 .thenAnswer(i -> i.getArgument(0));
@@ -425,6 +427,115 @@ class AppointmentServiceTest {
             assertEquals("Maria da Silva", content.get(0).getClientName());
             assertEquals("Maria da Silva", content.get(1).getClientName());
             verify(clientRepository, times(1)).findAllById(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("timeline do relatório")
+    class Timeline {
+
+        private static final LocalDate JAN = LocalDate.of(2026, 1, 1);
+        private static final LocalDate MAR = LocalDate.of(2026, 3, 31);
+
+        @Test
+        @DisplayName("conta os três status por mês e o total fecha com as partes")
+        void countsEveryStatusPerMonth() {
+            Appointment agendado = existing();
+            agendado.setStartAt(Instant.parse("2026-01-15T13:00:00Z"));
+            Appointment concluido = existing();
+            concluido.setStatus(AppointmentStatus.CONCLUIDO);
+            concluido.setStartAt(Instant.parse("2026-01-20T13:00:00Z"));
+            Appointment cancelado = existing();
+            cancelado.setStatus(AppointmentStatus.CANCELADO);
+            cancelado.setStartAt(Instant.parse("2026-01-22T13:00:00Z"));
+            Appointment deMarco = existing();
+            deMarco.setStartAt(Instant.parse("2026-03-05T13:00:00Z"));
+
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of(agendado, concluido, cancelado, deMarco));
+
+            List<AppointmentTimelinePointDTO> serie = service.timeline(JAN, MAR);
+
+            assertEquals(3, serie.size());
+            assertEquals(AppointmentTimelinePointDTO.of("2026-01", 1, 1, 1), serie.get(0));
+            assertEquals(AppointmentTimelinePointDTO.of("2026-03", 1, 0, 0), serie.get(2));
+            // O cancelado entra no total: foi a escolha do contrato, e é o que faz o total fechar
+            // com as barras que o gráfico desenha.
+            assertEquals(3L, serie.get(0).totalCount());
+        }
+
+        @Test
+        @DisplayName("mês sem compromisso vem no array, zerado e na posição certa")
+        void fillsEmptyMonths() {
+            Appointment soEmMarco = existing();
+            soEmMarco.setStartAt(Instant.parse("2026-03-05T13:00:00Z"));
+
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of(soEmMarco));
+
+            List<AppointmentTimelinePointDTO> serie = service.timeline(JAN, MAR);
+
+            assertEquals(
+                    List.of("2026-01", "2026-02", "2026-03"),
+                    serie.stream().map(AppointmentTimelinePointDTO::month).toList());
+            assertEquals(0L, serie.get(0).totalCount());
+            assertEquals(0L, serie.get(1).totalCount());
+            assertEquals(1L, serie.get(2).totalCount());
+        }
+
+        @Test
+        @DisplayName("o mês sai no fuso do escritório, não em UTC")
+        void monthFollowsOfficeZone() {
+            // 31/01 às 22h em São Paulo é 01/02 às 01h em UTC. Agrupando pelo instante cru - ou
+            // por um EXTRACT(MONTH) com a sessão do banco em UTC - este compromisso apareceria em
+            // fevereiro no relatório e em janeiro na agenda.
+            Appointment noiteDoDia31 = existing();
+            noiteDoDia31.setStartAt(Instant.parse("2026-02-01T01:00:00Z"));
+
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of(noiteDoDia31));
+
+            List<AppointmentTimelinePointDTO> serie = service.timeline(JAN, MAR);
+
+            assertEquals(1L, serie.get(0).totalCount(), "deve contar em 2026-01");
+            assertEquals(0L, serie.get(1).totalCount(), "não deve contar em 2026-02");
+        }
+
+        @Test
+        @DisplayName("a janela consultada começa e termina no fuso do escritório")
+        void queriesTheWindowInOfficeZone() {
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of());
+
+            service.timeline(JAN, MAR);
+
+            ArgumentCaptor<Instant> from = ArgumentCaptor.forClass(Instant.class);
+            ArgumentCaptor<Instant> to = ArgumentCaptor.forClass(Instant.class);
+            verify(repository).findByDeletedAtIsNullAndStartAtBetween(from.capture(), to.capture());
+            assertEquals(Instant.parse("2026-01-01T03:00:00Z"), from.getValue());
+            assertEquals(Instant.parse("2026-04-01T02:59:59.999999999Z"), to.getValue());
+        }
+
+        @Test
+        @DisplayName("janela invertida é 400, não série vazia")
+        void invertedWindowIsRejected() {
+            ValidationException ex =
+                    assertThrows(ValidationException.class, () -> service.timeline(MAR, JAN));
+            assertEquals(ValidationErrorCode.INVALID_DATE_RANGE, ex.getValidationErrorCode());
+            verify(repository, never()).findByDeletedAtIsNullAndStartAtBetween(any(), any());
+        }
+
+        @Test
+        @DisplayName("janela de um único mês devolve um ponto")
+        void singleMonthWindow() {
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of());
+
+            List<AppointmentTimelinePointDTO> serie =
+                    service.timeline(LocalDate.of(2026, 5, 10), LocalDate.of(2026, 5, 20));
+
+            assertEquals(1, serie.size());
+            assertEquals("2026-05", serie.get(0).month());
         }
     }
 

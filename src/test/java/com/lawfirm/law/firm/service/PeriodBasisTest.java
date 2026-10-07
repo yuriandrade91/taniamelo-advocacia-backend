@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
  * extrato.
  */
 @DisplayName("Recorte de data: ou competência, ou caixa")
-class RecorteDeDataTest {
+class PeriodBasisTest {
 
     private static final LocalDate DIA = LocalDate.of(2026, 5, 10);
 
@@ -28,7 +28,7 @@ class RecorteDeDataTest {
         ValidationException ex =
                 assertThrows(
                         ValidationException.class,
-                        () -> RecorteDeData.exigirUmRecorte(DIA, DIA, DIA, DIA));
+                        () -> PeriodBasis.requireSingleRange(DIA, DIA, DIA, DIA));
         assertEquals("dueFrom", ex.getField());
     }
 
@@ -37,22 +37,22 @@ class RecorteDeDataTest {
     void umaPontaDeCadaJaConflita() {
         assertThrows(
                 ValidationException.class,
-                () -> RecorteDeData.exigirUmRecorte(DIA, null, null, DIA));
+                () -> PeriodBasis.requireSingleRange(DIA, null, null, DIA));
     }
 
     @Test
     @DisplayName("um par só, ou nenhum, passa")
     void umParSoPassa() {
-        assertDoesNotThrow(() -> RecorteDeData.exigirUmRecorte(DIA, DIA, null, null));
-        assertDoesNotThrow(() -> RecorteDeData.exigirUmRecorte(null, null, DIA, DIA));
-        assertDoesNotThrow(() -> RecorteDeData.exigirUmRecorte(null, null, null, null));
+        assertDoesNotThrow(() -> PeriodBasis.requireSingleRange(DIA, DIA, null, null));
+        assertDoesNotThrow(() -> PeriodBasis.requireSingleRange(null, null, DIA, DIA));
+        assertDoesNotThrow(() -> PeriodBasis.requireSingleRange(null, null, null, null));
     }
 
     @Test
     @DisplayName("é caixa quando qualquer ponta de pagamento vier preenchida")
     void reconheceCaixa() {
-        assertTrue(RecorteDeData.ehCaixa(DIA, null));
-        assertTrue(RecorteDeData.ehCaixa(null, DIA));
-        assertFalse(RecorteDeData.ehCaixa(null, null));
+        assertTrue(PeriodBasis.isCashBasis(DIA, null));
+        assertTrue(PeriodBasis.isCashBasis(null, DIA));
+        assertFalse(PeriodBasis.isCashBasis(null, null));
     }
 }

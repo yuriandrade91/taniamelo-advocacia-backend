@@ -19,17 +19,17 @@ import java.time.ZoneId;
  * <p>Não confundir com {@code hibernate.jdbc.time_zone: UTC}: aquilo é como o instante viaja até o
  * banco (e UTC é o certo lá); isto é como o instante vira data para uma pessoa ler.
  */
-public final class FusoDoEscritorio {
+public final class OfficeClock {
 
     /** Identificador IANA, usado também no SQL (AT TIME ZONE). */
     public static final String ID = "America/Sao_Paulo";
 
-    public static final ZoneId ZONA = ZoneId.of(ID);
+    public static final ZoneId ZONE = ZoneId.of(ID);
 
-    private FusoDoEscritorio() {}
+    private OfficeClock() {}
 
     /** Hoje, na data em que o escritório está - não na data em que o servidor está. */
-    public static java.time.LocalDate hoje() {
-        return java.time.LocalDate.now(ZONA);
+    public static java.time.LocalDate today() {
+        return java.time.LocalDate.now(ZONE);
     }
 }

@@ -117,7 +117,8 @@ public class OpenApiConfig {
 
     /**
      * Ordem das collections no Swagger UI: auth -> cliente/clientes -> dados pessoais -> endereços
-     * -> dados profissionais -> entrevista -> arquivos -> situação -> financeiro (em vez da ordem
+     * -> dados profissionais -> entrevista -> arquivos -> situação -> financeiro do cliente ->
+     * pagamentos aos clientes -> despesas -> receitas -> agenda -> usuários (em vez da ordem
      * alfabética/de descoberta padrão do springdoc). Personal-data, professional-data e
      * situation-history vivem no mesmo ClientController mas são movidos para suas próprias tags via
      * {@code @Operation(tags = ...)} por operação, sobrescrevendo a tag de classe só nesses
@@ -141,6 +142,16 @@ public class OpenApiConfig {
                         "Cliente - Arquivos",
                         "Cliente - Situação",
                         "Cliente - Financeiro",
+                        // Logo depois da aba financeira do cliente: as duas leem a MESMA tabela
+                        // (client_payments) e hoje compartilham consulta, ordem e projeção. Uma
+                        // delas recortada no cliente da URL, a outra no escritório inteiro — longe
+                        // uma da outra no Swagger, parecem recursos diferentes.
+                        "Financeiro — pagamentos aos clientes",
+                        // E o caixa do escritório logo em seguida, fechando o bloco de dinheiro.
+                        // Fora da lista elas caíam no fim por ordem de descoberta, depois de
+                        // Usuários — três tags do mesmo assunto espalhadas por toda a página.
+                        "Financeiro — despesas",
+                        "Financeiro — receitas",
                         "Agenda",
                         "Usuários");
         return openApi -> {

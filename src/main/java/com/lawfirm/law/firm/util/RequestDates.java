@@ -40,11 +40,8 @@ public final class RequestDates {
         try {
             LocalDate date = LocalDate.parse(trimmed);
             return startOfDay
-                    ? date.atStartOfDay(FusoDoEscritorio.ZONA).toInstant()
-                    : date.plusDays(1)
-                            .atStartOfDay(FusoDoEscritorio.ZONA)
-                            .toInstant()
-                            .minusNanos(1);
+                    ? date.atStartOfDay(OfficeClock.ZONE).toInstant()
+                    : date.plusDays(1).atStartOfDay(OfficeClock.ZONE).toInstant().minusNanos(1);
         } catch (DateTimeParseException ex) {
             throw new ValidationException(
                     field,
@@ -57,10 +54,10 @@ public final class RequestDates {
     /** Intervalo cobrindo o ano inteiro, no fuso do escritório. */
     public static Range ofYear(int year) {
         return new Range(
-                LocalDate.of(year, 1, 1).atStartOfDay(FusoDoEscritorio.ZONA).toInstant(),
+                LocalDate.of(year, 1, 1).atStartOfDay(OfficeClock.ZONE).toInstant(),
                 LocalDate.of(year, 12, 31)
                         .atTime(LocalTime.MAX)
-                        .atZone(FusoDoEscritorio.ZONA)
+                        .atZone(OfficeClock.ZONE)
                         .toInstant());
     }
 }

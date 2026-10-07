@@ -13,7 +13,7 @@ import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.support.TestFixtures;
-import com.lawfirm.law.firm.util.FusoDoEscritorio;
+import com.lawfirm.law.firm.util.OfficeClock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -209,7 +209,7 @@ class ClientMapperTest {
     @DisplayName("toDTO calcula a idade em UTC a partir da data de nascimento")
     void toDtoComputesAge() {
         Client entity = TestFixtures.client();
-        entity.setBirthDate(FusoDoEscritorio.hoje().minusYears(30).minusDays(1));
+        entity.setBirthDate(OfficeClock.today().minusYears(30).minusDays(1));
 
         ClientDetailsDTO dto = mapper.toDTO(entity);
 
@@ -225,7 +225,7 @@ class ClientMapperTest {
         // meia-noite de São Paulo o teste montava o aniversário no dia seguinte e cobrava um
         // ano que ainda não tinha chegado - falhava só nessas três horas, todo dia.
         Client entity = TestFixtures.client();
-        entity.setBirthDate(FusoDoEscritorio.hoje().minusYears(40));
+        entity.setBirthDate(OfficeClock.today().minusYears(40));
 
         assertEquals(40, mapper.toDTO(entity).getAge());
     }

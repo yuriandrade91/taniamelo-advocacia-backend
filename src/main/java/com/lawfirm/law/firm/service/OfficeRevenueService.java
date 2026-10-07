@@ -2,6 +2,7 @@ package com.lawfirm.law.firm.service;
 
 import com.lawfirm.law.firm.dto.FinanceSummaryDTO;
 import com.lawfirm.law.firm.dto.FinanceTimelinePointDTO;
+import com.lawfirm.law.firm.dto.OfficeRevenueListItemDTO;
 import com.lawfirm.law.firm.dto.OfficeRevenueRequestDTO;
 import com.lawfirm.law.firm.dto.OfficeRevenueResponseDTO;
 import com.lawfirm.law.firm.dto.OfficeRevenueSearchParams;
@@ -24,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,17 +38,17 @@ public class OfficeRevenueService {
     private final OfficeRevenueRepository repository;
     private final ClientRepository clientRepository;
     private final ClientPaymentRepository clientPaymentRepository;
-    private final ConsultasFinanceiras consultas;
+    private final FinanceQueries queries;
 
     public OfficeRevenueService(
             OfficeRevenueRepository repository,
             ClientRepository clientRepository,
             ClientPaymentRepository clientPaymentRepository,
-            ConsultasFinanceiras consultas) {
+            FinanceQueries queries) {
         this.repository = repository;
         this.clientRepository = clientRepository;
         this.clientPaymentRepository = clientPaymentRepository;
-        this.consultas = consultas;
+        this.queries = queries;
     }
 
     @Transactional
@@ -59,8 +59,9 @@ public class OfficeRevenueService {
         return toDTO(repository.save(entity));
     }
 
-    public Page<OfficeRevenueResponseDTO> list(OfficeRevenueSearchParams params) {
-        RecorteDeData.exigirUmRecorte(
+    @Transactional(readOnly = true)
+    public Page<OfficeRevenueListItemDTO> list(OfficeRevenueSearchParams params) {
+        PeriodBasis.requireSingleRange(
                 params.getDueFrom(), params.getDueTo(), params.getPaidFrom(), params.getPaidTo());
 
         Specification<OfficeRevenue> spec =
@@ -70,25 +71,25 @@ public class OfficeRevenueService {
                         FinanceSpecifications.<OfficeRevenue>paidBetween(
                                 params.getPaidFrom(), params.getPaidTo()),
                         FinanceSpecifications.<OfficeRevenue>statusIn(
-                                EnumsDeRequisicao.lista(
+                                RequestEnums.list(
                                         "status", params.getStatus(), PaymentStatus::fromLabel)),
                         FinanceSpecifications.<OfficeRevenue>methodIn(
-                                EnumsDeRequisicao.lista(
+                                RequestEnums.list(
                                         "paymentMethod",
                                         params.getPaymentMethod(),
                                         PaymentMethod::fromLabel)),
                         doCliente(params.getClientId()),
                         FinanceSpecifications.<OfficeRevenue>textoEm(
-                                params.getSearchTerm(), "description", "client.fullName"));
+                                params.getSearchTerm(), "description", "client.fullName"),
+                        FinanceSpecifications.<OfficeRevenue>orderByStatusThenDueDate());
 
-        var pageable =
-                PageRequests.of(
-                        params.getPageNumber(),
-                        params.getPageSize(),
-                        Sort.by(Sort.Direction.ASC, "dueDate").and(Sort.by("createdAt")));
-        return repository.findAll(spec, pageable).map(this::toDTO);
+        // A ordem (vencido, a vencer, cancelado, pago) vem da especificação, porque depende de um
+        // CASE sobre o status. Ordenação no Pageable substituiria a dela — por isso não há nenhuma.
+        var pageable = PageRequests.of(params.getPageNumber(), params.getPageSize());
+        return repository.findAll(spec, pageable).map(OfficeRevenueService::toListItem);
     }
 
+    @Transactional(readOnly = true)
     public OfficeRevenueResponseDTO get(UUID id) {
         return toDTO(buscarOuFalhar(id));
     }
@@ -109,14 +110,15 @@ public class OfficeRevenueService {
         repository.save(entity);
     }
 
+    @Transactional(readOnly = true)
     public FinanceSummaryDTO summary(OfficeRevenueSearchParams params) {
-        RecorteDeData.exigirUmRecorte(
+        PeriodBasis.requireSingleRange(
                 params.getDueFrom(), params.getDueTo(), params.getPaidFrom(), params.getPaidTo());
 
         Map<String, Object> valores = new HashMap<>();
         StringBuilder where = new StringBuilder("1 = 1");
         String campo =
-                RecorteDeData.ehCaixa(params.getPaidFrom(), params.getPaidTo())
+                PeriodBasis.isCashBasis(params.getPaidFrom(), params.getPaidTo())
                         ? "x.paidDate"
                         : "x.dueDate";
         LocalDate de = params.getPaidFrom() != null ? params.getPaidFrom() : params.getDueFrom();
@@ -133,12 +135,13 @@ public class OfficeRevenueService {
             where.append(" AND x.client.id = :clienteId");
             valores.put("clienteId", params.getClientId());
         }
-        return consultas.resumo(ENTIDADE, where.toString(), valores);
+        return queries.summary(ENTIDADE, where.toString(), valores);
     }
 
+    @Transactional(readOnly = true)
     public List<FinanceTimelinePointDTO> timeline(
             LocalDate de, LocalDate ate, boolean porPagamento) {
-        return consultas.serieMensal(ENTIDADE, null, Map.of(), de, ate, porPagamento);
+        return queries.monthlySeries(ENTIDADE, null, Map.of(), de, ate, porPagamento);
     }
 
     private static Specification<OfficeRevenue> doCliente(UUID clientId) {
@@ -158,14 +161,13 @@ public class OfficeRevenueService {
         entity.setDueDate(dto.getDueDate());
         entity.setNotes(dto.getNotes());
         entity.setPaymentMethod(
-                EnumsDeRequisicao.unico(
+                RequestEnums.single(
                         "paymentMethod", dto.getPaymentMethod(), PaymentMethod::fromLabel));
 
         PaymentStatus status =
-                EnumsDeRequisicao.unico("status", dto.getStatus(), PaymentStatus::fromLabel);
+                RequestEnums.single("status", dto.getStatus(), PaymentStatus::fromLabel);
         entity.setStatus(status != null ? status : PaymentStatus.PENDENTE);
-        entity.setPaidDate(
-                RegrasDeVencimento.dataDePagamento(entity.getStatus(), dto.getPaidDate()));
+        entity.setPaidDate(DueDateRules.resolvePaidDate(entity.getStatus(), dto.getPaidDate()));
 
         entity.setClient(resolverCliente(dto.getClientId()));
         entity.setSourcePayment(resolverParcela(dto.getSourcePaymentId()));
@@ -194,6 +196,22 @@ public class OfficeRevenueService {
                                         "Pagamento de origem não encontrado: " + paymentId));
     }
 
+    /** A projeção da grade. O detalhe tem a sua em {@link #toDTO}, e é de propósito. */
+    private static OfficeRevenueListItemDTO toListItem(OfficeRevenue entity) {
+        OfficeRevenueListItemDTO dto = new OfficeRevenueListItemDTO();
+        dto.setId(entity.getId());
+        dto.setDescription(entity.getDescription());
+        if (entity.getClient() != null) {
+            dto.setClientName(entity.getClient().getFullName());
+        }
+        dto.setDueDate(entity.getDueDate());
+        dto.setPaidDate(entity.getPaidDate());
+        dto.setAmount(entity.getAmount());
+        dto.setStatus(entity.getStatus() != null ? entity.getStatus().getLabel() : null);
+        dto.setOverdue(DueDateRules.isOverdue(entity.getStatus(), entity.getDueDate()));
+        return dto;
+    }
+
     private OfficeRevenueResponseDTO toDTO(OfficeRevenue entity) {
         OfficeRevenueResponseDTO dto = new OfficeRevenueResponseDTO();
         dto.setId(entity.getId());
@@ -212,7 +230,7 @@ public class OfficeRevenueService {
             dto.setSourcePaymentId(entity.getSourcePayment().getId());
         }
         dto.setNotes(entity.getNotes());
-        dto.setOverdue(RegrasDeVencimento.estaAtrasado(entity.getStatus(), entity.getDueDate()));
+        dto.setOverdue(DueDateRules.isOverdue(entity.getStatus(), entity.getDueDate()));
         dto.setCreatedBy(entity.getCreatedBy());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedBy(entity.getUpdatedBy());

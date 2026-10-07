@@ -14,21 +14,21 @@ import java.util.function.Function;
  * errado com o filtro e toma a decisão olhando o número de outra pergunta. Já aconteceu em {@code
  * /clients}.
  */
-public final class EnumsDeRequisicao {
+public final class RequestEnums {
 
-    private EnumsDeRequisicao() {}
+    private RequestEnums() {}
 
-    public static <E extends Enum<E>> List<E> lista(
+    public static <E extends Enum<E>> List<E> list(
             String campo, List<String> brutos, Function<String, E> deRotulo) {
         if (brutos == null || brutos.isEmpty()) return null;
         List<E> resultado = new ArrayList<>();
         for (String bruto : brutos) {
-            resultado.add(unico(campo, bruto, deRotulo));
+            resultado.add(single(campo, bruto, deRotulo));
         }
         return resultado;
     }
 
-    public static <E extends Enum<E>> E unico(
+    public static <E extends Enum<E>> E single(
             String campo, String bruto, Function<String, E> deRotulo) {
         if (bruto == null || bruto.isBlank()) return null;
         try {

@@ -1,7 +1,7 @@
 package com.lawfirm.law.firm.dto;
 
 import com.lawfirm.law.firm.model.Client;
-import com.lawfirm.law.firm.util.FusoDoEscritorio;
+import com.lawfirm.law.firm.util.OfficeClock;
 import java.time.Period;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.BeforeMapping;
@@ -151,7 +151,7 @@ public interface ClientMapper {
             // No fuso do escritório, igual a ClientServiceImpl.ageOf. Em UTC, entre 21h e
             // meia-noite o "hoje" já era amanhã - e quem fazia aniversário no dia seguinte
             // aparecia um ano mais velho desde a noite anterior.
-            dto.setAge(Period.between(entity.getBirthDate(), FusoDoEscritorio.hoje()).getYears());
+            dto.setAge(Period.between(entity.getBirthDate(), OfficeClock.today()).getYears());
         }
     }
 }

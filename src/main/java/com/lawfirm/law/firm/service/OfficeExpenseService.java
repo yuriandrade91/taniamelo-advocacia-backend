@@ -3,6 +3,7 @@ package com.lawfirm.law.firm.service;
 import com.lawfirm.law.firm.dto.CategoryAmountDTO;
 import com.lawfirm.law.firm.dto.FinanceSummaryDTO;
 import com.lawfirm.law.firm.dto.FinanceTimelinePointDTO;
+import com.lawfirm.law.firm.dto.OfficeExpenseListItemDTO;
 import com.lawfirm.law.firm.dto.OfficeExpenseRequestDTO;
 import com.lawfirm.law.firm.dto.OfficeExpenseResponseDTO;
 import com.lawfirm.law.firm.dto.OfficeExpenseSearchParams;
@@ -22,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,8 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class OfficeExpenseService {
 
     /**
-     * Nome JPQL da entidade, para {@link ConsultasFinanceiras}. Constante do código — nunca chega
-     * aqui vindo de uma requisição.
+     * Nome JPQL da entidade, para {@link FinanceQueries}. Constante do código — nunca chega aqui
+     * vindo de uma requisição.
      */
     private static final String ENTIDADE = "OfficeExpense";
 
@@ -43,12 +43,11 @@ public class OfficeExpenseService {
     private static final LocalDate SEM_FIM = LocalDate.of(2999, 12, 31);
 
     private final OfficeExpenseRepository repository;
-    private final ConsultasFinanceiras consultas;
+    private final FinanceQueries queries;
 
-    public OfficeExpenseService(
-            OfficeExpenseRepository repository, ConsultasFinanceiras consultas) {
+    public OfficeExpenseService(OfficeExpenseRepository repository, FinanceQueries queries) {
         this.repository = repository;
-        this.consultas = consultas;
+        this.queries = queries;
     }
 
     @Transactional
@@ -59,8 +58,9 @@ public class OfficeExpenseService {
         return toDTO(repository.save(entity));
     }
 
-    public Page<OfficeExpenseResponseDTO> list(OfficeExpenseSearchParams params) {
-        RecorteDeData.exigirUmRecorte(
+    @Transactional(readOnly = true)
+    public Page<OfficeExpenseListItemDTO> list(OfficeExpenseSearchParams params) {
+        PeriodBasis.requireSingleRange(
                 params.getDueFrom(), params.getDueTo(), params.getPaidFrom(), params.getPaidTo());
 
         Specification<OfficeExpense> spec =
@@ -70,27 +70,25 @@ public class OfficeExpenseService {
                         FinanceSpecifications.<OfficeExpense>paidBetween(
                                 params.getPaidFrom(), params.getPaidTo()),
                         FinanceSpecifications.<OfficeExpense>statusIn(
-                                EnumsDeRequisicao.lista(
+                                RequestEnums.list(
                                         "status", params.getStatus(), PaymentStatus::fromLabel)),
                         FinanceSpecifications.<OfficeExpense>methodIn(
-                                EnumsDeRequisicao.lista(
+                                RequestEnums.list(
                                         "paymentMethod",
                                         params.getPaymentMethod(),
                                         PaymentMethod::fromLabel)),
                         categoriaEm(params.getCategory()),
                         FinanceSpecifications.<OfficeExpense>textoEm(
-                                params.getSearchTerm(), "description", "supplier"));
+                                params.getSearchTerm(), "description", "supplier"),
+                        FinanceSpecifications.<OfficeExpense>orderByStatusThenDueDate());
 
-        // Vencimento primeiro: a pergunta do dia a dia é "o que preciso pagar", e ela se responde
-        // de cima para baixo.
-        var pageable =
-                PageRequests.of(
-                        params.getPageNumber(),
-                        params.getPageSize(),
-                        Sort.by(Sort.Direction.ASC, "dueDate").and(Sort.by("createdAt")));
-        return repository.findAll(spec, pageable).map(this::toDTO);
+        // A ordem (vencido, a vencer, cancelado, pago) vem da especificação, porque depende de um
+        // CASE sobre o status. Ordenação no Pageable substituiria a dela — por isso não há nenhuma.
+        var pageable = PageRequests.of(params.getPageNumber(), params.getPageSize());
+        return repository.findAll(spec, pageable).map(OfficeExpenseService::toListItem);
     }
 
+    @Transactional(readOnly = true)
     public OfficeExpenseResponseDTO get(UUID id) {
         return toDTO(buscarOuFalhar(id));
     }
@@ -117,14 +115,15 @@ public class OfficeExpenseService {
         repository.save(entity);
     }
 
+    @Transactional(readOnly = true)
     public FinanceSummaryDTO summary(OfficeExpenseSearchParams params) {
-        RecorteDeData.exigirUmRecorte(
+        PeriodBasis.requireSingleRange(
                 params.getDueFrom(), params.getDueTo(), params.getPaidFrom(), params.getPaidTo());
 
         Map<String, Object> valores = new HashMap<>();
         String where = recorte(params, valores);
 
-        FinanceSummaryDTO resumo = consultas.resumo(ENTIDADE, where, valores);
+        FinanceSummaryDTO resumo = queries.summary(ENTIDADE, where, valores);
 
         // A composição do gasto olha sempre o que FOI PAGO, no recorte de caixa. Com a consulta
         // por vencimento, o período do gráfico é o mesmo intervalo lido como data de pagamento —
@@ -140,14 +139,15 @@ public class OfficeExpenseService {
         return resumo;
     }
 
+    @Transactional(readOnly = true)
     public List<FinanceTimelinePointDTO> timeline(
             LocalDate de, LocalDate ate, boolean porPagamento) {
-        return consultas.serieMensal(ENTIDADE, null, Map.of(), de, ate, porPagamento);
+        return queries.monthlySeries(ENTIDADE, null, Map.of(), de, ate, porPagamento);
     }
 
     private static Specification<OfficeExpense> categoriaEm(List<String> brutos) {
         List<ExpenseCategory> categorias =
-                EnumsDeRequisicao.lista("category", brutos, ExpenseCategory::fromLabel);
+                RequestEnums.list("category", brutos, ExpenseCategory::fromLabel);
         return (root, query, cb) ->
                 categorias == null || categorias.isEmpty()
                         ? null
@@ -158,7 +158,7 @@ public class OfficeExpenseService {
     private static String recorte(OfficeExpenseSearchParams params, Map<String, Object> valores) {
         StringBuilder where = new StringBuilder("1 = 1");
         String campo =
-                RecorteDeData.ehCaixa(params.getPaidFrom(), params.getPaidTo())
+                PeriodBasis.isCashBasis(params.getPaidFrom(), params.getPaidTo())
                         ? "x.paidDate"
                         : "x.dueDate";
         LocalDate de = params.getPaidFrom() != null ? params.getPaidFrom() : params.getDueFrom();
@@ -184,19 +184,33 @@ public class OfficeExpenseService {
         entity.setDescription(dto.getDescription());
         entity.setAmount(dto.getAmount());
         entity.setCategory(
-                EnumsDeRequisicao.unico("category", dto.getCategory(), ExpenseCategory::fromLabel));
+                RequestEnums.single("category", dto.getCategory(), ExpenseCategory::fromLabel));
         entity.setSupplier(dto.getSupplier());
         entity.setDueDate(dto.getDueDate());
         entity.setNotes(dto.getNotes());
         entity.setPaymentMethod(
-                EnumsDeRequisicao.unico(
+                RequestEnums.single(
                         "paymentMethod", dto.getPaymentMethod(), PaymentMethod::fromLabel));
 
         PaymentStatus status =
-                EnumsDeRequisicao.unico("status", dto.getStatus(), PaymentStatus::fromLabel);
+                RequestEnums.single("status", dto.getStatus(), PaymentStatus::fromLabel);
         entity.setStatus(status != null ? status : PaymentStatus.PENDENTE);
-        entity.setPaidDate(
-                RegrasDeVencimento.dataDePagamento(entity.getStatus(), dto.getPaidDate()));
+        entity.setPaidDate(DueDateRules.resolvePaidDate(entity.getStatus(), dto.getPaidDate()));
+    }
+
+    /** A projeção da grade. O detalhe tem a sua em {@link #toDTO}, e é de propósito. */
+    private static OfficeExpenseListItemDTO toListItem(OfficeExpense entity) {
+        OfficeExpenseListItemDTO dto = new OfficeExpenseListItemDTO();
+        dto.setId(entity.getId());
+        dto.setDescription(entity.getDescription());
+        dto.setSupplier(entity.getSupplier());
+        dto.setCategory(entity.getCategory() != null ? entity.getCategory().getLabel() : null);
+        dto.setDueDate(entity.getDueDate());
+        dto.setPaidDate(entity.getPaidDate());
+        dto.setAmount(entity.getAmount());
+        dto.setStatus(entity.getStatus() != null ? entity.getStatus().getLabel() : null);
+        dto.setOverdue(DueDateRules.isOverdue(entity.getStatus(), entity.getDueDate()));
+        return dto;
     }
 
     private OfficeExpenseResponseDTO toDTO(OfficeExpense entity) {
@@ -212,7 +226,7 @@ public class OfficeExpenseService {
         dto.setPaymentMethod(
                 entity.getPaymentMethod() != null ? entity.getPaymentMethod().getLabel() : null);
         dto.setNotes(entity.getNotes());
-        dto.setOverdue(RegrasDeVencimento.estaAtrasado(entity.getStatus(), entity.getDueDate()));
+        dto.setOverdue(DueDateRules.isOverdue(entity.getStatus(), entity.getDueDate()));
         dto.setCreatedBy(entity.getCreatedBy());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedBy(entity.getUpdatedBy());

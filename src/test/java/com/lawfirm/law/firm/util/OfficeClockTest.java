@@ -12,22 +12,22 @@ import org.junit.jupiter.api.Test;
 /**
  * Este é o teste que CRAVA o fuso.
  *
- * <p>Os outros testes de data usam {@code FusoDoEscritorio.hoje()} em vez de {@code
- * LocalDate.now()}, para não dependerem do fuso da máquina que roda a suíte. Isso resolve a
- * fragilidade, mas sozinho seria circular: trocar o fuso por engano não quebraria nada, porque
- * código e teste passariam a concordar no fuso errado.
+ * <p>Os outros testes de data usam {@code OfficeClock.today()} em vez de {@code LocalDate.now()},
+ * para não dependerem do fuso da máquina que roda a suíte. Isso resolve a fragilidade, mas sozinho
+ * seria circular: trocar o fuso por engano não quebraria nada, porque código e teste passariam a
+ * concordar no fuso errado.
  *
  * <p>Aqui a expectativa é escrita à mão. Se alguém mudar {@code America/Sao_Paulo}, quebra neste
  * arquivo - que é onde a decisão está escrita.
  */
-@DisplayName("FusoDoEscritorio: o fuso em que este escritório vive")
-class FusoDoEscritorioTest {
+@DisplayName("OfficeClock: o fuso em que este escritório vive")
+class OfficeClockTest {
 
     @Test
     @DisplayName("é America/Sao_Paulo, e isso é uma decisão, não um acidente")
     void zonaEhSaoPaulo() {
-        assertEquals("America/Sao_Paulo", FusoDoEscritorio.ID);
-        assertEquals(ZoneId.of("America/Sao_Paulo"), FusoDoEscritorio.ZONA);
+        assertEquals("America/Sao_Paulo", OfficeClock.ID);
+        assertEquals(ZoneId.of("America/Sao_Paulo"), OfficeClock.ZONE);
     }
 
     @Test
@@ -37,12 +37,11 @@ class FusoDoEscritorioTest {
         // Paulo ainda é dia 19. Foi exatamente assim que o pipeline quebrou - ele roda em UTC, e
         // três testes montavam "hoje" com o relógio da JVM.
         ZonedDateTime instanteDoPipeline =
-                ZonedDateTime.parse("2026-09-20T01:30:51Z")
-                        .withZoneSameInstant(FusoDoEscritorio.ZONA);
+                ZonedDateTime.parse("2026-09-20T01:30:51Z").withZoneSameInstant(OfficeClock.ZONE);
         assertEquals(LocalDate.of(2026, 9, 19), instanteDoPipeline.toLocalDate());
 
-        assertNotNull(FusoDoEscritorio.hoje());
-        assertEquals(LocalDate.now(FusoDoEscritorio.ZONA), FusoDoEscritorio.hoje());
+        assertNotNull(OfficeClock.today());
+        assertEquals(LocalDate.now(OfficeClock.ZONE), OfficeClock.today());
     }
 
     @Test
@@ -54,12 +53,12 @@ class FusoDoEscritorioTest {
         // contribuição, que olha décadas para trás.
         assertEquals(
                 java.time.ZoneOffset.ofHours(-2),
-                FusoDoEscritorio.ZONA
+                OfficeClock.ZONE
                         .getRules()
                         .getOffset(ZonedDateTime.parse("2018-01-15T12:00:00Z").toInstant()));
         assertEquals(
                 java.time.ZoneOffset.ofHours(-3),
-                FusoDoEscritorio.ZONA
+                OfficeClock.ZONE
                         .getRules()
                         .getOffset(ZonedDateTime.parse("2026-01-15T12:00:00Z").toInstant()));
     }

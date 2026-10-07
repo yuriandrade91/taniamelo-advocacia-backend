@@ -8,6 +8,7 @@ import com.lawfirm.law.firm.dto.AppointmentRequestDTO;
 import com.lawfirm.law.firm.dto.AppointmentResponseDTO;
 import com.lawfirm.law.firm.dto.AppointmentSearchParams;
 import com.lawfirm.law.firm.dto.AppointmentSummaryDTO;
+import com.lawfirm.law.firm.dto.AppointmentTimelinePointDTO;
 import com.lawfirm.law.firm.dto.Pagination;
 import com.lawfirm.law.firm.security.RequerAdvogado;
 import com.lawfirm.law.firm.service.AppointmentService;
@@ -18,9 +19,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -84,7 +87,7 @@ public class AppointmentController {
                     Existe porque, sem ela, restaurar só era possível para quem tivesse anotado o \
                     UUID antes de excluir. Cada item traz `deletedAt`.
 
-                    **Restrito a ADMIN e LAWYER**: é o mesmo papel que exclui e restaura.""")
+                    **Restrito a ADMIN e SUPPORT**: é o mesmo papel que exclui e restaura.""")
     @RequerAdvogado
     @GetMapping("/deleted")
     public ResponseEntity<ApiResponse<AppointmentResponseDTO>> listDeleted(
@@ -104,6 +107,32 @@ public class AppointmentController {
     public ResponseEntity<ApiResponse<AppointmentSummaryDTO>> summary(
             @Parameter(description = "Ano de referência") @RequestParam int year) {
         return ResponseEntity.ok(ApiResponse.successList(service.summary(year)));
+    }
+
+    @Operation(
+            summary = "Série mensal para o gráfico do relatório",
+            description =
+                    """
+                    Total de compromissos e quebra por status (Agendado, Concluído, Cancelado) \
+                    por mês, na janela pedida.
+
+                    Meses sem compromisso vêm no array, zerados — um mês ausente faria o gráfico \
+                    colar dois meses distantes lado a lado. `totalCount` é a soma dos três status, \
+                    cancelados inclusive.
+
+                    Não confundir com `GET /summary`, que conta só os **pendentes** para as abas \
+                    da agenda: ali concluir um compromisso baixa o número, aqui não.""")
+    @GetMapping("/timeline")
+    public ResponseEntity<ApiResponse<AppointmentTimelinePointDTO>> timeline(
+            @Parameter(description = "Início (yyyy-MM-dd)")
+                    @RequestParam
+                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                    LocalDate from,
+            @Parameter(description = "Fim (yyyy-MM-dd)")
+                    @RequestParam
+                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                    LocalDate to) {
+        return ResponseEntity.ok(ApiResponse.successList(service.timeline(from, to)));
     }
 
     @Operation(

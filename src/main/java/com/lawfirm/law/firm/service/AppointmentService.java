@@ -1,12 +1,13 @@
 package com.lawfirm.law.firm.service;
 
 import com.lawfirm.law.firm.audit.AuditAction;
-import com.lawfirm.law.firm.audit.IntencaoDeAuditoria;
+import com.lawfirm.law.firm.audit.AuditIntent;
 import com.lawfirm.law.firm.dto.AppointmentHistoryDTO;
 import com.lawfirm.law.firm.dto.AppointmentRequestDTO;
 import com.lawfirm.law.firm.dto.AppointmentResponseDTO;
 import com.lawfirm.law.firm.dto.AppointmentSearchParams;
 import com.lawfirm.law.firm.dto.AppointmentSummaryDTO;
+import com.lawfirm.law.firm.dto.AppointmentTimelinePointDTO;
 import com.lawfirm.law.firm.exception.BusinessErrorCode;
 import com.lawfirm.law.firm.exception.BusinessException;
 import com.lawfirm.law.firm.exception.NotFoundException;
@@ -24,13 +25,17 @@ import com.lawfirm.law.firm.repository.AppointmentRepository;
 import com.lawfirm.law.firm.repository.AppointmentSpecification;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
-import com.lawfirm.law.firm.util.FusoDoEscritorio;
+import com.lawfirm.law.firm.util.OfficeClock;
 import com.lawfirm.law.firm.util.PageRequests;
 import com.lawfirm.law.firm.util.RequestDates;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -180,12 +185,80 @@ public class AppointmentService {
             if (a.getStatus() != AppointmentStatus.AGENDADO) {
                 continue;
             }
-            int month = a.getStartAt().atZone(FusoDoEscritorio.ZONA).getMonthValue();
+            int month = a.getStartAt().atZone(OfficeClock.ZONE).getMonthValue();
             byMonth.merge(month, 1L, Long::sum);
         }
         return byMonth.entrySet().stream()
                 .map(e -> new AppointmentSummaryDTO(year, e.getKey(), e.getValue()))
                 .toList();
+    }
+
+    /**
+     * Série mensal para o gráfico do relatório: total do mês e quebra por status.
+     *
+     * <p>Conta os três status, e por isso não reaproveita {@link #summary(int)} — aquele conta só
+     * os PENDENTES porque alimenta as abas da agenda, onde concluir um compromisso tem de
+     * <i>baixar</i> o número. Num relatório, concluir não apaga o que aconteceu.
+     *
+     * <p>A contagem acontece em Java, e não num {@code GROUP BY EXTRACT(MONTH ...)}: {@code
+     * startAt} é {@code Instant}, e o mês de um compromisso depende do fuso do escritório. O {@code
+     * EXTRACT} usaria o fuso da sessão do banco, então um compromisso das 22h de 31 de janeiro
+     * cairia em fevereiro para o gráfico e em janeiro para a agenda — as duas telas discordando
+     * sobre a mesma linha. O custo é proporcional à janela pedida, que num relatório de agenda é da
+     * ordem de meses.
+     */
+    @Transactional(readOnly = true)
+    public List<AppointmentTimelinePointDTO> timeline(LocalDate from, LocalDate to) {
+        if (to.isBefore(from)) {
+            throw new ValidationException(
+                    "to",
+                    ValidationErrorCode.INVALID_DATE_RANGE,
+                    "o fim da janela é anterior ao início: "
+                            + from
+                            + " a "
+                            + to
+                            + ". Uma janela invertida devolveria série vazia, que é"
+                            + " indistinguível de um período sem compromisso.");
+        }
+
+        Map<YearMonth, Map<AppointmentStatus, Long>> porMes = mesesVazios(from, to);
+        Instant inicio = from.atStartOfDay(OfficeClock.ZONE).toInstant();
+        Instant fim = to.plusDays(1).atStartOfDay(OfficeClock.ZONE).toInstant().minusNanos(1);
+
+        for (Appointment a : repository.findByDeletedAtIsNullAndStartAtBetween(inicio, fim)) {
+            Map<AppointmentStatus, Long> contagem =
+                    porMes.get(YearMonth.from(a.getStartAt().atZone(OfficeClock.ZONE)));
+            // O BETWEEN já recorta a janela; um mês sem lugar no mapa sumiria em silêncio.
+            if (contagem == null) continue;
+            contagem.merge(a.getStatus(), 1L, Long::sum);
+        }
+
+        return porMes.entrySet().stream()
+                .map(
+                        e ->
+                                AppointmentTimelinePointDTO.of(
+                                        e.getKey().toString(),
+                                        e.getValue().get(AppointmentStatus.AGENDADO),
+                                        e.getValue().get(AppointmentStatus.CONCLUIDO),
+                                        e.getValue().get(AppointmentStatus.CANCELADO)))
+                .toList();
+    }
+
+    /** Todos os meses do intervalo, zerados e em ordem — é o que põe o mês vazio no gráfico. */
+    private static Map<YearMonth, Map<AppointmentStatus, Long>> mesesVazios(
+            LocalDate from, LocalDate to) {
+        Map<YearMonth, Map<AppointmentStatus, Long>> meses = new LinkedHashMap<>();
+        YearMonth atual = YearMonth.from(from);
+        YearMonth ultimo = YearMonth.from(to);
+        while (!atual.isAfter(ultimo)) {
+            Map<AppointmentStatus, Long> zerado = new EnumMap<>(AppointmentStatus.class);
+            for (AppointmentStatus status : AppointmentStatus.values()) {
+                zerado.put(status, 0L);
+            }
+            meses.put(atual, zerado);
+            atual = atual.plusMonths(1);
+        }
+        return meses;
     }
 
     @Transactional(readOnly = true)
@@ -358,8 +431,7 @@ public class AppointmentService {
         // A agenda tem trilha própria (appointment_history) E entra no audit_log genérico.
         // A declaração é para o segundo: sem ela, a exclusão lógica vira UPDATE lá.
         Appointment saved =
-                IntencaoDeAuditoria.declarando(
-                        AuditAction.DELETE, () -> repository.saveAndFlush(entity));
+                AuditIntent.declaring(AuditAction.DELETE, () -> repository.saveAndFlush(entity));
 
         recordHistory(saved, AppointmentAction.DELETED, null);
     }
@@ -385,8 +457,7 @@ public class AppointmentService {
         entity.setDeletedAt(null);
         entity.setUpdatedBy(CurrentUser.id());
         Appointment saved =
-                IntencaoDeAuditoria.declarando(
-                        AuditAction.RESTORE, () -> repository.saveAndFlush(entity));
+                AuditIntent.declaring(AuditAction.RESTORE, () -> repository.saveAndFlush(entity));
 
         recordHistory(saved, AppointmentAction.RESTORED, null);
         return toDTO(saved);

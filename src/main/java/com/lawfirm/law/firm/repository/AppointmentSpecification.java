@@ -3,7 +3,7 @@ package com.lawfirm.law.firm.repository;
 import com.lawfirm.law.firm.model.Appointment;
 import com.lawfirm.law.firm.model.AppointmentStatus;
 import com.lawfirm.law.firm.model.AppointmentType;
-import com.lawfirm.law.firm.util.FusoDoEscritorio;
+import com.lawfirm.law.firm.util.OfficeClock;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Root;
@@ -106,7 +106,7 @@ public final class AppointmentSpecification {
                 cb.function(
                         "timezone",
                         Instant.class,
-                        cb.literal(FusoDoEscritorio.ID),
+                        cb.literal(OfficeClock.ID),
                         root.<Instant>get("startAt"));
         return cb.function("date_part", Double.class, cb.literal(campo), noFusoDoEscritorio);
     }

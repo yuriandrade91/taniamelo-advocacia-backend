@@ -4,6 +4,7 @@ import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.dto.ClientPaymentRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentUpdateRequestDTO;
+import com.lawfirm.law.firm.dto.PaymentListItemDTO;
 import com.lawfirm.law.firm.dto.PaymentSearchParams;
 import com.lawfirm.law.firm.security.RequerAdmin;
 import com.lawfirm.law.firm.service.ClientPaymentService;
@@ -24,7 +25,7 @@ import org.springframework.web.bind.annotation.*;
  * /api/v1/revenues}, e somar um como se fosse o outro já fez a Carteira mostrar saldo falso.
  *
  * <p>A anotação está na classe, e não método a método, porque a regra é do recurso: qualquer rota
- * nova aqui já nasce fechada. O corte é diferente do resto da API (onde STAFF opera e ADMIN/LAWYER
+ * nova aqui já nasce fechada. O corte é diferente do resto da API (onde STAFF opera e ADMIN/SUPPORT
  * destrói) porque aqui não se trata de risco de perder dado, e sim de quem tem que ver o
  * financeiro.
  */
@@ -64,7 +65,7 @@ public class ClientPaymentController {
 
                     Ordenadas por vencimento, paginadas no envelope padrão, com `overdue`                     calculado na leitura. O `clientId` sai da URL: mandá-lo também na query com                     outro valor responde 400 em vez de escolher um dos dois.""")
     @GetMapping
-    public ResponseEntity<ApiResponse<ClientPaymentResponseDTO>> list(
+    public ResponseEntity<ApiResponse<PaymentListItemDTO>> list(
             @PathVariable UUID clientId, @ParameterObject PaymentSearchParams params) {
         var page = service.list(clientId, params);
         return ResponseEntity.ok(

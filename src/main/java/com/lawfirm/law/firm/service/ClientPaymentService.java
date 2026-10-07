@@ -1,10 +1,11 @@
 package com.lawfirm.law.firm.service;
 
 import com.lawfirm.law.firm.audit.AuditAction;
-import com.lawfirm.law.firm.audit.IntencaoDeAuditoria;
+import com.lawfirm.law.firm.audit.AuditIntent;
 import com.lawfirm.law.firm.dto.ClientPaymentRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPaymentUpdateRequestDTO;
+import com.lawfirm.law.firm.dto.PaymentListItemDTO;
 import com.lawfirm.law.firm.dto.PaymentSearchParams;
 import com.lawfirm.law.firm.exception.NotFoundException;
 import com.lawfirm.law.firm.exception.ValidationErrorCode;
@@ -17,7 +18,7 @@ import com.lawfirm.law.firm.repository.ClientPaymentRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.repository.PaymentQueryRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
-import com.lawfirm.law.firm.util.FusoDoEscritorio;
+import com.lawfirm.law.firm.util.OfficeClock;
 import com.lawfirm.law.firm.util.PageRequests;
 import java.time.Instant;
 import java.util.UUID;
@@ -72,20 +73,21 @@ public class ClientPaymentService {
 
     /**
      * A aba financeira da ficha: as mesmas parcelas de {@code GET /payments}, recortadas neste
-     * cliente. Os filtros vêm do mesmo {@link FiltrosDePagamento} que a lista geral usa — a aba não
+     * cliente. Os filtros vêm do mesmo {@link PaymentSpecs} que a lista geral usa — a aba não
      * responde diferente da lista sobre a mesma parcela, e um filtro novo nasce nas duas.
      *
      * <p>O 404 de cliente inexistente continua vindo antes da consulta: sem ele, um id errado
      * devolveria página vazia com 200, que é indistinguível de "cliente sem parcelas".
      */
-    public Page<ClientPaymentResponseDTO> list(UUID clientId, PaymentSearchParams params) {
+    @Transactional(readOnly = true)
+    public Page<PaymentListItemDTO> list(UUID clientId, PaymentSearchParams params) {
         findClientOrThrow(clientId);
         params.setClientId(exigirMesmoCliente(clientId, params.getClientId()));
 
-        var pageable =
-                PageRequests.of(
-                        params.getPageNumber(), params.getPageSize(), FiltrosDePagamento.ORDEM);
-        return consultaRepository.findAll(FiltrosDePagamento.de(params), pageable).map(this::toDTO);
+        var pageable = PageRequests.of(params.getPageNumber(), params.getPageSize());
+        return consultaRepository
+                .findAll(PaymentSpecs.of(params), pageable)
+                .map(PaymentProjections::toListItem);
     }
 
     /**
@@ -104,6 +106,7 @@ public class ClientPaymentService {
         return daUrl;
     }
 
+    @Transactional(readOnly = true)
     public ClientPaymentResponseDTO get(UUID clientId, UUID paymentId) {
         return toDTO(findPaymentOrThrow(clientId, paymentId));
     }
@@ -142,7 +145,7 @@ public class ClientPaymentService {
                 // Marcar como pago sem informar a data assume "hoje" - o caso comum
                 // (usuário confirmando o pagamento no momento em que ele chegou).
                 entity.setPaidDate(
-                        dto.getPaidDate() != null ? dto.getPaidDate() : FusoDoEscritorio.hoje());
+                        dto.getPaidDate() != null ? dto.getPaidDate() : OfficeClock.today());
             } else {
                 // PENDENTE/CANCELADO com paidDate preenchida é um estado contraditório
                 // (não dá para estar "pago" e "pendente" ao mesmo tempo) - limpa, a
@@ -163,7 +166,7 @@ public class ClientPaymentService {
         entity.setDeletedAt(Instant.now());
         entity.setUpdatedBy(CurrentUser.id());
         // Exclusão lógica: sem declarar, a trilha registraria UPDATE.
-        IntencaoDeAuditoria.declarando(AuditAction.DELETE, () -> repository.saveAndFlush(entity));
+        AuditIntent.declaring(AuditAction.DELETE, () -> repository.saveAndFlush(entity));
     }
 
     // ── Private helpers ──
@@ -215,7 +218,7 @@ public class ClientPaymentService {
         dto.setPaymentMethod(
                 entity.getPaymentMethod() != null ? entity.getPaymentMethod().getLabel() : null);
         dto.setNotes(entity.getNotes());
-        dto.setOverdue(RegrasDeVencimento.estaAtrasado(entity.getStatus(), entity.getDueDate()));
+        dto.setOverdue(DueDateRules.isOverdue(entity.getStatus(), entity.getDueDate()));
         dto.setCreatedBy(entity.getCreatedBy());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedBy(entity.getUpdatedBy());

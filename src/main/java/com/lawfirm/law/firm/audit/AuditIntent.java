@@ -30,30 +30,30 @@ import java.util.function.Supplier;
  * {@code try/finally}, para uma exceção não deixar a intenção grudada na thread e contaminar a
  * próxima requisição que ela atender.
  */
-public final class IntencaoDeAuditoria {
+public final class AuditIntent {
 
-    private static final ThreadLocal<AuditAction> ATUAL = new ThreadLocal<>();
+    private static final ThreadLocal<AuditAction> CURRENT = new ThreadLocal<>();
 
-    private IntencaoDeAuditoria() {}
+    private AuditIntent() {}
 
     /** Executa a operação declarando a ação que ela representa na trilha. */
-    public static <T> T declarando(AuditAction acao, Supplier<T> operacao) {
-        AuditAction anterior = ATUAL.get();
-        ATUAL.set(acao);
+    public static <T> T declaring(AuditAction acao, Supplier<T> operacao) {
+        AuditAction anterior = CURRENT.get();
+        CURRENT.set(acao);
         try {
             return operacao.get();
         } finally {
             if (anterior == null) {
-                ATUAL.remove();
+                CURRENT.remove();
             } else {
-                ATUAL.set(anterior);
+                CURRENT.set(anterior);
             }
         }
     }
 
     /** Mesma coisa, para operação sem retorno. */
-    public static void declarando(AuditAction acao, Runnable operacao) {
-        declarando(
+    public static void declaring(AuditAction acao, Runnable operacao) {
+        declaring(
                 acao,
                 () -> {
                     operacao.run();
@@ -62,7 +62,7 @@ public final class IntencaoDeAuditoria {
     }
 
     /** A ação declarada, ou {@code null} quando ninguém declarou nada (o caso comum). */
-    static AuditAction atual() {
-        return ATUAL.get();
+    static AuditAction current() {
+        return CURRENT.get();
     }
 }

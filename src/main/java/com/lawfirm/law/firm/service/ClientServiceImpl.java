@@ -1,9 +1,9 @@
 package com.lawfirm.law.firm.service;
 
 import com.lawfirm.law.firm.audit.AuditAction;
+import com.lawfirm.law.firm.audit.AuditIntent;
 import com.lawfirm.law.firm.audit.AuditLog;
 import com.lawfirm.law.firm.audit.AuditLogRepository;
-import com.lawfirm.law.firm.audit.IntencaoDeAuditoria;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
 import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
@@ -29,7 +29,7 @@ import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSpecification;
 import com.lawfirm.law.firm.security.CurrentUser;
 import com.lawfirm.law.firm.util.DocumentoIdentidade;
-import com.lawfirm.law.firm.util.FusoDoEscritorio;
+import com.lawfirm.law.firm.util.OfficeClock;
 import com.lawfirm.law.firm.util.PageRequests;
 import com.lawfirm.law.firm.util.TempoDeContribuicao;
 import java.time.Instant;
@@ -216,8 +216,8 @@ public class ClientServiceImpl implements ClientService {
         existing.setDeletedAt(Instant.now());
         existing.setUpdatedBy(CurrentUser.id());
         // Sem declarar, a trilha registraria UPDATE - indistinguível de uma correção de
-        // telefone. Ver IntencaoDeAuditoria.
-        IntencaoDeAuditoria.declarando(AuditAction.DELETE, () -> repository.saveAndFlush(existing));
+        // telefone. Ver AuditIntent.
+        AuditIntent.declaring(AuditAction.DELETE, () -> repository.saveAndFlush(existing));
     }
 
     /**
@@ -242,8 +242,7 @@ public class ClientServiceImpl implements ClientService {
         validarIdentidadeUnica(existing, id);
         existing.setDeletedAt(null);
         existing.setUpdatedBy(CurrentUser.id());
-        IntencaoDeAuditoria.declarando(
-                AuditAction.RESTORE, () -> repository.saveAndFlush(existing));
+        AuditIntent.declaring(AuditAction.RESTORE, () -> repository.saveAndFlush(existing));
     }
 
     /**
@@ -561,9 +560,7 @@ public class ClientServiceImpl implements ClientService {
     }
 
     private static Integer ageOf(LocalDate birthDate) {
-        return birthDate == null
-                ? null
-                : Period.between(birthDate, FusoDoEscritorio.hoje()).getYears();
+        return birthDate == null ? null : Period.between(birthDate, OfficeClock.today()).getYears();
     }
 
     private ClientPersonalDataResponseDTO toPersonalDataDTO(Client entity) {

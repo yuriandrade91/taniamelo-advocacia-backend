@@ -139,6 +139,38 @@ class OpenApiConfigTest {
     }
 
     @Test
+    @DisplayName("pagamentos aos clientes vem logo depois da aba financeira do cliente")
+    void paymentsComeRightAfterClientFinance() {
+        OpenAPI api = new OpenAPI();
+        // Na ordem de descoberta do springdoc as duas caem longe uma da outra; é isso que o
+        // customizador corrige.
+        api.setTags(
+                List.of(
+                        new Tag().name("Financeiro — receitas"),
+                        new Tag().name("Financeiro — pagamentos aos clientes"),
+                        new Tag().name("Agenda"),
+                        new Tag().name("Financeiro — despesas"),
+                        new Tag().name("Cliente - Financeiro")));
+
+        config.orderedTags().customise(api);
+
+        List<String> names = api.getTags().stream().map(Tag::getName).toList();
+        assertEquals(
+                List.of(
+                        "Cliente - Financeiro",
+                        "Financeiro — pagamentos aos clientes",
+                        "Financeiro — despesas",
+                        "Financeiro — receitas",
+                        "Agenda"),
+                names);
+        // Adjacência, e não só "vem depois": é o que o pedido diz, e um nome novo inserido entre as
+        // duas passaria desapercebido numa asserção de índice.
+        assertEquals(
+                names.indexOf("Cliente - Financeiro") + 1,
+                names.indexOf("Financeiro — pagamentos aos clientes"));
+    }
+
+    @Test
     @DisplayName("orderedTags mantém tags não listadas ao final, na ordem em que apareceram")
     void unlistedTagsGoLast() {
         OpenAPI api = new OpenAPI();

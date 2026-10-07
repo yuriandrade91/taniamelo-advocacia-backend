@@ -2,6 +2,10 @@ package com.lawfirm.law.firm.repository;
 
 import com.lawfirm.law.firm.model.ClientPayment;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.Repository;
 
@@ -18,4 +22,21 @@ import org.springframework.data.repository.Repository;
  * caminho de escrita para parcelas, que pertencem ao cliente e são escritas pela rota dele.
  */
 public interface PaymentQueryRepository
-        extends Repository<ClientPayment, UUID>, JpaSpecificationExecutor<ClientPayment> {}
+        extends Repository<ClientPayment, UUID>, JpaSpecificationExecutor<ClientPayment> {
+
+    /**
+     * Traz o cliente junto da página.
+     *
+     * <p>A linha da lista mostra o nome do cliente, e {@code client} é {@code LAZY}: sem este
+     * grafo, uma página de 10 custava 12 consultas — a da página, a de contagem e <b>uma por
+     * linha</b> para buscar o nome. Com {@code pageSize=100}, que é o teto de {@code PageRequests},
+     * seriam 100 idas ao banco para montar uma tela. Medido, não suposto.
+     *
+     * <p>Funciona com paginação porque {@code client} é {@code ToOne}: o join não multiplica
+     * linhas, então o {@code LIMIT} continua valendo no banco. Com coleção seria o caso em que o
+     * Hibernate passa a paginar em memória, e aí o remédio seria pior.
+     */
+    @Override
+    @EntityGraph(attributePaths = "client")
+    Page<ClientPayment> findAll(Specification<ClientPayment> spec, Pageable pageable);
+}

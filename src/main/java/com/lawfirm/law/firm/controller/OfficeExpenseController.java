@@ -3,6 +3,7 @@ package com.lawfirm.law.firm.controller;
 import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.dto.FinanceSummaryDTO;
 import com.lawfirm.law.firm.dto.FinanceTimelinePointDTO;
+import com.lawfirm.law.firm.dto.OfficeExpenseListItemDTO;
 import com.lawfirm.law.firm.dto.OfficeExpenseRequestDTO;
 import com.lawfirm.law.firm.dto.OfficeExpenseResponseDTO;
 import com.lawfirm.law.firm.dto.OfficeExpenseSearchParams;
@@ -63,10 +64,14 @@ public class OfficeExpenseController {
             summary = "Listar despesas",
             description =
                     """
-                    Paginada, por vencimento. `dueFrom`/`dueTo` e `paidFrom`/`paidTo` são \
-                    mutuamente exclusivos — mandar os dois responde 400.""")
+                    Paginada. Ordena vencido, a vencer, cancelado e pago — nessa ordem, e \
+                    dentro de cada faixa por vencimento. `dueFrom`/`dueTo` e `paidFrom`/`paidTo` \
+                    são mutuamente exclusivos — mandar os dois responde 400.
+
+                    Traz a projeção da grade; o detalhe de um lançamento vem em \
+                    `GET /api/v1/expenses/{id}`.""")
     @GetMapping
-    public ResponseEntity<ApiResponse<OfficeExpenseResponseDTO>> list(
+    public ResponseEntity<ApiResponse<OfficeExpenseListItemDTO>> list(
             @ParameterObject OfficeExpenseSearchParams params) {
         var page = service.list(params);
         return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));

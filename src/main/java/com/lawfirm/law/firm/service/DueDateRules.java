@@ -1,7 +1,7 @@
 package com.lawfirm.law.firm.service;
 
 import com.lawfirm.law.firm.model.PaymentStatus;
-import com.lawfirm.law.firm.util.FusoDoEscritorio;
+import com.lawfirm.law.firm.util.OfficeClock;
 import java.time.LocalDate;
 
 /**
@@ -13,18 +13,18 @@ import java.time.LocalDate;
  * balde {@code overdue} do resumo, e os três a aplicam pelo mesmo motivo.
  *
  * <p>"Atrasado" nunca é persistido. É derivado na leitura, e o dia de referência vem sempre de
- * {@link FusoDoEscritorio}: com o servidor em UTC, entre 21h e 24h de Brasília o dia já virou lá e
- * não aqui, e uma parcela que vence amanhã apareceria como vencida.
+ * {@link OfficeClock}: com o servidor em UTC, entre 21h e 24h de Brasília o dia já virou lá e não
+ * aqui, e uma parcela que vence amanhã apareceria como vencida.
  */
-public final class RegrasDeVencimento {
+public final class DueDateRules {
 
-    private RegrasDeVencimento() {}
+    private DueDateRules() {}
 
     /** Mesma regra do balde {@code overdue} do resumo — se mudar aqui, muda lá. */
-    public static boolean estaAtrasado(PaymentStatus status, LocalDate vencimento) {
+    public static boolean isOverdue(PaymentStatus status, LocalDate vencimento) {
         return status == PaymentStatus.PENDENTE
                 && vencimento != null
-                && vencimento.isBefore(FusoDoEscritorio.hoje());
+                && vencimento.isBefore(OfficeClock.today());
     }
 
     /**
@@ -34,9 +34,9 @@ public final class RegrasDeVencimento {
      * momento em que o dinheiro entrou ou saiu. Um lançamento com data de pagamento e status
      * Pendente é um estado contraditório que nenhum relatório sabe classificar.
      */
-    public static LocalDate dataDePagamento(PaymentStatus status, LocalDate informada) {
+    public static LocalDate resolvePaidDate(PaymentStatus status, LocalDate informada) {
         if (status == PaymentStatus.PAGO) {
-            return informada != null ? informada : FusoDoEscritorio.hoje();
+            return informada != null ? informada : OfficeClock.today();
         }
         return informada;
     }

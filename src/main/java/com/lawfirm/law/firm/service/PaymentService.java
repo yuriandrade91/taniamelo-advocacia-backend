@@ -4,7 +4,6 @@ import com.lawfirm.law.firm.dto.FinanceSummaryDTO;
 import com.lawfirm.law.firm.dto.FinanceTimelinePointDTO;
 import com.lawfirm.law.firm.dto.PaymentListItemDTO;
 import com.lawfirm.law.firm.dto.PaymentSearchParams;
-import com.lawfirm.law.firm.model.ClientPayment;
 import com.lawfirm.law.firm.repository.PaymentQueryRepository;
 import com.lawfirm.law.firm.util.PageRequests;
 import java.time.LocalDate;
@@ -13,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * A visão do escritório sobre o que os clientes têm a receber do INSS.
@@ -40,30 +40,30 @@ public class PaymentService {
             "x.deletedAt IS NULL AND x.client.deletedAt IS NULL";
 
     private final PaymentQueryRepository repository;
-    private final ConsultasFinanceiras consultas;
+    private final FinanceQueries queries;
 
-    public PaymentService(PaymentQueryRepository repository, ConsultasFinanceiras consultas) {
+    public PaymentService(PaymentQueryRepository repository, FinanceQueries queries) {
         this.repository = repository;
-        this.consultas = consultas;
+        this.queries = queries;
     }
 
+    @Transactional(readOnly = true)
     public Page<PaymentListItemDTO> list(PaymentSearchParams params) {
-        var pageable =
-                PageRequests.of(
-                        params.getPageNumber(), params.getPageSize(), FiltrosDePagamento.ORDEM);
+        var pageable = PageRequests.of(params.getPageNumber(), params.getPageSize());
         return repository
-                .findAll(FiltrosDePagamento.de(params), pageable)
-                .map(PaymentService::toDTO);
+                .findAll(PaymentSpecs.of(params), pageable)
+                .map(PaymentProjections::toListItem);
     }
 
+    @Transactional(readOnly = true)
     public FinanceSummaryDTO summary(PaymentSearchParams params) {
-        RecorteDeData.exigirUmRecorte(
+        PeriodBasis.requireSingleRange(
                 params.getDueFrom(), params.getDueTo(), params.getPaidFrom(), params.getPaidTo());
 
         Map<String, Object> valores = new HashMap<>();
         StringBuilder where = new StringBuilder(SOMENTE_ATIVOS);
         String campo =
-                RecorteDeData.ehCaixa(params.getPaidFrom(), params.getPaidTo())
+                PeriodBasis.isCashBasis(params.getPaidFrom(), params.getPaidTo())
                         ? "x.paidDate"
                         : "x.dueDate";
         LocalDate de = params.getPaidFrom() != null ? params.getPaidFrom() : params.getDueFrom();
@@ -80,32 +80,12 @@ public class PaymentService {
             where.append(" AND x.client.id = :clienteId");
             valores.put("clienteId", params.getClientId());
         }
-        return consultas.resumo(ENTIDADE, where.toString(), valores);
+        return queries.summary(ENTIDADE, where.toString(), valores);
     }
 
+    @Transactional(readOnly = true)
     public List<FinanceTimelinePointDTO> timeline(
             LocalDate de, LocalDate ate, boolean porPagamento) {
-        return consultas.serieMensal(ENTIDADE, SOMENTE_ATIVOS, Map.of(), de, ate, porPagamento);
-    }
-
-    private static PaymentListItemDTO toDTO(ClientPayment entity) {
-        PaymentListItemDTO dto = new PaymentListItemDTO();
-        dto.setId(entity.getId());
-        if (entity.getClient() != null) {
-            dto.setClientId(entity.getClient().getId());
-            dto.setClientName(entity.getClient().getFullName());
-        }
-        dto.setDescription(entity.getDescription());
-        dto.setAmount(entity.getAmount());
-        dto.setInstallmentNumber(entity.getInstallmentNumber());
-        dto.setInstallmentTotal(entity.getInstallmentTotal());
-        dto.setDueDate(entity.getDueDate());
-        dto.setPaidDate(entity.getPaidDate());
-        dto.setStatus(entity.getStatus() != null ? entity.getStatus().getLabel() : null);
-        dto.setPaymentMethod(
-                entity.getPaymentMethod() != null ? entity.getPaymentMethod().getLabel() : null);
-        dto.setNotes(entity.getNotes());
-        dto.setOverdue(RegrasDeVencimento.estaAtrasado(entity.getStatus(), entity.getDueDate()));
-        return dto;
+        return queries.monthlySeries(ENTIDADE, SOMENTE_ATIVOS, Map.of(), de, ate, porPagamento);
     }
 }
