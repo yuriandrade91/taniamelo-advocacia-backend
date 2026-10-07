@@ -201,6 +201,20 @@ class SpecificationsTest {
         }
 
         @Test
+        @DisplayName("notBillable nulo é ignorado; true e false viram igualdade")
+        void notBillableIsOnlyFiltersWhenInformed() {
+            assertNull(apply(ClientSpecification.notBillableIs(null), root));
+
+            assertSame(predicate, apply(ClientSpecification.notBillableIs(true), root));
+            assertSame(predicate, apply(ClientSpecification.notBillableIs(false), root));
+
+            // false precisa montar o predicado igual a true: "só os arrecadáveis" é
+            // um filtro, não a ausência de filtro.
+            verify(cb).equal(any(), eq(Boolean.TRUE));
+            verify(cb).equal(any(), eq(Boolean.FALSE));
+        }
+
+        @Test
         @DisplayName("intervalo de criação cobre os quatro casos (nenhum, só de, só até, ambos)")
         void createdBetweenCoversEveryCombination() {
             Instant from = Instant.parse("2026-01-01T00:00:00Z");

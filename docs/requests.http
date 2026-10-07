@@ -30,8 +30,12 @@ Content-Type: application/json
 
 ### ── 2. CLIENTE - CLIENTES ─────────────────────────────────
 
-### Listar (filtros padrão: pageNumber/pageSize/searchTerm/benefitType/situation/createdFrom/createdTo)
+### Listar (filtros padrão: pageNumber/pageSize/searchTerm/benefitType/situation/clientType/notBillable/createdFrom/createdTo)
 GET {{host}}/api/v1/clients?pageNumber=1&pageSize=10&searchTerm=maria&situation=Análise documental&createdFrom=2026-01-01
+Authorization: Bearer {{token}}
+
+### Listar só os clientes sem arrecadação (notBillable=false traz só os arrecadáveis; omitir não filtra)
+GET {{host}}/api/v1/clients?notBillable=true
 Authorization: Bearer {{token}}
 
 ### Criar

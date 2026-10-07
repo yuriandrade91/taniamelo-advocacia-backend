@@ -87,6 +87,7 @@ public class ClientServiceImpl implements ClientService {
             List<BenefitType> benefitTypes,
             List<Situation> situations,
             List<ClientType> clientTypes,
+            Boolean notBillable,
             Instant createdFrom,
             Instant createdTo) {
         Specification<Client> spec =
@@ -96,6 +97,7 @@ public class ClientServiceImpl implements ClientService {
                                 ClientSpecification.benefitIn(benefitTypes),
                                 ClientSpecification.situationIn(situations),
                                 ClientSpecification.clientTypeIn(clientTypes),
+                                ClientSpecification.notBillableIs(notBillable),
                                 ClientSpecification.createdBetween(createdFrom, createdTo)));
 
         // updatedAt é sempre populado (prePersist/preUpdate), então ordenar por ele

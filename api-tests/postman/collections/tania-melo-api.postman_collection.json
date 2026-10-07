@@ -1728,6 +1728,140 @@
           ]
         },
         {
+          "name": "Filtrar por notBillable (true)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients?notBillable=true&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "notBillable",
+                  "value": "true"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Recorte dos clientes marcados como sem arrecadação."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"só os sem arrecadação\", () => pm.response.json().data.forEach(c => pm.expect(c.notBillable).to.eql(true)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar por notBillable (false)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients?notBillable=false&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "notBillable",
+                  "value": "false"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "false é filtro, não ausência de filtro: traz só os arrecadáveis. Omitir o parâmetro é que não filtra."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "pm.test(\"só os arrecadáveis\", () => pm.response.json().data.forEach(c => pm.expect(c.notBillable).to.eql(false)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "notBillable inválido devolve 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients?notBillable=talvez",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "notBillable",
+                  "value": "talvez"
+                }
+              ]
+            },
+            "description": "Só true ou false. Ignorar um valor fora disso devolveria a base inteira para quem pediu um recorte."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo notBillable\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"notBillable\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Data malformada devolve 400",
           "request": {
             "method": "GET",

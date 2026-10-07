@@ -15,6 +15,7 @@ import java.util.UUID;
     "benefit",
     "situation",
     "clientType",
+    "notBillable",
     "beneficiaryNumber",
     "createdAt",
     "updatedAt"
@@ -27,6 +28,12 @@ public class ClientListResponseDTO {
     private BenefitType benefit;
     private Situation situation;
     private ClientType clientType;
+
+    /**
+     * Marca de "sem arrecadação", o mesmo campo filtrável por {@code ?notBillable=} na listagem.
+     */
+    private Boolean notBillable;
+
     private Instant createdAt;
     private String beneficiaryNumber;
     private Instant updatedAt;
@@ -91,6 +98,14 @@ public class ClientListResponseDTO {
 
     public void setClientType(ClientType clientType) {
         this.clientType = clientType;
+    }
+
+    public Boolean getNotBillable() {
+        return notBillable;
+    }
+
+    public void setNotBillable(Boolean notBillable) {
+        this.notBillable = notBillable;
     }
 
     public Instant getCreatedAt() {

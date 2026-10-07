@@ -74,8 +74,14 @@ public class ClientController {
             description =
                     """
                     Lista paginada no envelope padrão, ordenada pela atividade mais recente (updatedAt desc). \
-                    Filtros opcionais: texto livre (nome/CPF, sem acento), tipos de benefício, situações e \
-                    intervalo de criação (datas ISO-8601: yyyy-MM-dd ou timestamp completo).
+                    Filtros opcionais: texto livre (nome/CPF, sem acento), tipos de benefício, situações, \
+                    marca de arrecadação e intervalo de criação (datas ISO-8601: yyyy-MM-dd ou \
+                    timestamp completo).
+
+                    `notBillable` aceita `true` (só os clientes sem arrecadação) ou `false` (só os \
+                    arrecadáveis). Omitir o parâmetro - ou enviá-lo vazio - não filtra, e isso não é \
+                    o mesmo que `false`. Valor que não seja booleano retorna 400 \
+                    (`INVALID_PARAMETER`).
 
                     `benefitType` e `situation` aceitam um ou mais valores (repita o parâmetro na query \
                     string), cada um pelo nome do enum ou pelo label (case/acento-insensitive). Valor \
@@ -127,6 +133,13 @@ public class ClientController {
                                             + " para múltiplos valores.")
                     @RequestParam(required = false)
                     List<String> clientType,
+            @Parameter(
+                            description =
+                                    "Filtra pela marca de arrecadação: `true` traz só os clientes"
+                                            + " sem arrecadação, `false` só os arrecadáveis."
+                                            + " Omitido, não filtra.")
+                    @RequestParam(required = false)
+                    Boolean notBillable,
             @Parameter(description = "Criado a partir de (ISO-8601: yyyy-MM-dd ou timestamp)")
                     @RequestParam(required = false)
                     String createdFrom,
@@ -142,6 +155,7 @@ public class ClientController {
                         parseEnumList("benefitType", benefitType, BenefitType::fromLabel),
                         parseEnumList("situation", situation, Situation::fromLabel),
                         parseEnumList("clientType", clientType, ClientType::fromLabel),
+                        notBillable,
                         RequestDates.parseInstant("createdFrom", createdFrom, true),
                         RequestDates.parseInstant("createdTo", createdTo, false));
 

@@ -195,6 +195,7 @@ class ClientControllerUnitTest {
                             any(),
                             any(),
                             any(),
+                            any(),
                             any()))
                     .thenReturn(
                             new PageImpl<>(
@@ -227,7 +228,7 @@ class ClientControllerUnitTest {
             verify(clientService)
                     .listSummary(
                             eq(1), eq(10), isNull(), isNull(), isNull(), isNull(), isNull(),
-                            isNull());
+                            isNull(), isNull());
         }
 
         @Test
@@ -243,6 +244,7 @@ class ClientControllerUnitTest {
                                     .param("situation", "Análise documental")
                                     .param("clientType", "Verificado")
                                     .param("clientType", "POTENCIAL")
+                                    .param("notBillable", "true")
                                     .param("createdFrom", "2026-01-01")
                                     .param("createdTo", "2026-12-31"))
                     .andExpect(status().isOk());
@@ -261,6 +263,7 @@ class ClientControllerUnitTest {
                             benefits.capture(),
                             situations.capture(),
                             clientTypes.capture(),
+                            eq(true),
                             from.capture(),
                             to.capture());
 
@@ -305,6 +308,38 @@ class ClientControllerUnitTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.errors[0].field").value("createdFrom"))
                     .andExpect(jsonPath("$.errors[0].code").value("INVALID_DATE"));
+        }
+
+        @Test
+        @DisplayName("notBillable=false chega ao service como false, não como ausente")
+        void notBillableFalseIsForwarded() throws Exception {
+            mockMvc.perform(get("/api/v1/clients").param("notBillable", "false"))
+                    .andExpect(status().isOk());
+
+            verify(clientService)
+                    .listSummary(
+                            eq(1), eq(10), isNull(), isNull(), isNull(), isNull(), eq(false),
+                            isNull(), isNull());
+        }
+
+        @Test
+        @DisplayName("notBillable ausente não filtra (chega nulo)")
+        void notBillableAbsentIsNull() throws Exception {
+            mockMvc.perform(get("/api/v1/clients")).andExpect(status().isOk());
+
+            verify(clientService)
+                    .listSummary(
+                            eq(1), eq(10), isNull(), isNull(), isNull(), isNull(), isNull(),
+                            isNull(), isNull());
+        }
+
+        @Test
+        @DisplayName("notBillable fora de true/false vira 400 INVALID_PARAMETER")
+        void invalidNotBillableReturns400() throws Exception {
+            mockMvc.perform(get("/api/v1/clients").param("notBillable", "talvez"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors[0].field").value("notBillable"))
+                    .andExpect(jsonPath("$.errors[0].code").value("INVALID_PARAMETER"));
         }
 
         @Test

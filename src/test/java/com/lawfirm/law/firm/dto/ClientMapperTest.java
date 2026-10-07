@@ -250,11 +250,17 @@ class ClientMapperTest {
     @Test
     @DisplayName("toListDTO traz os campos do grid")
     void toListDtoMapsGridFields() {
-        ClientListResponseDTO dto = mapper.toListDTO(TestFixtures.client());
+        Client entity = TestFixtures.client();
+        entity.setNotBillable(true);
+
+        ClientListResponseDTO dto = mapper.toListDTO(entity);
 
         assertEquals(TestFixtures.CLIENT_ID, dto.getClientId());
         assertEquals("Maria da Silva", dto.getFullName());
         assertEquals("529.982.247-25", dto.getCpf());
+        // Sem isto no grid, quem filtra por ?notBillable= não consegue ver a marca
+        // na linha nem conferir o recorte que pediu.
+        assertEquals(true, dto.getNotBillable());
     }
 
     @Nested

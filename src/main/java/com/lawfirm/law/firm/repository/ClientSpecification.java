@@ -106,6 +106,20 @@ public final class ClientSpecification {
         };
     }
 
+    /**
+     * Filtra pela marca de arrecadação: {@code true} traz só os clientes sem arrecadação, {@code
+     * false} só os arrecadáveis.
+     *
+     * <p>{@code null} (parâmetro ausente) devolve {@code null} e o {@link #combine} descarta - não
+     * é o mesmo que {@code false}. A coluna é {@code NOT NULL DEFAULT false}, então a igualdade
+     * simples basta: não há registro com {@code not_billable} nulo para escapar dos dois lados do
+     * filtro.
+     */
+    public static Specification<Client> notBillableIs(Boolean notBillable) {
+        return (root, query, cb) ->
+                notBillable == null ? null : cb.equal(root.get("notBillable"), notBillable);
+    }
+
     public static Specification<Client> createdBetween(Instant from, Instant to) {
         return (root, query, cb) -> {
             if (from == null && to == null) return null;

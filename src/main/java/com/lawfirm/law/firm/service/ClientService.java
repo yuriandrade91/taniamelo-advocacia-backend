@@ -31,6 +31,7 @@ public interface ClientService {
             List<BenefitType> benefitTypes,
             List<Situation> situations,
             List<ClientType> clientTypes,
+            Boolean notBillable,
             Instant createdFrom,
             Instant createdTo);
 

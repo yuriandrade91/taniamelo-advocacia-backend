@@ -335,7 +335,7 @@ class ClientServiceImplTest {
         @DisplayName("página 1-based vira índice 0-based e ordena por atividade recente")
         void translatesOneBasedPageAndSortsByUpdatedAt() {
             Page<ClientListResponseDTO> page =
-                    service.listSummary(1, 25, null, null, null, null, null, null);
+                    service.listSummary(1, 25, null, null, null, null, null, null, null);
 
             assertEquals(1, page.getContent().size());
             Pageable pageable = capturePageable();
@@ -350,14 +350,14 @@ class ClientServiceImplTest {
         @Test
         @DisplayName("página 0 ou negativa é normalizada para a primeira")
         void nonPositivePageFallsBackToFirst() {
-            service.listSummary(0, 10, null, null, null, null, null, null);
+            service.listSummary(0, 10, null, null, null, null, null, null, null);
             assertEquals(0, capturePageable().getPageNumber());
         }
 
         @Test
         @DisplayName("tamanho de página inválido cai no default de 10")
         void invalidPageSizeFallsBackToTen() {
-            service.listSummary(1, 0, null, null, null, null, null, null);
+            service.listSummary(1, 0, null, null, null, null, null, null, null);
             assertEquals(10, capturePageable().getPageSize());
         }
 
@@ -372,6 +372,7 @@ class ClientServiceImplTest {
                             List.of(BenefitType.APOSENTADORIA_RURAL),
                             List.of(Situation.ANALISE_DOCUMENTAL),
                             List.of(ClientType.POTENCIAL),
+                            true,
                             Instant.parse("2026-01-01T00:00:00Z"),
                             Instant.parse("2026-12-31T00:00:00Z"));
 
