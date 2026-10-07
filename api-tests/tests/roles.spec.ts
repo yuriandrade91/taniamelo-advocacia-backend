@@ -4,7 +4,7 @@ import { dadosDe, errosDe } from "../src/envelope.js";
 import { env } from "../src/env.js";
 
 /**
- * Autorização por papel: STAFF opera, só ADMIN/LAWYER destrói.
+ * Autorização por papel: STAFF opera, só ADMIN/SUPPORT destrói.
  *
  * Antes, autenticado era autorizado — qualquer token válido excluía cliente,
  * excluía compromisso e listava quem trabalha no escritório. Estes testes
@@ -84,7 +84,7 @@ test.describe("STAFF não destrói", () => {
 });
 
 test.describe("STAFF não vê o financeiro - aqui o corte é dinheiro, não destruição", () => {
-  // Diferente de todo o resto: em excluir e restaurar, LAWYER passa. Honorários são
+  // Diferente de todo o resto: em excluir e restaurar, SUPPORT passa. Honorários são
   // do escritório, não do caso, e o recurso inteiro é ADMIN (@RequerAdmin na classe).
   // Vale para LER também - por isso o GET está na lista.
   const proibidasNoFinanceiro: Array<[string, string, string, unknown]> = [

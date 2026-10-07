@@ -87,7 +87,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /** Despacha pelo tipo de token: plataforma (suporte), sessão de suporte, ou usuário do tenant. */
+    /**
+     * Despacha pelo tipo de token: plataforma (suporte), sessão de suporte, ou usuário do tenant.
+     */
     private void autenticar(String token, HttpServletRequest request) {
         String scope = jwtService.extractScope(token);
         if ("platform".equals(scope)) {

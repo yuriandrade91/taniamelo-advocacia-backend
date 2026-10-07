@@ -46,7 +46,7 @@ test.describe("POST /auth/login", () => {
     expect(dados.expiresInSeconds).toBeGreaterThan(0);
     // O tenant volta na resposta para o frontend não precisar guardar o que enviou.
     expect(dados.tenantSlug || dados.tenantId).toBeTruthy();
-    expect(["ADMIN", "LAWYER", "STAFF"]).toContain(dados.role);
+    expect(["ADMIN", "SUPPORT", "STAFF"]).toContain(dados.role);
 
     // JWT tem três partes. Sem esta asserção, uma string qualquer passaria.
     expect(dados.token.split(".")).toHaveLength(3);

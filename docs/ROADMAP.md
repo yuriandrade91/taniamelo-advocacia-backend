@@ -44,9 +44,9 @@ coleção 1:N").
 - Trocar `APP_JWT_SECRET`, `APP_ENCRYPTION_KEY`, `APP_ADMIN_PASSWORD` para
   valores fortes e únicos por ambiente (os do `.env` são só para dev local).
 - Autorização por papel (`@PreAuthorize`) — hoje qualquer usuário autenticado
-  acessa tudo; falta diferenciar ADMIN/LAWYER/STAFF nas rotas sensíveis
+  acessa tudo; falta diferenciar ADMIN/SUPPORT/STAFF nas rotas sensíveis
   (especialmente `/personal-data` [senha do INSS] e `/payments` [dados
-  financeiros] - avaliar se STAFF deveria ver os dois ou só ADMIN/LAWYER).
+  financeiros] - avaliar se STAFF deveria ver os dois ou só ADMIN/SUPPORT).
 - Testes automatizados: unitários de service (regras de situação/benefício,
   parsing de tempo de contribuição), integração com Testcontainers, teste de
   contrato da API de auth.

@@ -58,7 +58,7 @@ class UserControllerTest {
         when(userRepository.findAll(any(Sort.class)))
                 .thenReturn(
                         List.of(
-                                user("Ana Prado", "ana", Role.LAWYER, true),
+                                user("Ana Prado", "ana", Role.SUPPORT, true),
                                 user("Tânia Melo", "tania", Role.ADMIN, true)));
 
         mockMvc.perform(get("/api/v1/users"))
@@ -66,7 +66,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].fullName").value("Ana Prado"))
-                .andExpect(jsonPath("$.data[0].role").value("LAWYER"));
+                .andExpect(jsonPath("$.data[0].role").value("SUPPORT"));
     }
 
     @Test
@@ -87,7 +87,7 @@ class UserControllerTest {
         when(userRepository.findAll(any(Sort.class)))
                 .thenReturn(
                         List.of(
-                                user("Ana Prado", "ana", Role.LAWYER, true),
+                                user("Ana Prado", "ana", Role.SUPPORT, true),
                                 user("Ex Estagiário", "ex", Role.STAFF, false)));
 
         mockMvc.perform(get("/api/v1/users"))
@@ -102,7 +102,7 @@ class UserControllerTest {
         when(userRepository.findAll(any(Sort.class)))
                 .thenReturn(
                         List.of(
-                                user("Ana Prado", "ana", Role.LAWYER, true),
+                                user("Ana Prado", "ana", Role.SUPPORT, true),
                                 user("Ex Estagiário", "ex", Role.STAFF, false)));
 
         mockMvc.perform(get("/api/v1/users").param("includeInactive", "true"))

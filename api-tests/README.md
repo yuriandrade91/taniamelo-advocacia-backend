@@ -84,7 +84,7 @@ tests/appointments.conflicts.spec.ts  conflito de horário (avisa, não bloqueia
 tests/appointments.lifecycle.spec.ts  cancelar, concluir, guarda de edição, excluir, restaurar
 tests/appointments.filters.spec.ts    filtros da agenda e resumo por mês
 tests/clients.inss.spec.ts        a senha do INSS: saiu do GET, sai por rota própria, e a edição não a apaga
-tests/roles.spec.ts               autorização por papel: STAFF opera, só ADMIN/LAWYER destrói
+tests/roles.spec.ts               autorização por papel: STAFF opera, só ADMIN/SUPPORT destrói
 tests/users.spec.ts               consulta de usuários e o que ela não pode vazar
 ```
 

@@ -19,7 +19,7 @@ test("lista ordenada por nome, no envelope padrão", async ({ api }) => {
   );
   for (const u of usuarios) {
     expect(u.id).toBeTruthy();
-    expect(["ADMIN", "LAWYER", "STAFF"]).toContain(u.role);
+    expect(["ADMIN", "SUPPORT", "STAFF"]).toContain(u.role);
   }
 });
 

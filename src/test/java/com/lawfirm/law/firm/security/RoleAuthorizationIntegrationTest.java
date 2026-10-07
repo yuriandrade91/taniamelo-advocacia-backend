@@ -27,7 +27,7 @@ import org.springframework.web.context.WebApplicationContext;
  * ela tem efeito. São coisas diferentes: sem {@code @EnableMethodSecurity}, a anotação compila,
  * fica bonita no código e não recusa nada - o pior estado possível, porque parece protegido.
  */
-@DisplayName("Autorização por papel: STAFF opera, ADMIN/LAWYER destrói, só ADMIN vê dinheiro")
+@DisplayName("Autorização por papel: STAFF opera, ADMIN/SUPPORT destrói, só ADMIN vê dinheiro")
 class RoleAuthorizationIntegrationTest extends PostgresIntegrationTest {
 
     private static final UUID ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
@@ -106,10 +106,10 @@ class RoleAuthorizationIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "LAWYER")
-    @DisplayName("LAWYER também não vê o financeiro - aqui o corte é dinheiro, não destruição")
-    void lawyerCannotSeePayments() throws Exception {
-        // Diferente de todo o resto: em excluir e restaurar, LAWYER passa. Honorários são do
+    @WithMockUser(roles = "SUPPORT")
+    @DisplayName("SUPPORT também não vê o financeiro - aqui o corte é dinheiro, não destruição")
+    void supportCannotSeePayments() throws Exception {
+        // Diferente de todo o resto: em excluir e restaurar, SUPPORT passa. Honorários são do
         // escritório, não do caso.
         mockMvc.perform(get("/api/v1/clients/{id}/payments", ID)).andExpect(status().isForbidden());
     }
@@ -141,9 +141,9 @@ class RoleAuthorizationIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "LAWYER")
-    @DisplayName("LAWYER passa pela autorização (404 do id inexistente, não 403)")
-    void lawyerPassesAuthorization() throws Exception {
+    @WithMockUser(roles = "SUPPORT")
+    @DisplayName("SUPPORT passa pela autorização (404 do id inexistente, não 403)")
+    void supportPassesAuthorization() throws Exception {
         // 404 aqui é sucesso do teste: significa que a requisição chegou ao service e só
         // não achou o registro. 403 significaria que parou antes.
         mockMvc.perform(delete("/api/v1/clients/{id}", ID)).andExpect(status().isNotFound());

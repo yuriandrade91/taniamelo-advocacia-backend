@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Garante um agente de SUPORTE inicial em {@code public.support_users}, para que a equipe da
- * plataforma consiga entrar sem depender de nenhum tenant. Credenciais vêm de
- * APP_SUPPORT_EMAIL / APP_SUPPORT_PASSWORD; em dev caem num default óbvio que deve ser trocado.
+ * plataforma consiga entrar sem depender de nenhum tenant. Credenciais vêm de APP_SUPPORT_EMAIL /
+ * APP_SUPPORT_PASSWORD; em dev caem num default óbvio que deve ser trocado.
  *
  * <p>Só cria quando a tabela está vazia (control-plane, não por-tenant). Não precisa de {@code
  * TenantContext}: a entidade é qualificada com o schema {@code public}.

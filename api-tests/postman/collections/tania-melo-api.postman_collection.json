@@ -278,7 +278,7 @@
                   "pm.test(\"token é um JWT de três partes\", () => pm.expect(d.token.split(\".\")).to.have.lengthOf(3));",
                   "pm.test(\"tokenType Bearer\", () => pm.expect(d.tokenType).to.eql(\"Bearer\"));",
                   "pm.test(\"expiração positiva\", () => pm.expect(d.expiresInSeconds).to.be.above(0));",
-                  "pm.test(\"papel conhecido\", () => pm.expect([\"ADMIN\",\"LAWYER\",\"STAFF\"]).to.include(d.role));"
+                  "pm.test(\"papel conhecido\", () => pm.expect([\"ADMIN\",\"SUPPORT\",\"STAFF\"]).to.include(d.role));"
                 ]
               }
             }
@@ -1261,7 +1261,7 @@
                   "  pm.expect(b.success, \"success\").to.be.true;",
                   "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
                   "});",
-                  "// Restrita a ADMIN/LAWYER e auditada: cada leitura grava quem consultou e quando.",
+                  "// Restrita a ADMIN/SUPPORT e auditada: cada leitura grava quem consultou e quando.",
                   "pm.test(\"devolve a senha cadastrada\", () => {",
                   "  pm.expect(pm.response.json().data.inssPassword).to.be.a(\"string\").and.not.empty;",
                   "});"

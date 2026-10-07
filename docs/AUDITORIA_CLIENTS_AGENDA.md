@@ -28,7 +28,7 @@ decisão sua**, depois o que é **implementação faltando**, depois as
 | 9 | Campo grande demais vira 409 sem dizer o campo | **Médio** | Minha — é defeito |
 | 10 | Idade negativa aceita | **Baixo-médio** | Minha — é defeito |
 | 11 | Dois nomes para o mesmo benefício no enum | **Médio** | Sua — qual vale |
-| 12 | Papéis: ninguém consegue criar um LAWYER ou STAFF | **Médio** | Sua — como entram os usuários |
+| 12 | Papéis: ninguém consegue criar um SUPPORT ou STAFF | **Médio** | Sua — como entram os usuários |
 
 ---
 
@@ -102,7 +102,7 @@ A assimetria é esta: o atendente **não pode excluir** uma parcela — que é
 exclusão lógica, reversível — mas **pode declará-la paga**, que é a mudança com
 significado financeiro e que ninguém desfaz sem perceber.
 
-Quando fizemos o corte "STAFF opera, só ADMIN/LAWYER destrói", pensamos em
+Quando fizemos o corte "STAFF opera, só ADMIN/SUPPORT destrói", pensamos em
 exclusão. Dinheiro não entrou na conversa.
 
 **A decisão:** lançar e quitar parcela é operação de atendente ou de advogado?

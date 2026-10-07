@@ -127,7 +127,7 @@ CREATE INDEX idx_clients_office ON clients (office_id);
 - Seed/rotina para criar o primeiro ADMIN de cada office.
 
 **Fase 3 — Autorização por papel dentro do tenant** (já previsto no Roadmap Fase A):
-`@PreAuthorize` diferenciando ADMIN/LAWYER/STAFF, agora com escopo de office.
+`@PreAuthorize` diferenciando ADMIN/SUPPORT/STAFF, agora com escopo de office.
 
 ## 7. Alternativas descartadas
 

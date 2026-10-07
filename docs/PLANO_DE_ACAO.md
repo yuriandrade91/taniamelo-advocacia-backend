@@ -12,7 +12,7 @@ porque mudam o contrato da API:
 | O que era | O que é agora |
 |---|---|
 | `pageSize` sem teto: `pageSize=100000` montava a base inteira em memória | teto de **100**, cortado no valor em vez de recusado com 400 |
-| Autenticado era autorizado: qualquer token excluía, restaurava e listava usuários | **STAFF opera, só ADMIN/LAWYER destrói** (`@RequerAdvogado` + `@EnableMethodSecurity`) |
+| Autenticado era autorizado: qualquer token excluía, restaurava e listava usuários | **STAFF opera, só ADMIN/SUPPORT destrói** (`@RequerAdvogado` + `@EnableMethodSecurity`) |
 | Senha do INSS voltava em toda abertura de ficha | saiu do `GET /clients/{id}`; sai por `GET /clients/{id}/inss-password`, restrita e **auditada**. Na edição, ausente = mantém |
 | `POST /auth/login` sem limite de tentativas | freio por IP e por login (memória) **+** bloqueio de conta por 15 min (banco); 429 com `Retry-After` |
 

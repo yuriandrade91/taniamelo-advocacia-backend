@@ -159,7 +159,7 @@ public class ClientController {
                     UUID antes de excluir - desfazer estava na API e não era alcançável. Cada item \
                     traz `deletedAt`.
 
-                    **Restrito a ADMIN e LAWYER**: é o mesmo papel que exclui e restaura.""")
+                    **Restrito a ADMIN e SUPPORT**: é o mesmo papel que exclui e restaura.""")
     @RequerAdvogado
     @GetMapping("/deleted")
     public ResponseEntity<ApiResponse<ClientListResponseDTO>> listDeleted(
@@ -177,7 +177,7 @@ public class ClientController {
             description =
                     """
                     Dados completos do cliente, **exceto a senha do INSS** - ela saiu daqui e tem \
-                    rota própria, restrita a ADMIN/LAWYER e auditada a cada leitura: \
+                    rota própria, restrita a ADMIN/SUPPORT e auditada a cada leitura: \
                     `GET /clients/{clientId}/inss-password`.""")
     @GetMapping("/{clientId}")
     public ResponseEntity<ApiResponse<ClientDetailsDTO>> getById(@PathVariable UUID clientId) {
@@ -306,7 +306,7 @@ public class ClientController {
             description =
                     """
                     Devolve a senha de acesso do cliente ao portal do INSS. **Restrito a ADMIN e \
-                    LAWYER**, e **cada leitura fica registrada** na auditoria com quem consultou e \
+                    SUPPORT**, e **cada leitura fica registrada** na auditoria com quem consultou e \
                     quando.
 
                     Existe como rota separada porque a senha saiu de `GET /clients/{clientId}`. Voltar em \

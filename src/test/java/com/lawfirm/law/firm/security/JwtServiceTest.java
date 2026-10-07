@@ -26,11 +26,10 @@ class JwtServiceTest {
     /**
      * Fábrica dos testes de access token.
      *
-     * O construtor passou a receber também os minutos dos tokens de suporte
-     * (plataforma e sessão impersonada). Nenhum teste daqui fala deles — o que
-     * se verifica aqui é emissão, validação e expiração do access token — então
-     * eles ficam num valor fixo e fora de vista, em vez de repetidos em cada
-     * `new JwtService(...)` dando a entender que importam.
+     * <p>O construtor passou a receber também os minutos dos tokens de suporte (plataforma e sessão
+     * impersonada). Nenhum teste daqui fala deles — o que se verifica aqui é emissão, validação e
+     * expiração do access token — então eles ficam num valor fixo e fora de vista, em vez de
+     * repetidos em cada `new JwtService(...)` dando a entender que importam.
      */
     private static JwtService comExpiracao(String secret, long minutos) {
         return new JwtService(secret, minutos, 60, 20);

@@ -37,7 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
  * lista uma vez para resolver todos os ids da página. Paginar aqui obrigaria o front a buscar de
  * novo a cada id não encontrado - mais requisições para servir menos dado.
  *
- * <p>Listar exige ADMIN ou LAWYER ({@code @RequerAdvogado}): quem trabalha no escritório não é da
+ * <p>Listar exige ADMIN ou SUPPORT ({@code @RequerAdvogado}): quem trabalha no escritório não é da
  * conta de quem só opera.
  *
  * <p>Criar, editar e desativar usuário continuam sem endpoint - hoje o único caminho é o {@code

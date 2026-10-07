@@ -34,8 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
  *       (ADMIN). Use-o como Bearer nas rotas do escritório.
  * </ol>
  *
- * <p>Toda ação feita com o token de sessão é atribuída ao agente na auditoria
- * ({@code audit_log.acting_support_user_id}), mesmo ele não sendo usuário daquele escritório.
+ * <p>Toda ação feita com o token de sessão é atribuída ao agente na auditoria ({@code
+ * audit_log.acting_support_user_id}), mesmo ele não sendo usuário daquele escritório.
  */
 @Tag(name = "Suporte", description = "Acesso multi-tenant da equipe de suporte (impersonation)")
 @RestController

@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
- * Restringe a operação a ADMIN e LAWYER.
+ * Restringe a operação a ADMIN e SUPPORT.
  *
  * <p>É a linha entre operar e destruir. STAFF - secretaria, estágio - cadastra e edita cliente e
  * compromisso, cancela e conclui agenda: o dia a dia inteiro. O que fica de fora é o que não tem
@@ -23,5 +23,5 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.TYPE})
-@PreAuthorize("hasAnyRole('ADMIN','LAWYER')")
+@PreAuthorize("hasAnyRole('ADMIN','SUPPORT')")
 public @interface RequerAdvogado {}

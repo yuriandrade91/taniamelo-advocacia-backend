@@ -22,7 +22,7 @@ public class MyProfileDTO {
     private String email;
     private String username;
 
-    @Schema(description = "Nome da constante (ADMIN, LAWYER, STAFF) — somente leitura")
+    @Schema(description = "Nome da constante (ADMIN, SUPPORT, STAFF) — somente leitura")
     private Role role;
 
     @Schema(description = "Somente leitura: desativar-se a si mesmo não é uma ação de perfil")

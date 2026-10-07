@@ -81,7 +81,8 @@ public class SupportService {
                 supportUserRepository
                         .findById(supportUserId)
                         .filter(u -> Boolean.TRUE.equals(u.getActive()))
-                        .orElseThrow(() -> new BadCredentialsException("Sessão de suporte inválida"));
+                        .orElseThrow(
+                                () -> new BadCredentialsException("Sessão de suporte inválida"));
 
         String schema =
                 tenantRegistry
