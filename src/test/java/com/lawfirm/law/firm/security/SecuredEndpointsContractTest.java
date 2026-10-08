@@ -140,6 +140,9 @@ class SecuredEndpointsContractTest {
                     Map.entry("ClientController#update", ABERTO),
                     Map.entry("ClientController#patch", ABERTO),
                     Map.entry("ClientController#situationHistory", ABERTO),
+                    // Ligar para dar os parabéns é trabalho da secretaria, e a rota não
+                    // devolve nada que a listagem já não devolva.
+                    Map.entry("ClientController#upcomingBirthdays", ABERTO),
                     Map.entry("ClientController#delete", ADVOGADO),
                     Map.entry("ClientController#restore", ADVOGADO),
                     Map.entry("ClientController#listDeleted", ADVOGADO),
