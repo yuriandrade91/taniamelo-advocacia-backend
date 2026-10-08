@@ -4,7 +4,13 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Projeção mínima para o card de aniversariantes: só o que a tela mostra. Evita carregar a entidade
- * inteira (e descriptografar a senha do INSS) para cada linha.
+ * Projeção mínima para o card de aniversariantes: só o que a tela mostra - e o celular, para o
+ * parabéns pelo WhatsApp sair do próprio card. Evita carregar a entidade inteira (e descriptografar
+ * a senha do INSS) para cada linha.
  */
-public record BirthdayRow(UUID clientId, String fullName, LocalDate birthDate) {}
+public record BirthdayRow(
+        UUID clientId,
+        String fullName,
+        LocalDate birthDate,
+        String mobilePhone,
+        Boolean isWhatsapp) {}

@@ -12,4 +12,7 @@ public record UpcomingBirthdayDTO(
         @Schema(description = "Próxima data de aniversário", example = "2026-10-12")
                 LocalDate nextBirthday,
         @Schema(description = "Dias até o aniversário (0 = hoje)", example = "5") long daysUntil,
-        @Schema(description = "Idade que completa", example = "56") int turningAge) {}
+        @Schema(description = "Idade que completa", example = "56") int turningAge,
+        @Schema(description = "Celular, para o parabéns", example = "(31) 99999-0000")
+                String mobilePhone,
+        @Schema(description = "O celular é WhatsApp") boolean isWhatsapp) {}

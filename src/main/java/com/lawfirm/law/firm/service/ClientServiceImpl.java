@@ -642,7 +642,10 @@ public class ClientServiceImpl implements ClientService {
                                         row.birthDate(),
                                         Birthdays.next(row.birthDate(), today),
                                         Birthdays.daysUntil(row.birthDate(), today),
-                                        Birthdays.turningAge(row.birthDate(), today)))
+                                        Birthdays.turningAge(row.birthDate(), today),
+                                        row.mobilePhone(),
+                                        // Nulo em linha antiga: o padrão da coluna é "é WhatsApp".
+                                        !Boolean.FALSE.equals(row.isWhatsapp())))
                 .toList();
     }
 }

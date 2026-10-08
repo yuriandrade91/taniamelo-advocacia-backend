@@ -84,7 +84,8 @@ public interface ClientRepository
      */
     @Query(
             """
-            SELECT new com.lawfirm.law.firm.repository.BirthdayRow(c.id, c.fullName, c.birthDate)
+            SELECT new com.lawfirm.law.firm.repository.BirthdayRow(
+                c.id, c.fullName, c.birthDate, c.mobilePhone, c.isWhatsapp)
             FROM Client c
             WHERE :allYear = true
                OR (:wraps = false AND c.birthMmdd BETWEEN :fromMmdd AND :toMmdd)
