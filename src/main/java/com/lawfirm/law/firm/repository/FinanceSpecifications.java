@@ -70,8 +70,9 @@ public final class FinanceSpecifications {
      * corta pelo dia do escritório: das 21h à meia-noite de Brasília a linha voltaria {@code
      * overdue=true} ordenada no balde de quem ainda não venceu.
      *
-     * <p>O {@code createdAt} desempata. Sem ele, lançamentos do mesmo vencimento saem na ordem que
-     * o banco escolher, e a mesma linha pode aparecer na página 1 e faltar na 2.
+     * <p>O {@code createdAt} desempata lançamentos do mesmo vencimento, e o {@code id} fecha a
+     * ordem: sem um critério único no fim, dois registros gravados no mesmo instante saem na ordem
+     * que o banco escolher, e a mesma linha pode aparecer na página 1 e faltar na 2.
      */
     public static <T> Specification<T> orderByStatusThenDueDate() {
         return (root, query, cb) -> {
@@ -81,7 +82,8 @@ public final class FinanceSpecifications {
             query.orderBy(
                     cb.asc(statusRank(root, cb)),
                     cb.asc(root.get("dueDate")),
-                    cb.asc(root.get("createdAt")));
+                    cb.asc(root.get("createdAt")),
+                    cb.asc(root.get("id")));
             return null;
         };
     }

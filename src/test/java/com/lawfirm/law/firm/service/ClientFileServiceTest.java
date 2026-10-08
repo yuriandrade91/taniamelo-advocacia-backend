@@ -324,7 +324,8 @@ class ClientFileServiceTest {
                     .findByClient_IdAndKindAndDeletedAtIsNull(any(), any(), pageable.capture());
             assertEquals(
                     org.springframework.data.domain.Sort.by(
-                            org.springframework.data.domain.Sort.Direction.DESC, "uploadedAt"),
+                            org.springframework.data.domain.Sort.Order.desc("uploadedAt"),
+                            org.springframework.data.domain.Sort.Order.asc("id")),
                     pageable.getValue().getSort());
         }
 

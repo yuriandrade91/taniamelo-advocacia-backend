@@ -97,7 +97,14 @@ contratual.
 ## 3. Padrões transversais adotados nesta revisão
 
 - **Envelope**: toda resposta `{ success, data, pagination?, errors? }`.
-- **Paginação**: `pageNumber` (1-based) + `pageSize` em TODA listagem.
+- **Paginação**: `pageNumber` (1-based) + `pageSize` em TODA listagem, com
+  teto de `pageSize` e **ordem total** — a ordenação de toda listagem paginada
+  termina num critério único (`id`). Ordenar só por um timestamp deixa
+  registros do mesmo instante na ordem que o banco escolher, e ela pode mudar
+  entre a consulta da página 1 e a da página 2: a mesma linha aparece duas
+  vezes e outra nunca aparece. `PageRequests.of(.., Sort)` acrescenta o
+  desempate; quem ordena pelo próprio `@Query` nativo ou por `Specification`
+  carrega o critério único no próprio ORDER BY.
 - **Filtros**: nomes de parâmetro = nome do campo; enums aceitam nome ou label;
   datas ISO-8601; valor inválido responde 400 explícito (nunca ignorado).
 - **Verbos**: POST cria; PUT substitui (objeto completo); PATCH altera

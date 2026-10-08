@@ -66,7 +66,8 @@ public interface ClientRepository
      * antes de excluir - ou seja, desfazer existia na API e não era alcançável.
      */
     @Query(
-            value = "SELECT * FROM clients WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC",
+            value =
+                    "SELECT * FROM clients WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC, id",
             countQuery = "SELECT count(*) FROM clients WHERE deleted_at IS NOT NULL",
             nativeQuery = true)
     Page<Client> findDeleted(Pageable pageable);

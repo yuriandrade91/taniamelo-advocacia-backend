@@ -142,7 +142,8 @@ class ClientInterviewServiceTest {
         verify(repository).findByClient_IdAndDeletedAtIsNull(any(), pageable.capture());
         assertEquals(
                 org.springframework.data.domain.Sort.by(
-                        org.springframework.data.domain.Sort.Direction.DESC, "occurredAt"),
+                        org.springframework.data.domain.Sort.Order.desc("occurredAt"),
+                        org.springframework.data.domain.Sort.Order.asc("id")),
                 pageable.getValue().getSort());
         assertEquals(0, pageable.getValue().getPageNumber());
     }

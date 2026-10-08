@@ -33,8 +33,28 @@ public final class PageRequests {
 
     private PageRequests() {}
 
+    /**
+     * Pageable com a ordenação pedida, <b>mais o id como último critério</b>.
+     *
+     * <p>O desempate não é detalhe: ordenar a listagem de clientes só por {@code updatedAt} deixa
+     * dois registros do mesmo instante na ordem que o banco escolher, e ela pode mudar entre a
+     * consulta da página 1 e a da página 2 — a mesma linha aparece duas vezes e outra nunca
+     * aparece. Com um critério único no fim, a ordem é total e a paginação, estável.
+     *
+     * <p>Vale para toda consulta JPA que passa por aqui: o campo {@code id} existe em todas as
+     * entidades (PK em UUID). Já quem ordena pelo próprio {@code @Query} nativo ou por {@code
+     * Specification} usa a sobrecarga sem {@code Sort} e carrega o desempate no próprio ORDER BY —
+     * ordenação no Pageable substituiria a de lá.
+     */
     public static Pageable of(int pageNumber, int pageSize, Sort sort) {
-        return PageRequest.of(normalizePage(pageNumber), normalizeSize(pageSize), sort);
+        return PageRequest.of(
+                normalizePage(pageNumber), normalizeSize(pageSize), comDesempate(sort));
+    }
+
+    /** Acrescenta {@code id} ao fim, salvo quem já o declarou. */
+    private static Sort comDesempate(Sort sort) {
+        boolean jaTem = sort.stream().anyMatch(order -> "id".equals(order.getProperty()));
+        return jaTem ? sort : sort.and(Sort.by(Sort.Order.asc("id")));
     }
 
     public static Pageable of(int pageNumber, int pageSize) {

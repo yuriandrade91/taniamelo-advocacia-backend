@@ -27,7 +27,7 @@ public interface AppointmentRepository
     /** A lixeira: só os excluídos, mais recentes primeiro. Nativa pelo mesmo motivo. */
     @Query(
             value =
-                    "SELECT * FROM appointments WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC",
+                    "SELECT * FROM appointments WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC, id",
             countQuery = "SELECT count(*) FROM appointments WHERE deleted_at IS NOT NULL",
             nativeQuery = true)
     Page<Appointment> findDeleted(Pageable pageable);

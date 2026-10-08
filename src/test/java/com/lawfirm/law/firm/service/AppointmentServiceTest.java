@@ -315,7 +315,8 @@ class AppointmentServiceTest {
             assertEquals(10, pageable.getPageSize());
             assertEquals(
                     org.springframework.data.domain.Sort.by(
-                            org.springframework.data.domain.Sort.Direction.ASC, "startAt"),
+                            org.springframework.data.domain.Sort.Order.asc("startAt"),
+                            org.springframework.data.domain.Sort.Order.asc("id")),
                     pageable.getSort());
         }
 
@@ -1056,7 +1057,8 @@ class AppointmentServiceTest {
             verify(historyRepository).findByAppointment_Id(any(), pageable.capture());
             assertEquals(
                     org.springframework.data.domain.Sort.by(
-                            org.springframework.data.domain.Sort.Direction.DESC, "changedAt"),
+                            org.springframework.data.domain.Sort.Order.desc("changedAt"),
+                            org.springframework.data.domain.Sort.Order.asc("id")),
                     pageable.getValue().getSort());
         }
 

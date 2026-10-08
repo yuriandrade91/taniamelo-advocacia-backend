@@ -53,13 +53,31 @@ class PageRequestsTest {
     }
 
     @Test
-    @DisplayName("a ordenação passa intacta")
-    void sortIsPreserved() {
-        Sort ordem = Sort.by(Sort.Direction.DESC, "updatedAt");
-        Pageable pageable = PageRequests.of(2, 25, ordem);
+    @DisplayName("a ordenação pedida passa na frente, com o id desempatando no fim")
+    void sortIsPreservedWithIdTiebreaker() {
+        Pageable pageable = PageRequests.of(2, 25, Sort.by(Sort.Direction.DESC, "updatedAt"));
 
-        assertEquals(ordem, pageable.getSort());
+        // Sem o último critério, dois clientes do mesmo `updatedAt` saem na ordem que o banco
+        // escolher, e ela pode mudar entre a consulta da página 1 e a da página 2: a mesma linha
+        // aparece duas vezes e outra nunca aparece. O defeito foi encontrado assim, pelo teste de
+        // contrato "páginas não repetem registro".
+        assertEquals(
+                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.asc("id")), pageable.getSort());
         assertEquals(1, pageable.getPageNumber());
         assertEquals(25, pageable.getPageSize());
+    }
+
+    @Test
+    @DisplayName("quem já ordena por id não ganha um segundo critério igual")
+    void explicitIdIsNotDuplicated() {
+        Sort ordem = Sort.by(Sort.Order.desc("id"));
+        assertEquals(ordem, PageRequests.of(1, 10, ordem).getSort());
+    }
+
+    @Test
+    @DisplayName("ordenação vazia recebe só o desempate")
+    void unsortedGetsOnlyTheTiebreaker() {
+        assertEquals(
+                Sort.by(Sort.Order.asc("id")), PageRequests.of(1, 10, Sort.unsorted()).getSort());
     }
 }

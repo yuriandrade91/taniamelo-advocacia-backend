@@ -259,7 +259,8 @@ class ClientAddressServiceTest {
         assertEquals(
                 org.springframework.data.domain.Sort.by(
                         org.springframework.data.domain.Sort.Order.desc("isPrimary"),
-                        org.springframework.data.domain.Sort.Order.asc("createdAt")),
+                        org.springframework.data.domain.Sort.Order.asc("createdAt"),
+                        org.springframework.data.domain.Sort.Order.asc("id")),
                 pageable.getValue().getSort());
     }
 

@@ -341,9 +341,12 @@ class ClientServiceImplTest {
             Pageable pageable = capturePageable();
             assertEquals(0, pageable.getPageNumber());
             assertEquals(25, pageable.getPageSize());
+            // O id fecha a ordem: sem ele, dois clientes do mesmo `updatedAt` podem
+            // aparecer os dois na página 1 e um deles de novo na 2.
             assertEquals(
                     org.springframework.data.domain.Sort.by(
-                            org.springframework.data.domain.Sort.Direction.DESC, "updatedAt"),
+                            org.springframework.data.domain.Sort.Order.desc("updatedAt"),
+                            org.springframework.data.domain.Sort.Order.asc("id")),
                     pageable.getSort());
         }
 
@@ -771,7 +774,9 @@ class ClientServiceImplTest {
             ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
             verify(historyRepository).findByClient_Id(any(), pageable.capture());
             assertEquals(
-                    org.springframework.data.domain.Sort.by("changedAt").descending(),
+                    org.springframework.data.domain.Sort.by(
+                            org.springframework.data.domain.Sort.Order.desc("changedAt"),
+                            org.springframework.data.domain.Sort.Order.asc("id")),
                     pageable.getValue().getSort());
         }
 
