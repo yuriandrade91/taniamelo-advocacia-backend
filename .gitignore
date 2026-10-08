@@ -66,3 +66,8 @@ application-local.properties
 # Saídas de ferramenta de IA (cases, zips). Mesma razão do .claude/: é de
 # máquina, não do projeto, e sem isto aparece em todo `git status`.
 Claude outputs/
+
+# Arquivos enviados pelos clientes no perfil local (app.storage.local.base-path,
+# default ./storage). É dado de execução, e documento de cliente não vai para
+# repositório nenhum — em produção o perfil é s3.
+storage/
