@@ -4,13 +4,20 @@ Dois workflows, complementando o plano em `docs/PROVISIONAMENTO_INFRA.md`
 (Fase 1):
 
 - **`.github/workflows/ci.yml`** - roda em todo `push`/`pull_request` pra
-  `main` e `develop`. Três jobs paralelos: build + checkstyle
-  (`mvn clean verify -DskipTests`), Semgrep (`p/java` + `p/owasp-top-ten`) e
-  um `docker build` só pra validar o `Dockerfile` cedo (sem push de imagem).
-  **Testes pulados por ora** - são `@SpringBootTest` e exigem um Postgres
-  real pra subir o contexto, que o runner do GitHub Actions não tem; reativar
-  exige um serviço Postgres no job (ou Testcontainers), não é só tirar a
-  flag.
+  `main` e `develop`. Cinco jobs paralelos:
+  - **`build`** - `mvn -B clean verify`, com a suíte inteira. Os testes de
+    contexto sobem um Postgres real via Testcontainers (ver
+    `PostgresContainerConfig`): o runner `ubuntu-latest` já traz o daemon do
+    Docker, então não é preciso serviço Postgres no job. O relatório do
+    surefire sai como artefato.
+  - **`cobertura-rotas`** - compara as rotas declaradas nos controllers com as
+    requisições das coleções Postman (`api-tests/scripts/cobertura-de-rotas.mjs`)
+    e falha se alguma rota não for exercitada por ninguém. É conferência
+    estática: não sobe aplicação, banco nem `npm install`.
+  - **`sonar`** - análise + Quality Gate, só quando o `SONAR_TOKEN` existe.
+  - **`semgrep`** - `p/java` + `p/owasp-top-ten`; falha só em severidade ERROR.
+  - **`docker-build`** - `docker build` só pra validar o `Dockerfile` cedo
+    (sem push de imagem).
 - **`.github/workflows/deploy.yml`** - roda em `push` na **`develop`** (a branch
   que a instância segue) ou manualmente via `workflow_dispatch`. Conecta na
   instância EC2 ARM64 (`tm-adv-backend`, Amazon Linux 2023) via SSH e roda
@@ -76,14 +83,15 @@ Settings → Environments → **New environment** → nome `production`:
 
 Settings → Branches → **Add branch protection rule** → `develop`:
 
-- **Require status checks to pass before merging** → marque os três jobs
-  do `ci.yml` (`build`, `semgrep`, `docker-build`).
+- **Require status checks to pass before merging** → marque os jobs do
+  `ci.yml` (`build`, `cobertura-rotas`, `semgrep`, `docker-build`; `sonar`
+  apenas se o token estiver configurado).
 - Opcional: **Require a pull request before merging**.
 
 ## Fluxo resultante
 
-1. Todo PR/push pra `develop` roda build + Semgrep + docker build
-   automaticamente (`ci.yml`).
+1. Todo PR/push pra `develop` roda build com testes + cobertura de rotas +
+   Semgrep + docker build automaticamente (`ci.yml`).
 2. Push na `develop` dispara `deploy.yml`, que fica pendente até um reviewer
    aprovar em **Actions → Deploy → Review deployments**.
 3. Aprovado, o workflow conecta na instância ARM64 e sobe a versão nova via

@@ -36,7 +36,8 @@ mantê-los aqui faz quem chega ler o passado achando que é o presente.
 ## Qualidade e processo
 - **`QUALIDADE_SONAR_HOOKS.md`** — Sonar, JaCoCo, git hooks (pre-commit/pre-push),
   por que não usar Husky em Java. Documento canônico de qualidade.
-- **`CI_CD.md`** — workflows do GitHub Actions (build/Semgrep/deploy).
+- **`CI_CD.md`** — workflows do GitHub Actions (build com testes, cobertura de
+  rotas, Sonar, Semgrep, deploy).
 - **`OBSERVABILIDADE.md`** — métricas, logs e tracing self-hosted na EC2, ligados
   ao Spring Boot. **Implementado.**
 
@@ -49,5 +50,8 @@ mantê-los aqui faz quem chega ler o passado achando que é o presente.
 
 ## Operação / testes
 - **`requests.http`** — requisições da API para disparar à mão do editor.
+- **`postman/`** — a coleção Postman, a mesma de `api-tests/postman/collections/`
+  (o runner recusa rodar se as duas divergirem). Cobre **todas as rotas da API**;
+  `api-tests/scripts/cobertura-de-rotas.mjs` prova isso a cada execução.
 - **`../api-tests/README.md`** — a suíte de contrato (Playwright + newman), que
   roda de fora contra uma instância publicada.

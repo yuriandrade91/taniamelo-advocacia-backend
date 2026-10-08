@@ -23,7 +23,8 @@
       "file": "collections/tania-melo-api.postman_collection.json",
       "external": false,
       "public": false,
-      "mutable": true
+      "mutable": true,
+      "mirror": "../../docs/postman/taniamelo-api.postman_collection.json"
     }
   ]
 }

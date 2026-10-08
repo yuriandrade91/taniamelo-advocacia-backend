@@ -9,9 +9,21 @@ Duas formas de executar os mesmos cenários:
 | | Playwright (`api-tests/`) | Postman (`docs/postman/`) |
 |---|---|---|
 | Para que serve | CI e regressão | conferência manual e exploração |
-| Como roda | `pnpm test` | Postman, ou `newman` no terminal |
-| Estado atual | **205 testes** | **100 requests, 359 asserções** |
+| Como roda | `npm test` | Postman, ou `newman` no terminal |
+| Estado atual | **236 testes** | **190 requests, 640 asserções** |
+| Cobertura de rotas | clientes, agenda, auth, tenancy | **as 90 rotas da API** |
 | Ponto forte | fixtures, tipos, limpeza automática | abrir, editar e reenviar na hora |
+
+A coleção Postman cobre hoje **todas as rotas** expostas pelos controllers —
+inclusive financeiro do escritório, períodos de deficiência, arquivos, CEP e
+suporte, que o Playwright ainda não alcança. E isso não é afirmação de README:
+o inventário é apurado comparando os controllers com as coleções, o runner se
+recusa a rodar enquanto sobrar rota descoberta, e o CI tem um job só para isso.
+
+```bash
+# lista rota do backend que nenhuma coleção exercita (deve sair vazio)
+npm run cobertura
+```
 
 Não é duplicação por acaso: quem está depurando um erro de campo quer clicar e
 reenviar, e quem está barrando um merge quer um comando que devolve verde ou
@@ -20,7 +32,7 @@ outra não, é sinal de que uma delas está mentindo.
 
 ## O que já não é responsabilidade daqui
 
-- **Regra de negócio isolada** → teste unitário Java (`mvn test`, 849 casos). Se
+- **Regra de negócio isolada** → teste unitário Java (`mvn test`, 1039 casos). Se
   dá para afirmar sem subir a aplicação, não é caso desta suíte.
 - **Interface** → Playwright do frontend (`taniamelo-advocacia-frontend/e2e`).
 
@@ -132,12 +144,27 @@ Ficam registrados porque explicam por que vários testes existem:
 ## Execução serial das três coleções Postman
 
 Os snapshots sanitizados ficam em `postman/collections/` e a ordem de execução
-fica em `postman/manifest.json`. O runner valida todos os snapshots antes de
-iniciar, executa uma coleção por vez e injeta somente em memória os aliases
-`baseUrl`, `tenantSlug`, `tenant`, `login`, `loginId` e `password` a partir das
-variáveis `API_*`. JSON, JUnit, saída CLI e `summary.json` são separados por
-execução em `postman/reports/`. A coleção **Endpoints** aparece como `external`
-no resumo.
+fica em `postman/manifest.json`. O runner executa uma coleção por vez e injeta
+somente em memória os aliases `baseUrl`, `tenantSlug`, `tenant`, `login`,
+`loginId` e `password` a partir das variáveis `API_*` (lidas do `.env`, que
+nunca é gravado nos relatórios). JSON, JUnit, saída CLI e `summary.json` são
+separados por execução em `postman/reports/`. A coleção **Endpoints** aparece
+como `external` no resumo.
+
+Antes de abrir qualquer conexão, o pré-voo recusa a execução por três motivos —
+cada um já tendo custado uma depuração:
+
+1. **Snapshot ausente** no caminho declarado no manifesto.
+2. **Espelho divergente.** A mesma coleção existe em `docs/postman/` para abrir
+   no app do Postman. As duas já divergiram em silêncio: a de `docs/` continuou
+   lendo `d.id` depois que a API passou a devolver `clientId`, e a coleção
+   inteira quebrava a partir dali. Hoje é erro de execução, não descoberta.
+3. **Rota descoberta.** Rota nova entrava no backend sem teste e a suíte seguia
+   verde, porque ninguém pedia o endpoint que ela não conhecia.
+
+Os binários que as requisições de upload enviam ficam em `postman/fixtures/`
+(ver o README de lá); o runner resolve esses caminhos a partir de
+`postman/`, não do diretório de onde o comando foi chamado.
 
 ```bash
 npm run postman:all       # alvo definido por API_BASE_URL

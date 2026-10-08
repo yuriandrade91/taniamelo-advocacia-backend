@@ -34,6 +34,24 @@ jobs:
           path: target/surefire-reports/
           retention-days: 7
 
+  cobertura-rotas:
+    name: Cobertura de rotas (controllers x Postman)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Conferência estática: não sobe aplicação nem banco, só compara as rotas
+      # declaradas nos controllers com as requisições das coleções. Existe porque
+      # rota nova entrava sem teste e a suíte seguia verde — ninguém pedia o
+      # endpoint que ela não conhecia. O script não tem dependências: roda sem
+      # npm install.
+      - name: Toda rota tem requisição em alguma coleção
+        run: node api-tests/scripts/cobertura-de-rotas.mjs
+
   sonar:
     name: SonarCloud (análise + Quality Gate)
     runs-on: ubuntu-latest

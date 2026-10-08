@@ -13,7 +13,8 @@
     "postman:all": "node scripts/run-all-postman.mjs",
     "postman:aws": "API_BASE_URL=http://98.82.73.175:8080 node scripts/run-all-postman.mjs",
     "postman:local": "API_BASE_URL=http://localhost:8080 node scripts/run-all-postman.mjs",
-    "postman:public": "node scripts/run-all-postman.mjs --public-only"
+    "postman:public": "node scripts/run-all-postman.mjs --public-only",
+    "cobertura": "node scripts/cobertura-de-rotas.mjs"
   },
   "engines": {
     "node": ">=20.12"

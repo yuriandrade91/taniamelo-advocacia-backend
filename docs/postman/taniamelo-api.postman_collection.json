@@ -40,6 +40,10 @@
           "pm.test('responde JSON no envelope padrão', () => {",
           "  const t = pm.response.text();",
           "  if (pm.response.code === 204 || !t) return;",
+          "  // Download devolve o arquivo, não envelope. Exigir JSON aqui faria toda rota",
+          "  // que serve binário falhar num teste que não é sobre ela.",
+          "  const tipo = pm.response.headers.get('Content-Type') || '';",
+          "  if (!tipo.includes('json')) return;",
           "  let b;",
           "  try { b = JSON.parse(t); } catch (e) {",
           "    pm.expect.fail('resposta não é JSON: ' + t.slice(0, 200));",
@@ -141,6 +145,70 @@
     },
     {
       "key": "loginDescartavel",
+      "value": ""
+    },
+    {
+      "key": "ctps",
+      "value": ""
+    },
+    {
+      "key": "meuNome",
+      "value": ""
+    },
+    {
+      "key": "meuEmail",
+      "value": ""
+    },
+    {
+      "key": "hoje",
+      "value": ""
+    },
+    {
+      "key": "inicioDoAno",
+      "value": ""
+    },
+    {
+      "key": "fimDoAno",
+      "value": ""
+    },
+    {
+      "key": "expenseId",
+      "value": ""
+    },
+    {
+      "key": "revenueId",
+      "value": ""
+    },
+    {
+      "key": "defInicio",
+      "value": ""
+    },
+    {
+      "key": "defFim",
+      "value": ""
+    },
+    {
+      "key": "disabilityPeriodId",
+      "value": ""
+    },
+    {
+      "key": "documentFileId",
+      "value": ""
+    },
+    {
+      "key": "simulationFileId",
+      "value": ""
+    },
+    {
+      "key": "supportEmail",
+      "value": ""
+    },
+    {
+      "key": "supportPassword",
+      "value": ""
+    },
+    {
+      "key": "supportToken",
       "value": ""
     }
   ],
@@ -644,7 +712,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer nao.e.um.jwt"
+                "value": ""
               }
             ],
             "url": {
@@ -833,6 +901,9 @@
                   "  d.push(r === 10 ? 0 : r);",
                   "}",
                   "pm.collectionVariables.set(\"cpf\", d.join(\"\"));",
+                  "// CTPS pelo mesmo motivo do CPF: é único entre clientes ativos, e o valor",
+                  "// fixo colidia com o cliente que a execução anterior deixou para trás.",
+                  "pm.collectionVariables.set(\"ctps\", String(Math.floor(Math.random() * 9e6) + 1e6));",
                   "pm.collectionVariables.set(\"marca\", \"[postman] \" + Date.now().toString(36));"
                 ]
               }
@@ -849,10 +920,10 @@
                   "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
                   "});",
                   "const d = pm.response.json().data;",
-                  "pm.collectionVariables.set(\"clientId\", d.id);",
+                  "pm.collectionVariables.set(\"clientId\", d.clientId);",
                   "pm.test(\"nasce Potencial\", () => pm.expect(d.clientType).to.eql(\"Potencial\"));",
                   "pm.test(\"enum volta como label PT-BR\", () => pm.expect(d.situation).to.eql(\"Formulário preenchido\"));",
-                  "pm.test(\"header Location aponta o recurso\", () => pm.expect(pm.response.headers.get(\"Location\") || \"\").to.include(d.id));"
+                  "pm.test(\"header Location aponta o recurso\", () => pm.expect(pm.response.headers.get(\"Location\") || \"\").to.include(d.clientId));"
                 ]
               }
             }
@@ -921,7 +992,7 @@
                   "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
                   "});",
                   "const d = pm.response.json().data;",
-                  "pm.collectionVariables.set(\"clientIdMinimo\", d.id);",
+                  "pm.collectionVariables.set(\"clientIdMinimo\", d.clientId);",
                   "pm.test(\"padrões da coluna aparecem preenchidos\", () => {",
                   "  pm.expect(d.nationality).to.eql(\"Brasileira\");",
                   "  pm.expect(d.isWhatsapp).to.be.true;",
@@ -2093,6 +2164,94 @@
               }
             }
           ]
+        },
+        {
+          "name": "Próximos aniversariantes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/upcoming-birthdays?days=365&limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "upcoming-birthdays"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "365"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Pergunta da Home sobre a base inteira. Resolver no cliente exigiria baixar todo mundo só para comparar datas."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"lista no envelope\", () => pm.expect(d).to.be.an(\"array\"));",
+                  "pm.test(\"cada item traz o que a Home precisa\", () => { if (!d.length) return; [\"clientId\",\"fullName\",\"birthDate\",\"nextBirthday\",\"turningAge\"].forEach(k => pm.expect(d[0], k).to.have.property(k)); });",
+                  "pm.test(\"o próximo aniversário nunca é passado\", () => { const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10); d.forEach(a => pm.expect(a.nextBirthday >= hoje, a.fullName + \" com aniversário no passado\").to.be.true); });",
+                  "pm.test(\"vem em ordem de quem faz primeiro\", () => { const datas = d.map(a => a.nextBirthday); pm.expect(datas).to.eql([...datas].sort()); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Janela e limite fora da faixa são cortados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/upcoming-birthdays?days=9999&limit=9999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "upcoming-birthdays"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "9999"
+                },
+                {
+                  "key": "limit",
+                  "value": "9999"
+                }
+              ]
+            },
+            "description": "`days` vai de 0 a 365 e `limit` de 1 a 50: valor fora da faixa é cortado no teto, não recusado — a Home não deve quebrar por um parâmetro exagerado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"o teto de 50 itens é respeitado\", () => pm.expect(pm.response.json().data.length).to.be.at.most(50));"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "CRUD, filtros e histórico de situação."
@@ -2885,7 +3044,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"profession\": \"Costureira\",\n  \"ctps\": \"1234567\",\n  \"ctpsSeries\": \"0001-MG\",\n  \"inssPassword\": \"senha-inss\"\n}",
+              "raw": "{\n  \"profession\": \"Costureira\",\n  \"ctps\": \"{{ctps}}\",\n  \"ctpsSeries\": \"0001-MG\",\n  \"inssPassword\": \"senha-inss\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3063,7 +3222,9 @@
                   "  pm.expect(b.success, \"success\").to.be.true;",
                   "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
                   "});",
-                  "const hoje = new Date().toISOString().slice(0, 10);",
+                  "// Fuso do escritório (UTC-3), não UTC: depois das 21h o UTC já virou",
+                  "// o dia seguinte, e o backend data pelo dia de São Paulo.",
+                  "const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);",
                   "pm.test(\"pago com a data de hoje\", () => {",
                   "  pm.expect(pm.response.json().data.status).to.eql(\"Pago\");",
                   "  pm.expect(pm.response.json().data.paidDate).to.eql(hoje);",
@@ -4110,10 +4271,79 @@
           ]
         },
         {
+          "name": "Linha do tempo da agenda",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/timeline?from={{inicioDoAno}}&to={{fimDoAno}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "timeline"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{inicioDoAno}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{fimDoAno}}"
+                }
+              ]
+            },
+            "description": "Série agregada no servidor: contar no cliente exigiria baixar a agenda inteira só para desenhar o gráfico."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Datas do ano corrente: o resumo e a série são recortes de período, e uma data fixa",
+                  "// faria a coleção passar hoje e falhar no ano que vem.",
+                  "//",
+                  "// No fuso do ESCRITÓRIO, não em UTC: depois das 21h (BRT) o UTC já virou o dia",
+                  "// seguinte, e o backend data o lançamento pelo fuso de São Paulo. Em UTC a",
+                  "// coleção falharia todas as noites, por um motivo que não é o testado.",
+                  "//",
+                  "// Deslocamento fixo em vez de Intl: o sandbox do Postman não expõe Intl, e",
+                  "// São Paulo está em UTC-3 o ano todo desde o fim do horário de verão (2019).",
+                  "const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);",
+                  "const ano = hoje.slice(0, 4);",
+                  "pm.collectionVariables.set(\"hoje\", hoje);",
+                  "pm.collectionVariables.set(\"inicioDoAno\", ano + \"-01-01\");",
+                  "pm.collectionVariables.set(\"fimDoAno\", ano + \"-12-31\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"devolve pontos da série\", () => pm.expect(pm.response.json().data).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Concluir compromisso",
           "request": {
             "method": "PATCH",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/appointments/{{appointmentClienteId}}/complete",
               "host": [
@@ -4126,7 +4356,17 @@
                 "{{appointmentClienteId}}",
                 "complete"
               ]
-            }
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"earlyCompletionAcknowledged\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Concluir antes da hora marcada exige confirmação explícita: sem earlyCompletionAcknowledged o backend responde 422 EARLY_COMPLETION_NOT_CONFIRMED. O compromisso desta pasta é futuro, então o corpo é obrigatório."
           },
           "event": [
             {
@@ -4134,6 +4374,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "// Sem o corpo de confirmação isto volta 422 EARLY_COMPLETION_NOT_CONFIRMED.",
                   "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"envelope de sucesso\", () => {",
                   "  const b = pm.response.json();",
@@ -4499,6 +4740,38 @@
           ]
         },
         {
+          "name": "Lixeira: compromissos excluídos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/deleted",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "deleted"
+              ]
+            },
+            "description": "Sem esta rota, restaurar só era possível para quem tivesse anotado o UUID antes de excluir — desfazer estava na API e não era alcançável."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"o compromisso excluído aparece com deletedAt\", () => { const d = pm.response.json().data; const alvo = d.find(a => a.id === pm.collectionVariables.get(\"appointmentId\")); pm.expect(alvo, \"o excluído não está na lixeira\").to.be.an(\"object\"); pm.expect(alvo.deletedAt).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Restaurar compromisso",
           "request": {
             "method": "PATCH",
@@ -4706,12 +4979,2514 @@
               }
             }
           ]
+        },
+        {
+          "name": "Meus dados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "description": "Perfil de quem está logado. Guarda nome e e-mail para o PUT seguinte reenviar os mesmos valores — a coleção roda contra um usuário compartilhado e não deve alterá-lo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"traz o perfil\", () => { pm.expect(d.id).to.be.a(\"string\"); pm.expect(d.username).to.be.a(\"string\"); });",
+                  "pm.test(\"nunca devolve senha\", () => { pm.expect(d).to.not.have.property(\"password\"); pm.expect(d).to.not.have.property(\"passwordHash\"); });",
+                  "pm.collectionVariables.set(\"meuNome\", d.fullName);",
+                  "pm.collectionVariables.set(\"meuEmail\", d.email);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar meus dados (reenvia os mesmos valores)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "description": "Exercita o PUT sem mexer no usuário compartilhado: reenvia exatamente o que a requisição anterior leu. Mudar o nome aqui apareceria como autoria em registros antigos de quem roda a coleção depois.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{meuNome}}\",\n  \"email\": \"{{meuEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"devolve o perfil atualizado\", () => { const d = pm.response.json().data; pm.expect(d.fullName).to.eql(pm.collectionVariables.get(\"meuNome\")); pm.expect(d.email).to.eql(pm.collectionVariables.get(\"meuEmail\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E-mail inválido no perfil devolve 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"{{meuNome}}\",\n  \"email\": \"nao-e-email\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo email\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"email\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trocar senha com a atual errada é recusado",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "password"
+              ]
+            },
+            "description": "Só o caminho de recusa é automatizado. Trocar a senha de verdade rotacionaria a credencial do usuário compartilhado da suíte: se a troca de volta falhasse no meio, a coleção inteira (e o Playwright) ficariam sem conseguir logar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"senha-que-nao-e-a-atual-postman\",\n  \"newPassword\": \"OutraSenha123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"recusa com 4xx\", () => pm.expect(pm.response.code, \"senha atual errada não pode trocar senha\").to.be.within(400, 422));",
+                  "pm.test(\"não confirma qual campo errou\", () => pm.expect(pm.response.text()).to.not.include(\"senha-que-nao-e-a-atual-postman\"));"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "Consulta somente leitura, para resolver autoria."
     },
     {
-      "name": "6. Cobertura complementar (endpoints deployados sem teste)",
+      "name": "6. Financeiro do escritório",
+      "description": "Despesas, receitas e a visão de escritório dos pagamentos dos clientes. **Restrito a ADMIN** — com um usuário STAFF/SUPPORT toda esta pasta devolve 403.",
+      "item": [
+        {
+          "name": "Lançar despesa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses"
+              ]
+            },
+            "description": "Sem `status` no corpo, a despesa nasce Pendente — é o default que a tela espera.\n\nA categoria entra pelo nome da constante (`ALUGUEL`) e volta pelo rótulo (`Aluguel e condomínio`): a API aceita os dois na entrada e devolve sempre o canônico, para a tela não ter que conhecer duas grafias.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"{{marca}} Aluguel da sala\",\n  \"amount\": 1500.0,\n  \"category\": \"ALUGUEL\",\n  \"supplier\": \"{{marca}} Imobiliária\",\n  \"dueDate\": \"{{hoje}}\",\n  \"notes\": \"{{marca}} lançamento de teste\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Datas do ano corrente: o resumo e a série são recortes de período, e uma data fixa",
+                  "// faria a coleção passar hoje e falhar no ano que vem.",
+                  "//",
+                  "// No fuso do ESCRITÓRIO, não em UTC: depois das 21h (BRT) o UTC já virou o dia",
+                  "// seguinte, e o backend data o lançamento pelo fuso de São Paulo. Em UTC a",
+                  "// coleção falharia todas as noites, por um motivo que não é o testado.",
+                  "//",
+                  "// Deslocamento fixo em vez de Intl: o sandbox do Postman não expõe Intl, e",
+                  "// São Paulo está em UTC-3 o ano todo desde o fim do horário de verão (2019).",
+                  "const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);",
+                  "const ano = hoje.slice(0, 4);",
+                  "pm.collectionVariables.set(\"hoje\", hoje);",
+                  "pm.collectionVariables.set(\"inicioDoAno\", ano + \"-01-01\");",
+                  "pm.collectionVariables.set(\"fimDoAno\", ano + \"-12-31\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"exige ADMIN - 403 aqui significa que o usuário do teste não é ADMIN\", () => pm.expect(pm.response.code, \"financeiro é restrito a ADMIN\").to.not.eql(403));",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set(\"expenseId\", d.id);",
+                  "pm.test(\"nasce pendente\", () => pm.expect(d.status).to.eql(\"Pendente\"));",
+                  "pm.test(\"a categoria volta canônica\", () => pm.expect(d.category).to.eql(\"Aluguel e condomínio\"));",
+                  "pm.test(\"devolve o valor gravado\", () => pm.expect(Number(d.amount)).to.eql(1500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Despesa com valor zero devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"{{marca}} sem valor\",\n  \"amount\": 0,\n  \"dueDate\": \"{{hoje}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo amount\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"amount\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Despesa sem descrição devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10.5,\n  \"dueDate\": \"{{hoje}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo description\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"description\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar despesa por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "{{expenseId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"é a despesa criada\", () => pm.expect(pm.response.json().data.id).to.eql(pm.collectionVariables.get(\"expenseId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar despesas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"lista paginada no envelope\", () => { pm.expect(b.data).to.be.an(\"array\"); pm.expect(b.pagination).to.have.property(\"totalRecords\"); });",
+                  "pm.test(\"a despesa criada está na lista\", () => pm.expect(b.data.map(e => e.id)).to.include(pm.collectionVariables.get(\"expenseId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar despesas por status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses?status=PENDENTE&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDENTE"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "O filtro aceita o nome da constante; a resposta traz o rótulo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"só pendentes\", () => pm.response.json().data.forEach(e => pm.expect(e.status).to.eql(\"Pendente\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Vencimento e caixa no mesmo filtro devolvem 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses?dueFrom={{inicioDoAno}}&paidFrom={{inicioDoAno}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses"
+              ],
+              "query": [
+                {
+                  "key": "dueFrom",
+                  "value": "{{inicioDoAno}}"
+                },
+                {
+                  "key": "paidFrom",
+                  "value": "{{inicioDoAno}}"
+                }
+              ]
+            },
+            "description": "Competência e caixa são perguntas diferentes. Escolher uma por conta própria devolveria resposta plausível para pergunta que ninguém fez."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"código INVALID_DATE_RANGE\", () => pm.expect(pm.response.json().errors.map(e => e.code)).to.include(\"INVALID_DATE_RANGE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Marcar despesa como paga (PUT substitui a despesa inteira)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "{{expenseId}}"
+              ]
+            },
+            "description": "PUT substitui tudo: campo omitido é apagado, então o corpo repete os valores que devem permanecer.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"{{marca}} Aluguel da sala\",\n  \"amount\": 1500.0,\n  \"category\": \"Aluguel\",\n  \"supplier\": \"{{marca}} Imobiliária\",\n  \"dueDate\": \"{{hoje}}\",\n  \"paidDate\": \"{{hoje}}\",\n  \"status\": \"PAGO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"ficou paga\", () => { pm.expect(d.status).to.eql(\"Pago\"); pm.expect(d.paidDate).to.be.a(\"string\"); });",
+                  "pm.test(\"paga não é vencida\", () => pm.expect(d.overdue).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Totais de despesas no período",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses/summary?paidFrom={{inicioDoAno}}&paidTo={{fimDoAno}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "paidFrom",
+                  "value": "{{inicioDoAno}}"
+                },
+                {
+                  "key": "paidTo",
+                  "value": "{{fimDoAno}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"os três baldes e o total vêm preenchidos\", () => [\"overdueAmount\",\"upcomingAmount\",\"paidAmount\",\"totalAmount\"].forEach(k => pm.expect(d, k).to.have.property(k)));",
+                  "pm.test(\"byCategory é a composição do que foi pago\", () => pm.expect(d.byCategory).to.be.an(\"array\"));",
+                  "pm.test(\"a despesa paga entrou no balde pago\", () => pm.expect(Number(d.paidAmount)).to.be.at.least(1500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Série mensal de despesas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses/timeline?from={{inicioDoAno}}&to={{fimDoAno}}&basis=paid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "timeline"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{inicioDoAno}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{fimDoAno}}"
+                },
+                {
+                  "key": "basis",
+                  "value": "paid"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"devolve pontos mensais\", () => { pm.expect(d).to.be.an(\"array\"); if (d.length) pm.expect(d[0]).to.have.property(\"month\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Série mensal sem período devolve 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses/timeline",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "timeline"
+              ]
+            },
+            "description": "`from` e `to` são obrigatórios: sem recorte, a série varreria a base inteira."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir despesa",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "{{expenseId}}"
+              ]
+            },
+            "description": "Exclusão lógica: some da lista, permanece na trilha. Resultado de mês fechado não muda porque alguém errou o lançamento."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));",
+                  "pm.test(\"204 não tem corpo\", () => pm.expect(pm.response.text() || \"\").to.eql(\"\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Despesa excluída devolve 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/expenses/{{expenseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "{{expenseId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lançar receita",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/revenues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "revenues"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"{{marca}} Honorário de parecer\",\n  \"amount\": 900.0,\n  \"dueDate\": \"{{hoje}}\",\n  \"clientId\": \"{{clientId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"exige ADMIN - 403 aqui significa que o usuário do teste não é ADMIN\", () => pm.expect(pm.response.code, \"financeiro é restrito a ADMIN\").to.not.eql(403));",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set(\"revenueId\", d.id);",
+                  "pm.test(\"nasce pendente\", () => pm.expect(d.status).to.eql(\"Pendente\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Receita com valor zero devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/revenues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "revenues"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"{{marca}} sem valor\",\n  \"amount\": 0,\n  \"dueDate\": \"{{hoje}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo amount\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"amount\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar receita por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/revenues/{{revenueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "revenues",
+                "{{revenueId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"é a receita criada\", () => pm.expect(pm.response.json().data.id).to.eql(pm.collectionVariables.get(\"revenueId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar receitas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/revenues?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "revenues"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"a receita criada está na lista\", () => pm.expect(pm.response.json().data.map(r => r.id)).to.include(pm.collectionVariables.get(\"revenueId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Marcar receita como recebida",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/revenues/{{revenueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "revenues",
+                "{{revenueId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"{{marca}} Honorário de parecer\",\n  \"amount\": 900.0,\n  \"dueDate\": \"{{hoje}}\",\n  \"paidDate\": \"{{hoje}}\",\n  \"status\": \"PAGO\",\n  \"clientId\": \"{{clientId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"ficou recebida\", () => { pm.expect(d.status).to.eql(\"Pago\"); pm.expect(d.paidDate).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Totais de receitas no período",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/revenues/summary?paidFrom={{inicioDoAno}}&paidTo={{fimDoAno}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "revenues",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "paidFrom",
+                  "value": "{{inicioDoAno}}"
+                },
+                {
+                  "key": "paidTo",
+                  "value": "{{fimDoAno}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"a receita recebida entrou no balde pago\", () => pm.expect(Number(pm.response.json().data.paidAmount)).to.be.at.least(900));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Série mensal de receitas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/revenues/timeline?from={{inicioDoAno}}&to={{fimDoAno}}&basis=paid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "revenues",
+                "timeline"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{inicioDoAno}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{fimDoAno}}"
+                },
+                {
+                  "key": "basis",
+                  "value": "paid"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"devolve pontos mensais\", () => pm.expect(pm.response.json().data).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir receita",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/revenues/{{revenueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "revenues",
+                "{{revenueId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Receita excluída devolve 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/revenues/{{revenueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "revenues",
+                "{{revenueId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar pagamentos de clientes (visão do escritório)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Mesma tabela do financeiro do cliente, recortada no escritório inteiro em vez de num cliente — é a visão de quem olha o caixa, não a ficha."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"exige ADMIN - 403 aqui significa que o usuário do teste não é ADMIN\", () => pm.expect(pm.response.code, \"financeiro é restrito a ADMIN\").to.not.eql(403));",
+                  "pm.test(\"lista paginada no envelope\", () => { const b = pm.response.json(); pm.expect(b.data).to.be.an(\"array\"); pm.expect(b.pagination).to.have.property(\"totalRecords\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar pagamentos pelo cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments?clientId={{clientId}}&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments"
+              ],
+              "query": [
+                {
+                  "key": "clientId",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"todos são do cliente pedido\", () => { const id = pm.collectionVariables.get(\"clientId\"); pm.response.json().data.forEach(p => { if (p.clientId) pm.expect(p.clientId).to.eql(id); }); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Totais de pagamentos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "summary"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"os três baldes e o total vêm preenchidos\", () => [\"overdueAmount\",\"upcomingAmount\",\"paidAmount\",\"totalAmount\"].forEach(k => pm.expect(pm.response.json().data, k).to.have.property(k)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Série mensal de pagamentos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/timeline?from={{inicioDoAno}}&to={{fimDoAno}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "timeline"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{inicioDoAno}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{fimDoAno}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"devolve pontos mensais\", () => pm.expect(pm.response.json().data).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Períodos de deficiência",
+      "description": "Períodos por grau e a conversão de tempo da LC 142/2013. Usa o cliente criado na pasta 2.",
+      "item": [
+        {
+          "name": "Lançar período de deficiência",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/disability-periods",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "disability-periods"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grade\": \"MODERADA\",\n  \"startedOn\": \"{{defInicio}}\",\n  \"endedOn\": \"{{defFim}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Intervalo fechado no passado: a conversão da LC 142/2013 soma dias",
+                  "// corridos, e um período em aberto mudaria o total a cada execução.",
+                  "pm.collectionVariables.set(\"defInicio\", \"2010-01-01\");",
+                  "pm.collectionVariables.set(\"defFim\", \"2014-12-31\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set(\"disabilityPeriodId\", d.id);",
+                  "pm.test(\"grava o grau informado, devolvido pelo rótulo\", () => pm.expect(d.grade).to.eql(\"Moderada\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Período com fim antes do início devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/disability-periods",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "disability-periods"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grade\": \"LEVE\",\n  \"startedOn\": \"2014-12-31\",\n  \"endedOn\": \"2010-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Grau fora do enum devolve 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/disability-periods",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "disability-periods"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grade\": \"GRAVÍSSIMA\",\n  \"startedOn\": \"2010-01-01\",\n  \"endedOn\": \"2011-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar períodos do cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/disability-periods",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "disability-periods"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"o período criado está na lista\", () => pm.expect(pm.response.json().data.map(p => p.id)).to.include(pm.collectionVariables.get(\"disabilityPeriodId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar período por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/disability-periods/{{disabilityPeriodId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "disability-periods",
+                "{{disabilityPeriodId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"é o período criado\", () => pm.expect(pm.response.json().data.id).to.eql(pm.collectionVariables.get(\"disabilityPeriodId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar o grau do período",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/disability-periods/{{disabilityPeriodId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "disability-periods",
+                "{{disabilityPeriodId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grade\": \"GRAVE\",\n  \"startedOn\": \"{{defInicio}}\",\n  \"endedOn\": \"{{defFim}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"o grau mudou\", () => pm.expect(pm.response.json().data.grade).to.eql(\"Grave\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conversão de tempo para o grau alvo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/disability-periods/conversion?to=GRAVE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "disability-periods",
+                "conversion"
+              ],
+              "query": [
+                {
+                  "key": "to",
+                  "value": "GRAVE"
+                }
+              ]
+            },
+            "description": "LC 142/2013: converte o tempo cumprido em cada grau para o grau alvo, com o fator de cada faixa. Cada linha traz o intervalo que a originou."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"converte para o grau pedido\", () => pm.expect(d.convertedTo).to.eql(\"Grave\"));",
+                  "pm.test(\"cada linha traz o intervalo e o fator\", () => { pm.expect(d.lines).to.be.an(\"array\").that.is.not.empty; const l = d.lines[0]; [\"grade\",\"days\",\"factor\",\"startedOn\",\"endedOn\"].forEach(k => pm.expect(l, k).to.have.property(k)); });",
+                  "pm.test(\"o total fecha em dias e no rótulo\", () => { pm.expect(d.totalDays).to.be.a(\"number\").above(0); pm.expect(d.totalLabel).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conversão para grau inválido devolve 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/disability-periods/conversion?to=INEXISTENTE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "disability-periods",
+                "conversion"
+              ],
+              "query": [
+                {
+                  "key": "to",
+                  "value": "INEXISTENTE"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir período",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/disability-periods/{{disabilityPeriodId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "disability-periods",
+                "{{disabilityPeriodId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 ou 200\", () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Período excluído devolve 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/disability-periods/{{disabilityPeriodId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "disability-periods",
+                "{{disabilityPeriodId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Arquivos do cliente",
+      "description": "Upload multipart, leitura, reclassificação, download e exclusão. Os binários de exemplo ficam em `api-tests/postman/fixtures/`; o newman resolve o caminho sozinho, o app do Postman pede para reapontar.",
+      "item": [
+        {
+          "name": "Enviar documento (PDF)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "documents"
+              ]
+            },
+            "description": "Multipart com duas partes: `files` (os binários) e `metadata` (JSON, um item por arquivo, na mesma ordem). No app do Postman, reaponte o arquivo: o caminho é relativo a `api-tests/postman/` e só o newman o resolve sozinho.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "fixtures/exemplo.pdf",
+                  "contentType": "application/pdf",
+                  "description": "exemplo.pdf"
+                },
+                {
+                  "key": "metadata",
+                  "type": "text",
+                  "value": "[{\"documentType\": \"IDENTIFICACAO_SEGURADO\", \"notes\": \"[postman] documento de teste\"}]",
+                  "contentType": "application/json"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"devolve o arquivo gravado\", () => { pm.expect(d).to.be.an(\"array\").that.is.not.empty; pm.expect(d[0].mimeType).to.eql(\"application/pdf\"); });",
+                  "pm.collectionVariables.set(\"documentFileId\", d[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Executável é recusado no upload",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "documents"
+              ]
+            },
+            "description": "O tipo é conferido no servidor. Aceitar executável aqui transformaria o storage do escritório em hospedagem de malware.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "fixtures/malicioso.exe",
+                  "contentType": "application/x-msdownload",
+                  "description": "malicioso.exe"
+                },
+                {
+                  "key": "metadata",
+                  "type": "text",
+                  "value": "[{\"documentType\": \"IDENTIFICACAO_SEGURADO\"}]",
+                  "contentType": "application/json"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"recusa com 4xx\", () => pm.expect(pm.response.code).to.be.within(400, 422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar documentos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "documents"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"o documento enviado está na lista\", () => pm.expect(pm.response.json().data.map(f => f.id)).to.include(pm.collectionVariables.get(\"documentFileId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar documento por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/documents/{{documentFileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "documents",
+                "{{documentFileId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"é o documento enviado\", () => pm.expect(pm.response.json().data.id).to.eql(pm.collectionVariables.get(\"documentFileId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar metadados do documento",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/documents/{{documentFileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "documents",
+                "{{documentFileId}}"
+              ]
+            },
+            "description": "Reclassificar não reenvia o arquivo: o binário continua o mesmo, só a etiqueta muda.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": \"DOCUMENTOS_MEDICOS\",\n  \"notes\": \"{{marca}} reclassificado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"mudou o tipo, não o arquivo\", () => { const d = pm.response.json().data; pm.expect(d.documentType).to.eql(\"Documentos médicos\"); pm.expect(d.id).to.eql(pm.collectionVariables.get(\"documentFileId\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Baixar o arquivo enviado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/{{documentFileId}}/download",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "{{documentFileId}}",
+                "download"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"vem como PDF\", () => pm.expect(pm.response.headers.get(\"Content-Type\") || \"\").to.include(\"pdf\"));",
+                  "pm.test(\"o corpo não vem vazio\", () => pm.expect(pm.response.responseSize).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar simulação (PDF)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/simulations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "simulations"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "fixtures/exemplo.pdf",
+                  "contentType": "application/pdf",
+                  "description": "exemplo.pdf"
+                },
+                {
+                  "key": "metadata",
+                  "type": "text",
+                  "value": "[{\"version\": \"v1\", \"vinculos\": 3, \"notes\": \"[postman] simulação de teste\"}]",
+                  "contentType": "application/json"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set(\"simulationFileId\", d[0].id);",
+                  "pm.test(\"devolve a simulação gravada\", () => pm.expect(d[0].id).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar simulações",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/simulations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "simulations"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"a simulação enviada está na lista\", () => pm.expect(pm.response.json().data.map(f => f.id)).to.include(pm.collectionVariables.get(\"simulationFileId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar simulação por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationFileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "simulations",
+                "{{simulationFileId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"é a simulação enviada\", () => pm.expect(pm.response.json().data.id).to.eql(pm.collectionVariables.get(\"simulationFileId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar metadados da simulação",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationFileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "simulations",
+                "{{simulationFileId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"v2\",\n  \"vinculos\": 4,\n  \"notes\": \"{{marca}} revisada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"a versão mudou\", () => pm.expect(pm.response.json().data.version).to.eql(\"v2\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Marcar simulação como principal",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/simulations/{{simulationFileId}}/principal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "simulations",
+                "{{simulationFileId}}",
+                "principal"
+              ]
+            },
+            "description": "Só uma simulação é a principal: marcar esta desmarca a anterior, do mesmo jeito que o endereço principal do cliente."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ficou principal\", () => { const b = pm.response.json(); const d = Array.isArray(b.data) ? b.data.find(f => f.id === pm.collectionVariables.get(\"simulationFileId\")) : b.data; pm.expect(d.principal || d.isPrincipal).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir o documento enviado",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/{{documentFileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "{{documentFileId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 ou 200\", () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir a simulação enviada",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/files/{{simulationFileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "files",
+                "{{simulationFileId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 ou 200\", () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. CEP",
+      "description": "Consulta servida pelo backend, com cache, cota e prazo. Não grava endereço: quem salva é o sub-recurso de addresses.",
+      "item": [
+        {
+          "name": "Consultar CEP",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cep/30240-000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cep",
+                "30240-000"
+              ]
+            },
+            "description": "Resolve o CEP e devolve os campos já com os nomes do cadastro de endereço. Consulta repetida sai do cache do servidor e não gasta cota."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"vem no formato do cadastro\", () => { pm.expect(d.zipCode).to.eql(\"30240-000\"); [\"street\",\"neighborhood\",\"city\",\"state\"].forEach(k => pm.expect(d, k).to.have.property(k)); });",
+                  "pm.test(\"não vaza o provedor\", () => { const t = pm.response.text().toLowerCase(); pm.expect(t).to.not.include(\"viacep\"); pm.expect(t).to.not.include(\"logradouro\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CEP sem pontuação resolve igual",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cep/30240000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cep",
+                "30240000"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"devolve sempre pontuado\", () => pm.expect(pm.response.json().data.zipCode).to.eql(\"30240-000\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CEP com menos de 8 dígitos devolve 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cep/3024",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cep",
+                "3024"
+              ]
+            },
+            "description": "Validado antes de sair para a rede: nada além de oito dígitos entra na URL do provedor."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"envelope de erro com detalhe\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success).to.be.false;",
+                  "  pm.expect(b.errors, \"erro sem detalhe deixa quem consome sem saber o que corrigir\").to.not.be.empty;",
+                  "});",
+                  "pm.test(\"aponta o campo cep\", () => pm.expect(pm.response.json().errors.map(e => e.field)).to.include(\"cep\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CEP inexistente devolve 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cep/99999-999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cep",
+                "99999-999"
+              ]
+            },
+            "description": "O provedor responde 200 com `{erro:true}` para CEP inexistente. Repassar isso como sucesso preencheria a tela em branco sem ninguém perceber."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10. Suporte",
+      "description": "Acesso do agente de plataforma. Só o caminho de recusa roda sempre; o acesso real depende de `supportEmail`/`supportPassword` no ambiente.",
+      "item": [
+        {
+          "name": "Login de suporte com credencial errada é recusado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/support/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "support",
+                "login"
+              ]
+            },
+            "description": "Caminho de recusa, sempre executável. O acesso real do agente exige credencial de plataforma (APP_SUPPORT_EMAIL/PASSWORD), que não vive na coleção.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nao-existe@plataforma.invalido\",\n  \"password\": \"senha-errada-postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"não revela se o e-mail existe\", () => pm.expect(pm.response.text().toLowerCase()).to.not.include(\"não encontrado\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login de suporte (quando há credencial configurada)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/support/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "support",
+                "login"
+              ]
+            },
+            "description": "Só vale quando `supportEmail`/`supportPassword` estão preenchidas no ambiente. Sem elas o request é pulado — falhar por falta de credencial não diz nada sobre a API.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{supportEmail}}\",\n  \"password\": \"{{supportPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const email = pm.variables.get(\"supportEmail\");",
+                  "if (!email) {",
+                  "  console.log(\"suporte: sem supportEmail no ambiente, request pulado\");",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 com token de plataforma\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.collectionVariables.set(\"supportToken\", d.token || d.accessToken || \"\");",
+                  "pm.test(\"o token de plataforma não dá acesso a escritório nenhum sozinho\", () => pm.expect(pm.collectionVariables.get(\"supportToken\")).to.be.a(\"string\").that.is.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abrir sessão de suporte no escritório",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/support/sessions/{{tenantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "support",
+                "sessions",
+                "{{tenantId}}"
+              ]
+            },
+            "description": "Troca o token de plataforma por um token de sessão naquele escritório. Toda ação feita com ele fica atribuída ao agente na auditoria."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"supportToken\")) {",
+                  "  console.log(\"suporte: sem token de plataforma, request pulado\");",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 com token de sessão\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"devolve um token diferente do de plataforma\", () => { const d = pm.response.json().data; const t = d.token || d.accessToken; pm.expect(t).to.be.a(\"string\").that.is.not.empty; pm.expect(t).to.not.eql(pm.collectionVariables.get(\"supportToken\")); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "11. Leitura e edição dos sub-recursos",
       "item": [
         {
           "name": "Buscar endereço por id",
@@ -5175,10 +7950,10 @@
           }
         }
       ],
-      "description": "Endpoints que existem no backend deployado e não eram exercitados: leitura/edição/remoção de sub-recursos, dados pessoais/profissionais e o PUT completo do cliente. Roda depois da criação dos sub-recursos e antes da limpeza; reutiliza clientId/addressId/interviewId/paymentId já capturados. (Upload/download de arquivos fica nos testes Playwright.)"
+      "description": "Leitura, edição e remoção dos sub-recursos: endereço por id, dados pessoais/profissionais, entrevistas, pagamentos e o PUT completo do cliente. Pasta separada da 3 por causa da ordem — roda depois da criação dos sub-recursos e antes da limpeza, reutilizando clientId/addressId/interviewId/paymentId já capturados. (Upload/download de arquivos fica na pasta 8.)"
     },
     {
-      "name": "7. Exclusão lógica e limpeza",
+      "name": "12. Exclusão lógica e limpeza",
       "item": [
         {
           "name": "Excluir cliente",
@@ -5211,6 +7986,44 @@
                   "  pm.expect(b.success, \"success\").to.be.true;",
                   "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
                   "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lixeira: clientes excluídos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/deleted?pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "deleted"
+              ],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Mesma razão da lixeira da agenda: o restore só é alcançável para quem consegue achar o cliente depois de excluído."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"o cliente excluído aparece com deletedAt\", () => { const d = pm.response.json().data; const alvo = d.find(c => c.clientId === pm.collectionVariables.get(\"clientId\")); pm.expect(alvo, \"o excluído não está na lixeira\").to.be.an(\"object\"); pm.expect(alvo.deletedAt).to.be.a(\"string\"); });"
                 ]
               }
             }

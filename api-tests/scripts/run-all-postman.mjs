@@ -4,6 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import newman from 'newman';
+import { apurarCobertura } from './cobertura-de-rotas.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = path.join(root, 'postman', 'manifest.json');
@@ -36,6 +37,30 @@ if (!selected.length) fail('nenhuma coleção selecionada');
 for (const c of selected) {
   const file = path.resolve(root, 'postman', c.file);
   if (!fs.existsSync(file)) fail(`snapshot ausente para "${c.name}": ${file}`);
+  // A mesma coleção existe em docs/postman para abrir no app do Postman. As duas
+  // já divergiram em silêncio uma vez (docs/ ficou lendo `d.id` depois que a API
+  // passou a devolver `clientId`, e a coleção inteira quebrava a partir dali).
+  // Divergência agora é erro de execução, não descoberta de quem for depurar.
+  if (!c.mirror) continue;
+  const mirror = path.resolve(root, 'postman', c.mirror);
+  if (!fs.existsSync(mirror)) { fail(`espelho ausente para "${c.name}": ${mirror}`); continue; }
+  const igual = (p) => JSON.stringify(JSON.parse(fs.readFileSync(p, 'utf8')));
+  if (igual(file) !== igual(mirror)) {
+    fail(`"${c.name}" divergiu do espelho em ${path.relative(root, mirror)} — sincronize os dois antes de rodar`);
+  }
+}
+if (process.exitCode) process.exit();
+// Rota nova entra no backend sem teste e ninguém percebe: a suíte segue verde
+// porque ninguém pediu o endpoint que ela não conhece. A conferência é estática
+// (controllers x coleções) e roda antes de abrir conexão, no mesmo pré-voo das
+// outras validações.
+if (!publicOnly) {
+  const { rotas, descobertas } = apurarCobertura();
+  if (descobertas.length) {
+    console.error(`ERRO: ${descobertas.length} de ${rotas.length} rotas sem nenhuma requisição na coleção:`);
+    for (const r of descobertas) console.error(`  ${r}`);
+    fail('cubra as rotas acima ou rode `node scripts/cobertura-de-rotas.mjs` para conferir');
+  }
 }
 if (process.exitCode) process.exit();
 const mutating = selected.some(c => c.mutable);
@@ -60,6 +85,9 @@ function runCollection(c) {
   return new Promise(resolve => {
     newman.run({
       collection: path.resolve(root, 'postman', c.file),
+      // Caminho dos binários de upload (formdata `src`) é relativo a esta pasta,
+      // não ao diretório de onde o comando foi chamado.
+      workingDir: path.resolve(root, 'postman'),
       envVar: Object.entries(env).map(([key, value]) => ({ key, value })),
       reporters: ['cli', 'json', 'junit'],
       reporter: { json: { export: path.join(runDir, `${name}.json`) }, junit: { export: path.join(runDir, `${name}.xml`) } },
