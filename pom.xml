@@ -171,24 +171,13 @@
 		</dependency>
 
 
-		<!-- MapStruct -->
+		<!-- MapStruct: só a API em compile. O processador vive em
+		     annotationProcessorPaths (abaixo), que é o que de fato roda a geração -
+		     declará-lo também como dependência o punha no classpath sem necessidade. -->
 		<dependency>
 			<groupId>org.mapstruct</groupId>
 			<artifactId>mapstruct</artifactId>
 			<version>${mapstruct.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct-processor</artifactId>
-			<version>${mapstruct.version}</version>
-			<scope>provided</scope>
-		</dependency>
-
-		<!-- Optional: Lombok to reduce boilerplate (developer choice) -->
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
 		</dependency>
 
 		<!-- Jackson explicit dependencies to fix test compile issues -->
