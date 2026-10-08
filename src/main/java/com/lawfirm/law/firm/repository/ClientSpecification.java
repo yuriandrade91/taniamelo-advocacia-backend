@@ -10,7 +10,6 @@ import java.text.Normalizer;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 
 /**
@@ -146,6 +145,6 @@ public final class ClientSpecification {
      */
     private static <T> List<T> withoutNulls(List<T> values) {
         if (values == null || values.isEmpty()) return List.of();
-        return values.stream().filter(Objects::nonNull).collect(Collectors.toList());
+        return values.stream().filter(Objects::nonNull).toList();
     }
 }

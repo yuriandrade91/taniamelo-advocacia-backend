@@ -632,8 +632,7 @@ public class ClientServiceImpl implements ClientService {
         boolean wraps = fromMmdd > toMmdd;
 
         return repository
-                .findBirthdaysInWindow(
-                        fromMmdd, toMmdd, wraps, allYear, PageRequest.of(0, size))
+                .findBirthdaysInWindow(fromMmdd, toMmdd, wraps, allYear, PageRequest.of(0, size))
                 .stream()
                 .map(
                         row ->
