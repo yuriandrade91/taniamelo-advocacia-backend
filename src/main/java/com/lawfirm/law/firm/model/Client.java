@@ -53,6 +53,14 @@ public class Client implements Auditable {
     @Column(name = "birth_date", nullable = false)
     private LocalDate birthDate;
 
+    /**
+     * Mês*100+dia do nascimento (ex.: 12/10 -> 1012). Coluna GERADA pelo banco (V22) e indexada,
+     * base da consulta de próximos aniversariantes. Somente leitura: sem setter de propósito - o
+     * banco a calcula a partir de {@code birth_date}, e o MapStruct não a trata como alvo.
+     */
+    @Column(name = "birth_mmdd", insertable = false, updatable = false)
+    private Short birthMmdd;
+
     @NotBlank
     @Column(name = "cpf", nullable = false, unique = true, length = 14)
     private String cpf;
@@ -485,6 +493,10 @@ public class Client implements Auditable {
 
     public void setUpdatedBy(UUID updatedBy) {
         this.updatedBy = updatedBy;
+    }
+
+    public Short getBirthMmdd() {
+        return birthMmdd;
     }
 
     public Instant getDeletedAt() {

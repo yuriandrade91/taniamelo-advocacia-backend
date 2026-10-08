@@ -10,6 +10,7 @@ import com.lawfirm.law.firm.dto.ClientPatchResponseDTO;
 import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
 import com.lawfirm.law.firm.dto.Pagination;
+import com.lawfirm.law.firm.dto.UpcomingBirthdayDTO;
 import com.lawfirm.law.firm.exception.NotFoundException;
 import com.lawfirm.law.firm.exception.ValidationErrorCode;
 import com.lawfirm.law.firm.exception.ValidationException;
@@ -160,6 +161,29 @@ public class ClientController {
                         RequestDates.parseInstant("createdTo", createdTo, false));
 
         return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
+    }
+
+    @Operation(
+            summary = "Próximos aniversariantes",
+            description =
+                    """
+                    Alimenta o card de aniversários da Home: clientes ativos que fazem aniversário \
+                    nos próximos `days` dias (hoje incluso), ordenados pelo próximo aniversário, \
+                    até `limit` itens. Cada item traz `nextBirthday`, `daysUntil` (0 = hoje) e \
+                    `turningAge`.
+
+                    "Hoje" é o dia no fuso do escritório. Quem nasceu em 29/02 comemora em 28/02 \
+                    nos anos não bissextos. `days` vai de 0 a 365 e `limit` de 1 a 50; valores \
+                    fora da faixa são cortados no teto/piso.""")
+    @GetMapping("/upcoming-birthdays")
+    public ResponseEntity<ApiResponse<UpcomingBirthdayDTO>> upcomingBirthdays(
+            @Parameter(description = "Janela em dias a partir de hoje (0 a 365)")
+                    @RequestParam(defaultValue = "30")
+                    int days,
+            @Parameter(description = "Máximo de itens (1 a 50)") @RequestParam(defaultValue = "10")
+                    int limit) {
+        return ResponseEntity.ok(
+                ApiResponse.successList(clientService.upcomingBirthdays(days, limit)));
     }
 
     @Operation(

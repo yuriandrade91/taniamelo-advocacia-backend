@@ -5,13 +5,11 @@ import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.Situation;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
 
 @JsonPropertyOrder({
     "clientId",
     "fullName",
-    "birthDate",
     "cpf",
     "mobilePhone",
     "benefit",
@@ -25,17 +23,6 @@ import java.util.UUID;
 public class ClientListResponseDTO {
     private UUID clientId;
     private String fullName;
-
-    /**
-     * Data de nascimento.
-     *
-     * <p>Está aqui porque a Home responde "quem faz aniversário agora" sobre a base inteira, e essa
-     * pergunta não tem endpoint próprio: sem o campo na linha, o front teria que buscar uma ficha
-     * por cliente para descobrir a data de cada um. É um {@code LocalDate} - dia sem hora e sem
-     * fuso -, então o cliente nascido em 01/10 não vira 30/09 em quem lê de outro fuso.
-     */
-    private LocalDate birthDate;
-
     private String cpf;
     private String mobilePhone;
     private BenefitType benefit;
@@ -71,14 +58,6 @@ public class ClientListResponseDTO {
 
     public void setFullName(String fullName) {
         this.fullName = fullName;
-    }
-
-    public LocalDate getBirthDate() {
-        return birthDate;
-    }
-
-    public void setBirthDate(LocalDate birthDate) {
-        this.birthDate = birthDate;
     }
 
     public String getCpf() {

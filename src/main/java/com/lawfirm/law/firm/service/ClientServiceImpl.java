@@ -16,6 +16,7 @@ import com.lawfirm.law.firm.dto.ClientProfessionalDataRequestDTO;
 import com.lawfirm.law.firm.dto.ClientProfessionalDataResponseDTO;
 import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
+import com.lawfirm.law.firm.dto.UpcomingBirthdayDTO;
 import com.lawfirm.law.firm.exception.NotFoundException;
 import com.lawfirm.law.firm.exception.ValidationErrorCode;
 import com.lawfirm.law.firm.exception.ValidationException;
@@ -28,6 +29,7 @@ import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSpecification;
 import com.lawfirm.law.firm.security.CurrentUser;
+import com.lawfirm.law.firm.util.Birthdays;
 import com.lawfirm.law.firm.util.DocumentoIdentidade;
 import com.lawfirm.law.firm.util.OfficeClock;
 import com.lawfirm.law.firm.util.PageRequests;
@@ -42,6 +44,7 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -610,5 +613,37 @@ public class ClientServiceImpl implements ClientService {
         dto.setUpdatedBy(entity.getUpdatedBy());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
+    }
+
+    static final int BIRTHDAY_DAYS_MAX = 365;
+    static final int BIRTHDAY_LIMIT_MAX = 50;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UpcomingBirthdayDTO> upcomingBirthdays(int days, int limit) {
+        int window = Math.clamp(days, 0, BIRTHDAY_DAYS_MAX);
+        int size = Math.clamp(limit, 1, BIRTHDAY_LIMIT_MAX);
+
+        // "Hoje" no fuso do escritório: perto da meia-noite, UTC já estaria no dia seguinte.
+        LocalDate today = OfficeClock.today();
+        short fromMmdd = Birthdays.mmdd(today);
+        short toMmdd = Birthdays.windowEndMmdd(today.plusDays(window));
+        boolean allYear = window >= BIRTHDAY_DAYS_MAX;
+        boolean wraps = fromMmdd > toMmdd;
+
+        return repository
+                .findBirthdaysInWindow(
+                        fromMmdd, toMmdd, wraps, allYear, PageRequest.of(0, size))
+                .stream()
+                .map(
+                        row ->
+                                new UpcomingBirthdayDTO(
+                                        row.clientId(),
+                                        row.fullName(),
+                                        row.birthDate(),
+                                        Birthdays.next(row.birthDate(), today),
+                                        Birthdays.daysUntil(row.birthDate(), today),
+                                        Birthdays.turningAge(row.birthDate(), today)))
+                .toList();
     }
 }

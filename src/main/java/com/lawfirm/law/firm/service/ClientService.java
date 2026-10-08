@@ -11,6 +11,7 @@ import com.lawfirm.law.firm.dto.ClientProfessionalDataRequestDTO;
 import com.lawfirm.law.firm.dto.ClientProfessionalDataResponseDTO;
 import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
+import com.lawfirm.law.firm.dto.UpcomingBirthdayDTO;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.Situation;
@@ -67,4 +68,10 @@ public interface ClientService {
 
     ClientProfessionalDataResponseDTO updateProfessionalData(
             UUID id, ClientProfessionalDataRequestDTO dto);
+
+    /**
+     * Próximos aniversariantes nos próximos {@code days} dias (hoje incluso), até {@code limit},
+     * ordenados pelo próximo aniversário. Valores fora da faixa são cortados no teto/piso.
+     */
+    List<UpcomingBirthdayDTO> upcomingBirthdays(int days, int limit);
 }
