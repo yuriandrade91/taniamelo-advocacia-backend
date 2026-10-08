@@ -91,3 +91,12 @@ coleção 1:N").
 - Multi-tenant, se o sistema vier a atender mais de um escritório (caminho
   detalhado em `docs/ARCHITECTURE.md` §2).
 - Backup automatizado e plano de disaster recovery do Postgres.
+
+## Dívida de documentação em aberto
+
+- **Fundir os três docs de infra num só (`INFRA.md`).** `INFRA_PLAN.md`
+  (pesquisa/decisão), `PROVISIONAMENTO_INFRA.md` (provisionamento) e `CI_CD.md`
+  (pipeline) cobrem temas vizinhos e se repetem nas bordas. Ficaram separados
+  porque cada um é referenciado por nome em outros documentos — fundir exige
+  ajustar essas referências na mesma passada. Recomendação registrada, não
+  executada: depende de aprovação, porque mexe no que já está linkado.
