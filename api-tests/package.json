@@ -15,6 +15,9 @@
     "postman:local": "API_BASE_URL=http://localhost:8080 node scripts/run-all-postman.mjs",
     "postman:public": "node scripts/run-all-postman.mjs --public-only"
   },
+  "engines": {
+    "node": ">=20.12"
+  },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
     "@types/node": "^20.19.0",

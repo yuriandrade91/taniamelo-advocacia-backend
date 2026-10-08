@@ -1,4 +1,16 @@
+import fs from "node:fs";
+import path from "node:path";
 import { defineConfig } from "@playwright/test";
+
+/**
+ * O README manda preencher `api-tests/.env`, mas nada aqui lia esse arquivo:
+ * `npm test` morria em "Variável API_LOGIN não definida" para quem seguiu o
+ * README à risca, e só rodava para quem exportava tudo no shell. É o `.env`
+ * nativo do Node (>=20.12) — variável já exportada no ambiente vence o arquivo,
+ * que é o que faz `API_BASE_URL=... npm test` continuar valendo.
+ */
+const dotenv = path.join(import.meta.dirname, ".env");
+if (fs.existsSync(dotenv)) process.loadEnvFile(dotenv);
 
 /**
  * Testes de contrato da API. Sem navegador: tudo aqui usa o `request` do
