@@ -4,6 +4,11 @@ Este documento registra o que foi **conscientemente adiado**, para não perder
 o fio da meada. O que já foi feito está documentado em `docs/ARCHITECTURE.md`
 (decisões de API) e `docs/DATA_MODEL.md` (schema atual, baseline `V1`-`V8`).
 
+> **Atenção, 08/10/2026.** Este documento está parcialmente desatualizado: parte do que ele
+> lista como adiado já está implementado (autorização por papel, testes automatizados, CI na
+> Fase A; multi-tenancy na Fase D). O estado medido, com os comandos que o comprovam, está em
+> [MELHORIAS_E_PENDENCIAS.md](MELHORIAS_E_PENDENCIAS.md). Em caso de divergência, vale aquele.
+
 ## Nota sobre o histórico deste documento
 
 Rodadas anteriores acumularam um schema com migrations renumeradas e tabelas
