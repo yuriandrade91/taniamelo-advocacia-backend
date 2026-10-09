@@ -97,6 +97,58 @@ o total do projeto subiu de 90,1% para 90,5% de linhas e de 82,0% para 82,3% de 
 
 ## Margem de melhoria, por prioridade
 
+### 0. A instância está em disco local, não em S3 — verificado em 09/10/2026
+
+`GET http://98.82.73.175:8080/actuator/info` responde `"storage":{"type":"local"}`, no commit
+`046d24d`. Os arquivos dos clientes — PDFs de perícia, documentos — estão no volume da EC2, sem
+cópia em bucket nenhum.
+
+O S3 não está mal configurado: **não está em uso**. A cadeia que deixa isso passar verde:
+
+1. `vars.APP_STORAGE_TYPE` não está definida no repositório.
+2. [configurar-storage.sh](../scripts/configurar-storage.sh) sem a variável imprime "mantendo o
+   que está no .env" e sai com 0, sem alterar nada.
+3. A asserção de storage do [deploy.yml](../.github/workflows/deploy.yml) está dentro de
+   `if [ -n "$STORAGE_ESPERADO" ]` — sem a variável, é pulada inteira.
+4. [application.yaml](../src/main/resources/application.yaml) resolve
+   `${APP_STORAGE_TYPE:local}` para o default `local`.
+5. Deploy verde, aplicação em disco local.
+
+O mecanismo construído para impedir exatamente isso está inerte, porque o script e a asserção
+dependem da mesma variável que não existe. O comentário no workflow registra que a instância
+"passou meses com APP_STORAGE_TYPE=local enquanto a documentação dizia s3": o problema foi
+instrumentado, não corrigido, e a instrumentação não dispara no caso que importa.
+
+**Agravante:** o `/actuator/health` do mesmo instante reporta 852 MB livres de 7,9 GiB — 89,5%
+cheio. Com storage local, cada arquivo de cliente cai no mesmo volume que derrubou o deploy de
+08/10. O S3 ausente e o disco apertado são um problema só.
+
+**Como corrigir:** definir `APP_STORAGE_TYPE=s3`, `APP_STORAGE_S3_BUCKET` e
+`APP_STORAGE_S3_REGION` como *variables* do repositório (não secrets — bucket e região não são
+segredo), redeployar e conferir que a IAM Role da instância tem permissão no bucket. A partir
+daí a asserção do workflow passa a valer e reprova o deploy que não subir como s3.
+
+**Melhoria no pipeline:** tornar a asserção incondicional, ou reprovar o deploy quando
+`APP_STORAGE_TYPE` não estiver definida. Hoje o pipeline é silencioso precisamente no caso que
+ele existe para pegar.
+
+### 0-bis. Teste de upload pelos endpoints — e o que ele não prova
+
+Não há teste de ponta a ponta exercitando upload e download pelos endpoints
+(`POST /api/v1/clients/{clientId}/files/documents` e `/simulations`) contra a instância
+publicada.
+
+Vale registrar a armadilha antes de alguém escrever esse teste achando que resolve o item 0:
+**upload e download funcionam identicamente em `local` e em `s3`.** O `Content-Length` do
+download vem dos metadados no banco, não do storage. Um teste de upload verde não diz nada sobre
+onde o arquivo foi gravado — é o próprio comentário do `deploy.yml` que documenta esse engano.
+
+O que um teste de upload prova de verdade é condicional: **com `type=s3` já confirmado pelo
+`/actuator/info`**, um upload que completa prova que bucket, região e IAM Role estão corretos,
+porque é aí que uma permissão faltando falharia. A ordem certa é: primeiro o `/actuator/info`
+afirmar `s3`, depois o upload servir de prova do provisionamento.
+
+
 ### 1. Não existe backup
 
 `grep -rl "pg_dump\|backup"` sobre `src/main`, `scripts/` e `pom.xml` não retorna **nenhum**
@@ -239,11 +291,14 @@ do porte atual. Não tratar como pendência.
 
 ## Ordem sugerida
 
-1. **Backup** (`pg_dump` diário + restore testado). É o único item cuja ausência causa perda
-   irreversível.
-2. **Crescer o volume EBS.** Barato, e o `prune` só adia o problema.
-3. **Fechar os defaults de configuração** — falhando o boot em vez de assumir valor de dev.
-4. **Job pós-deploy** rodando Postman contra a instância.
-5. **Testes de receita do escritório** e do caminho de JWT.
-6. **Atualizar o ROADMAP** para refletir o que existe.
-7. Só então Fase C, começando pelo **agendador**, que destrava quatro itens.
+1. **Pôr a instância em S3** (item 0). Hoje os arquivos dos clientes existem em uma única
+   máquina, num volume 89,5% cheio, e o pipeline não acusa.
+2. **Backup** (`pg_dump` diário + restore testado). É o único item cuja ausência causa perda
+   irreversível — e enquanto o storage for local, os arquivos também não têm cópia.
+3. **Crescer o volume EBS.** Barato, e o `prune` só adia o problema.
+4. **Fechar os defaults de configuração** — falhando o boot em vez de assumir valor de dev. O
+   `APP_STORAGE_TYPE:local` do item 0 é o mesmo padrão, e já custou.
+5. **Job pós-deploy** rodando Postman contra a instância, com o teste de upload do item 0-bis.
+6. **Testes de receita do escritório** e do caminho de JWT.
+7. **Atualizar o ROADMAP** para refletir o que existe.
+8. Só então Fase C, começando pelo **agendador**, que destrava quatro itens.
