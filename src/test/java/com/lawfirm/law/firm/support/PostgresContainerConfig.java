@@ -25,10 +25,15 @@ import org.testcontainers.utility.DockerImageName;
 public class PostgresContainerConfig {
 
     /**
-     * Versão fixada de propósito: a imagem é parte do que o teste afirma. Deve acompanhar a versão
-     * do Postgres usada em produção (ver docs/PROVISIONAMENTO_INFRA.md).
+     * Versão fixada de propósito: a imagem é parte do que o teste afirma. Acompanha a versão de
+     * produção, hoje {@code postgres:17.5} no docker-compose.yml - a mesma tag, não a variante
+     * alpine, porque alpine usa outra libc e portanto outro comportamento de collation e de {@code
+     * unaccent}, que é justamente o que a busca de clientes depende.
+     *
+     * <p>Esta constante e a imagem do compose têm de mudar juntas. Divergir faz a suíte afirmar
+     * sobre um Postgres que não é o que atende o cliente.
      */
-    private static final DockerImageName IMAGE = DockerImageName.parse("postgres:16-alpine");
+    private static final DockerImageName IMAGE = DockerImageName.parse("postgres:17.5");
 
     @Bean
     @ServiceConnection
