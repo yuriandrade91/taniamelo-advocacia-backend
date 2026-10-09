@@ -1,8 +1,17 @@
-version: "3.8"
+# Teto de log por container. Sem isto o driver json-file cresce sem limite e
+# enche o disco da instância, onde a aplicação e o Postgres dividem o mesmo
+# volume de 8 GiB (ver docs/AWS_EC2_ARM64_DEPLOY.md). Foi uma das causas do
+# deploy que falhou com "No space left on device".
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   db:
     container_name: database-postgress
+    logging: *logging
     image: postgres:17.5
     restart: unless-stopped
     environment:
@@ -34,6 +43,7 @@ services:
   # of the app in a container while you're already running it locally.
   app:
     container_name: java-application
+    logging: *logging
     profiles: ["full"]
     restart: unless-stopped
     build:

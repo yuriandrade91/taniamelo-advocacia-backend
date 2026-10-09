@@ -160,6 +160,27 @@ jobs:
               echo "Storage confirmado: $STORAGE_RODANDO"
             fi
 
+            # ── Faxina de disco: só depois de tudo verificado ──
+            #
+            # Todo deploy reconstrói a imagem (`up -d --build` no
+            # restart-app-docker.sh) e a anterior fica órfã. O volume da
+            # instância tem 8 GiB com o Postgres no mesmo disco, então algumas
+            # dezenas de deploys bastam para enchê-lo: foi assim que o deploy
+            # de 08/10/2026 morreu no `git fetch`, com "No space left on
+            # device", antes de publicar qualquer coisa.
+            #
+            # Roda DEPOIS das checagens, de propósito: enquanto a versão nova
+            # não provou que sobe saudável, a imagem anterior é o rollback.
+            #
+            # `--volumes` não aparece aqui em nenhuma hipótese - db-data é o
+            # Postgres de produção e app-storage são os arquivos dos clientes.
+            # A diferença entre limpar e destruir é essa flag.
+            echo "Liberando espaço: imagens órfãs e cache de build antigo..."
+            docker image prune -f
+            docker builder prune -f --filter "until=168h"
+            echo "Disco após a faxina:"
+            df -h / | tail -1
+
             echo "✅ Deploy concluído: $ESPERADO no ar, health UP, migrations aplicadas."
 
       - name: Fechar porta 22 no Security Group

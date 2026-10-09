@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   db:
     # keep data on a named volume (already declared in base compose) and add a robust healthcheck
