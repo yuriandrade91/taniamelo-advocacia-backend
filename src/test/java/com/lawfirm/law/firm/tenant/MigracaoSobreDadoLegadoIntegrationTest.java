@@ -159,6 +159,11 @@ class MigracaoSobreDadoLegadoIntegrationTest extends PostgresIntegrationTest {
                 Flyway.configure()
                         .dataSource(dataSource)
                         .schemas(SCHEMA)
+                        // Obrigatório desde a V23: quem aponta para db/migration/tenant tem de
+                        // informar o placeholder, senão o Flyway recusa o script. Aqui é false -
+                        // este teste afirma sobre as migrations de estrutura, não sobre a massa
+                        // de demonstração.
+                        .placeholders(java.util.Map.of("seedDemoData", "false"))
                         .locations("classpath:db/migration/tenant");
         if (versao != null) {
             config = config.target(MigrationVersion.fromVersion(versao));

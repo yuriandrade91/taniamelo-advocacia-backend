@@ -49,7 +49,8 @@ class MultiTenantFlywayMigratorTest {
     void unavailableDatabaseFailsFast() throws SQLException {
         when(dataSource.getConnection()).thenThrow(new SQLException("connection refused"));
 
-        MultiTenantFlywayMigrator migrator = new MultiTenantFlywayMigrator(dataSource, properties);
+        MultiTenantFlywayMigrator migrator =
+                new MultiTenantFlywayMigrator(dataSource, properties, false);
 
         assertThrows(RuntimeException.class, migrator::migrate);
     }
@@ -60,7 +61,8 @@ class MultiTenantFlywayMigratorTest {
         when(resultSet.next()).thenReturn(true, true, false);
         when(resultSet.getString("schema_name")).thenReturn("tenant_a", "tenant_b");
 
-        MultiTenantFlywayMigrator migrator = new MultiTenantFlywayMigrator(dataSource, properties);
+        MultiTenantFlywayMigrator migrator =
+                new MultiTenantFlywayMigrator(dataSource, properties, false);
 
         // A migration compartilhada tenta conectar de verdade e falha com o mock -
         // o que importa aqui é que o migrator é construído e a leitura do catálogo é acionada.
@@ -71,7 +73,8 @@ class MultiTenantFlywayMigratorTest {
     @Test
     @DisplayName("o migrator recebe o DataSource e as propriedades de tenancy")
     void isWiredWithItsDependencies() throws SQLException {
-        MultiTenantFlywayMigrator migrator = new MultiTenantFlywayMigrator(dataSource, properties);
+        MultiTenantFlywayMigrator migrator =
+                new MultiTenantFlywayMigrator(dataSource, properties, false);
         assertNotNull(migrator);
         verify(dataSource, org.mockito.Mockito.never()).getConnection();
     }

@@ -6,10 +6,12 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -33,10 +35,15 @@ public class MultiTenantFlywayMigrator {
 
     private final DataSource dataSource;
     private final TenancyProperties properties;
+    private final boolean seedDemoData;
 
-    public MultiTenantFlywayMigrator(DataSource dataSource, TenancyProperties properties) {
+    public MultiTenantFlywayMigrator(
+            DataSource dataSource,
+            TenancyProperties properties,
+            @Value("${app.seed.demo-data:true}") boolean seedDemoData) {
         this.dataSource = dataSource;
         this.properties = properties;
+        this.seedDemoData = seedDemoData;
     }
 
     @PostConstruct
@@ -60,6 +67,17 @@ public class MultiTenantFlywayMigrator {
                     .schemas(schema)
                     .createSchemas(true)
                     .locations("classpath:db/migration/tenant")
+                    // ATENÇÃO: este placeholder é OBRIGATÓRIO para quem aponta para
+                    // db/migration/tenant. Sem ele o Flyway recusa a V23 com "No value
+                    // provided for placeholder" - foi o que quebrou o
+                    // MigracaoSobreDadoLegadoIntegrationTest, que configura o próprio Flyway.
+                    // Ao criar outra configuração para essa location, informe-o.
+                    //
+                    // Liga/desliga as migrations que semeiam massa de demonstração (V23). A
+                    // suíte roda com false: a massa entrando no banco de teste faria os testes
+                    // que afirmam contagem exata dependerem dela - e o primeiro efeito foi
+                    // colisão de CPF com a massa do próprio teste.
+                    .placeholders(Map.of("seedDemoData", String.valueOf(seedDemoData)))
                     .baselineOnMigrate(true)
                     .load()
                     .migrate();

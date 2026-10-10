@@ -24,6 +24,14 @@ app:
   # Fixo e explícito: o teste não deve depender do default de dev nem de variável de ambiente.
   jwt:
     secret: test-only-secret-not-used-anywhere-else-32chars
+  seed:
+    # A massa de demonstração (migration V23) NÃO entra no banco de teste. Ela
+    # cria clientes com CPF fixo, e a suíte usa CPFs válidos conhecidos: o
+    # primeiro efeito de deixá-la ligada foi violação de unicidade em
+    # ux_clients_cpf_active. Além disso, todo teste que afirma contagem exata
+    # passaria a depender da massa - dependência invisível e frágil.
+    demo-data: false
+
   storage:
     # Arquivos de teste vão para target/, que o `mvn clean` já limpa. Sem isto os
     # uploads dos testes se acumulariam em ./storage, junto com os de desenvolvimento.
