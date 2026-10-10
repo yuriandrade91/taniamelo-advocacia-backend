@@ -17,8 +17,16 @@
 -- plataforma faria nascer, junto, cinco clientes fictícios com CPF fictício no
 -- schema dele. O guard restringe a massa aos dois schemas de hoje.
 --
--- IDEMPOTENTE por ON CONFLICT (id) DO NOTHING: os ids são fixos, então uma
--- reaplicação (Flyway repair, clone de schema) não duplica nem falha.
+-- IDEMPOTENTE por ON CONFLICT DO NOTHING, SEM alvo de propósito. Com alvo
+-- "(id)" o Postgres só ignora conflito na chave primária - e a primeira
+-- aplicação em produção morreu em OUTRA restrição: ux_clients_cpf_active,
+-- porque um dos CPFs escolhidos já existia no schema do escritório. Sem alvo,
+-- qualquer restrição de unicidade é tolerada, que é o que "semear sem atropelar
+-- o que já está lá" exige.
+--
+-- Os CPFs vivem na faixa 870.11x, escolhida por não aparecer em nenhuma massa
+-- nem teste do repositório - os anteriores eram CPFs de teste "famosos" e por
+-- isso colidiram.
 --
 -- created_by/responsible_user_id são resolvidos por consulta, não fixados: numa
 -- migration os usuários podem ainda não existir (o AdminUserSeeder roda DEPOIS
@@ -96,36 +104,36 @@ BEGIN
              created_at, updated_at)
         VALUES
          ('d0000023-0000-4000-8000-000000000001', 'Antônio Carlos Ribeiro', DATE '1958-03-11',
-          '529.982.247-25', 'Benedita Ribeiro', '(31) 98801-0001', 'tania@inss1', 'Masculino',
+          '870.111.111-66', 'Benedita Ribeiro', '(31) 98801-0001', 'tania@inss1', 'Masculino',
           'Benefício concluído', 'Aposentadoria por tempo de contribuição', 'Casado(a)',
           'antonio.ribeiro@exemplo.com', true, 'Metalúrgico', '120.11111.11-1', 'T-200001',
           35, 4, 0, 424, 'Verificado', false, v_admin, v_admin,
           DATE '2026-01-08', DATE '2026-09-30'),
          ('d0000023-0000-4000-8000-000000000002', 'Rosângela Maria Duarte', DATE '1963-07-22',
-          '111.444.777-35', 'Neusa Duarte', '(31) 98801-0002', 'tania@inss2', 'Feminino',
+          '870.112.222-35', 'Neusa Duarte', '(31) 98801-0002', 'tania@inss2', 'Feminino',
           'Planejamento em execução', 'Aposentadoria por idade', 'Viúvo(a)',
           'rosangela.duarte@exemplo.com', true, 'Costureira', '120.22222.22-2', NULL,
           27, 6, 0, 330, 'Verificado', false, v_staff, v_admin,
           DATE '2026-02-12', DATE '2026-10-02'),
          ('d0000023-0000-4000-8000-000000000003', 'Sebastião Alves Pinto', DATE '1966-11-05',
-          '390.533.447-05', 'Terezinha Pinto', '(31) 98801-0003', 'tania@inss3', 'Masculino',
+          '870.113.333-04', 'Terezinha Pinto', '(31) 98801-0003', 'tania@inss3', 'Masculino',
           'Análise documental', 'Aposentadoria especial', 'Solteiro(a)',
           NULL, true, 'Soldador', '120.33333.33-3', NULL,
           24, 0, 0, 288, 'Potencial', false, v_staff, v_admin,
           DATE '2026-04-03', DATE '2026-09-18'),
          ('d0000023-0000-4000-8000-000000000004', 'Marlene Souza Campos', DATE '1961-01-30',
-          '168.995.350-09', 'Aparecida Campos', '(31) 98801-0004', 'tania@inss4', 'Feminino',
+          '870.114.444-83', 'Aparecida Campos', '(31) 98801-0004', 'tania@inss4', 'Feminino',
           'Formulário preenchido', 'Aposentadoria por idade', 'Divorciado(a)',
           'marlene.campos@exemplo.com', false, 'Doméstica', '120.44444.44-4', NULL,
           18, 3, 0, 219, 'Potencial', false, v_admin, v_admin,
           DATE '2026-06-20', DATE '2026-10-05'),
          ('d0000023-0000-4000-8000-000000000005', 'Geraldo Magela Faria', DATE '1955-09-14',
-          '931.261.800-07', 'Maria Faria', '(31) 98801-0005', 'tania@inss5', 'Masculino',
+          '870.115.555-52', 'Maria Faria', '(31) 98801-0005', 'tania@inss5', 'Masculino',
           'Benefício futuro', 'Aposentadoria por tempo de contribuição', 'Casado(a)',
           NULL, true, 'Motorista', '120.55555.55-5', 'T-200005',
           38, 0, 0, 456, 'Verificado', true, v_admin, v_admin,
           DATE '2026-08-07', DATE '2026-10-08')
-        ON CONFLICT (id) DO NOTHING;
+        ON CONFLICT DO NOTHING;
     ELSE
         INSERT INTO clients
             (id, full_name, birth_date, cpf, mother_name, mobile_phone, inss_password, gender,
@@ -135,24 +143,36 @@ BEGIN
              created_at, updated_at)
         VALUES
          ('d0000023-1000-4000-8000-000000000001', 'Juliana Prado Martins', DATE '1972-04-18',
-          '295.379.955-93', 'Sueli Martins', '(11) 97701-0001', 'demo@inss1', 'Feminino',
+          '870.116.666-21', 'Sueli Martins', '(11) 97701-0001', 'demo@inss1', 'Feminino',
           'Análise documental', 'Aposentadoria por idade', 'Casado(a)',
           'juliana.martins@demo.com', true, 'Enfermeira', '220.11111.11-1', NULL,
           21, 9, 0, 261, 'Verificado', false, v_admin, v_admin,
           DATE '2026-01-15', DATE '2026-09-22'),
          ('d0000023-1000-4000-8000-000000000002', 'Edson Ramalho Vieira', DATE '1960-12-02',
-          '606.957.600-15', 'Lúcia Vieira', '(11) 97701-0002', 'demo@inss2', 'Masculino',
+          '870.117.777-09', 'Lúcia Vieira', '(11) 97701-0002', 'demo@inss2', 'Masculino',
           'Planejamento concluído', 'Aposentadoria especial', 'Divorciado(a)',
           NULL, true, 'Eletricista', '220.22222.22-2', 'D-300002',
           29, 2, 0, 350, 'Verificado', false, v_staff, v_admin,
           DATE '2026-03-05', DATE '2026-10-01'),
          ('d0000023-1000-4000-8000-000000000003', 'Vera Lúcia Barreto', DATE '1968-08-25',
-          '718.561.280-75', 'Dalva Barreto', '(11) 97701-0003', 'demo@inss3', 'Feminino',
+          '870.118.888-70', 'Dalva Barreto', '(11) 97701-0003', 'demo@inss3', 'Feminino',
           'Formulário preenchido', 'Aposentadoria por tempo de contribuição', 'Solteiro(a)',
           'vera.barreto@demo.com', true, 'Auxiliar administrativo', '220.33333.33-3', NULL,
           16, 5, 0, 197, 'Potencial', false, v_staff, v_admin,
           DATE '2026-05-11', DATE '2026-10-06')
-        ON CONFLICT (id) DO NOTHING;
+        ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- Se a carteira não entrou - porque um CPF já existia e o ON CONFLICT
+    -- ignorou a linha - o resto da massa não pode entrar: pagamentos, receitas e
+    -- agenda apontam para estes ids fixos e violariam a chave estrangeira,
+    -- derrubando a subida. Melhor semear nada do que semear pela metade.
+    IF NOT EXISTS (SELECT 1 FROM clients WHERE id = v_cli_a)
+       OR NOT EXISTS (SELECT 1 FROM clients WHERE id = v_cli_b) THEN
+        RAISE NOTICE
+            'V23: carteira de demonstração não entrou no schema % (CPF já existente); massa'
+            ' dependente pulada.', v_schema;
+        RETURN;
     END IF;
 
     -- ──────────────────────────────────────────────────────────────────────
@@ -278,7 +298,7 @@ BEGIN
             ('3', 'Entrevista inicial',    'Entrevista', 6, TIME '10:30', 'Online',
              'Levantamento de documentos com o cliente.',   'Entrevistado do mês')
          ) AS a(ord, titulo, tipo, dia, hora, modalidade, descricao, nome_livre)
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT DO NOTHING;
 
     -- Um cancelado, com motivo preenchido.
     INSERT INTO appointments
@@ -292,7 +312,7 @@ BEGIN
          'Online', NULL, 'https://meet.google.com/exemplo-demo',
          'Remarcada a pedido do cliente.', 'Cancelado',
          'Cliente pediu para remarcar após a perícia.', NULL, 'Cliente do mês', v_staff)
-    ON CONFLICT (id) DO NOTHING;
+    ON CONFLICT DO NOTHING;
 
     RAISE NOTICE 'V23: massa de jan-out/2026 aplicada ao schema %.', v_schema;
 END $$;
