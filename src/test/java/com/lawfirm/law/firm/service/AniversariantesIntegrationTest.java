@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
 import com.lawfirm.law.firm.dto.UpcomingBirthdayDTO;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Client;
@@ -16,6 +17,7 @@ import com.lawfirm.law.firm.support.PostgresIntegrationTest;
 import com.lawfirm.law.firm.util.OfficeClock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -124,6 +126,42 @@ class AniversariantesIntegrationTest extends PostgresIntegrationTest {
                 "Hoje", card.get(0).fullName(), "o limite corta os mais distantes, não o próximo");
     }
 
+    @Test
+    @DisplayName("editar o cliente aparece no card na leitura seguinte, em todos os campos")
+    void edicaoRefleteNoCard() {
+        LocalDate hoje = OfficeClock.today();
+        UUID id = cadastrar("Nome antigo", hoje, "529.982.247-25", "(31) 90000-0000", true);
+
+        assertEquals(
+                "(31) 90000-0000",
+                service.upcomingBirthdays(JANELA_DIAS, 10).get(0).mobilePhone(),
+                "pré-condição: o card começa com o celular original");
+
+        ClientUpdateRequestDTO edicao = new ClientUpdateRequestDTO();
+        edicao.setFullName("Nome novo");
+        edicao.setBirthDate(LocalDate.of(1980, hoje.getMonthValue(), hoje.getDayOfMonth()));
+        edicao.setCpf("529.982.247-25");
+        edicao.setMotherName("Mãe do teste");
+        edicao.setMobilePhone("(31) 91111-1111");
+        edicao.setIsWhatsapp(false);
+        edicao.setGender(Gender.FEMININO);
+        edicao.setMaritalStatus(MaritalStatus.SOLTEIRO);
+        edicao.setBenefit(BenefitType.APOSENTADORIA_POR_IDADE);
+        edicao.setSituation(Situation.FORMULARIO_PREENCHIDO);
+        service.update(id, edicao);
+
+        List<UpcomingBirthdayDTO> card = service.upcomingBirthdays(JANELA_DIAS, 10);
+
+        assertEquals(1, card.size());
+        assertEquals("Nome novo", card.get(0).fullName(), "nome editado tem de chegar ao card");
+        assertEquals(
+                "(31) 91111-1111",
+                card.get(0).mobilePhone(),
+                "celular editado tem de chegar ao card - é o caso relatado pelo usuário");
+        assertFalse(
+                card.get(0).isWhatsapp(), "a marcação de WhatsApp editada tem de chegar ao card");
+    }
+
     /**
      * Cria um cliente cujo aniversário cai em {@code quando}, no dia e mês dessa data.
      *
@@ -136,7 +174,7 @@ class AniversariantesIntegrationTest extends PostgresIntegrationTest {
      * linhas afetadas, que chega como {@code ObjectOptimisticLockingFailure}. Quem persiste de
      * verdade deixa o id vir do banco.
      */
-    private void cadastrar(
+    private UUID cadastrar(
             String nome, LocalDate quando, String cpf, String celular, boolean whatsapp) {
         Client cliente = new Client();
         cliente.setFullName(nome);
@@ -151,6 +189,6 @@ class AniversariantesIntegrationTest extends PostgresIntegrationTest {
         cliente.setClientType(ClientType.POTENCIAL);
         cliente.setSituation(Situation.FORMULARIO_PREENCHIDO);
         cliente.setBenefit(BenefitType.APOSENTADORIA_POR_IDADE);
-        repository.saveAndFlush(cliente);
+        return repository.saveAndFlush(cliente).getId();
     }
 }
