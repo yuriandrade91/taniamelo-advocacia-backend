@@ -86,6 +86,14 @@ public class Client implements Auditable {
     @Column(name = "situation", nullable = false, length = 100)
     private Situation situation;
 
+    /**
+     * Etapa do requerimento no INSS - a esteira de fora, paralela a {@link #situation}, que é a
+     * esteira do escritório. Sem {@code @NotNull}: nulo significa "ainda não protocolado", estado
+     * legítimo de quem está em prospecção ou planejamento (ver V24).
+     */
+    @Column(name = "request_stage", length = 100)
+    private RequestStage requestStage;
+
     @NotNull
     @Column(name = "benefit", nullable = false, length = 100)
     private BenefitType benefit;
@@ -265,6 +273,14 @@ public class Client implements Auditable {
 
     public Situation getSituation() {
         return situation;
+    }
+
+    public RequestStage getRequestStage() {
+        return requestStage;
+    }
+
+    public void setRequestStage(RequestStage requestStage) {
+        this.requestStage = requestStage;
     }
 
     public void setSituation(Situation situation) {

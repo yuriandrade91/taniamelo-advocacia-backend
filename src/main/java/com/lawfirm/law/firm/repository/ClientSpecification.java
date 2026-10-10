@@ -3,6 +3,7 @@ package com.lawfirm.law.firm.repository;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Client;
 import com.lawfirm.law.firm.model.ClientType;
+import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -88,6 +89,20 @@ public final class ClientSpecification {
         return (root, query, cb) -> {
             List<Situation> cleaned = withoutNulls(situations);
             return cleaned.isEmpty() ? null : root.get("situation").in(cleaned);
+        };
+    }
+
+    /**
+     * Filtra por uma ou mais etapas do requerimento no INSS.
+     *
+     * <p>Mesma forma de {@link #situationIn}. Note que esta coluna é anulável: cliente sem
+     * requerimento protocolado não entra em nenhum valor do filtro, o que é o comportamento
+     * desejado - pedir "Exigência" não deve trazer quem nunca foi ao INSS.
+     */
+    public static Specification<Client> requestStageIn(List<RequestStage> stages) {
+        return (root, query, cb) -> {
+            List<RequestStage> cleaned = withoutNulls(stages);
+            return cleaned.isEmpty() ? null : root.get("requestStage").in(cleaned);
         };
     }
 

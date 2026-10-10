@@ -18,6 +18,7 @@ import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
 import com.lawfirm.law.firm.model.PaymentMethod;
 import com.lawfirm.law.firm.model.PaymentStatus;
+import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
@@ -61,6 +62,7 @@ class EnumConvertersTest {
                 Arguments.of(new MaritalStatusConverter(), MaritalStatus.class),
                 Arguments.of(new PaymentMethodConverter(), PaymentMethod.class),
                 Arguments.of(new PaymentStatusConverter(), PaymentStatus.class),
+                Arguments.of(new RequestStageConverter(), RequestStage.class),
                 Arguments.of(new SituationConverter(), Situation.class));
     }
 

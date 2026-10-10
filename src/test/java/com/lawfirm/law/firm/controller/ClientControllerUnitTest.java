@@ -196,6 +196,7 @@ class ClientControllerUnitTest {
                             any(),
                             any(),
                             any(),
+                            any(),
                             any()))
                     .thenReturn(
                             new PageImpl<>(
@@ -228,7 +229,7 @@ class ClientControllerUnitTest {
             verify(clientService)
                     .listSummary(
                             eq(1), eq(10), isNull(), isNull(), isNull(), isNull(), isNull(),
-                            isNull(), isNull());
+                            isNull(), isNull(), isNull());
         }
 
         @Test
@@ -262,6 +263,8 @@ class ClientControllerUnitTest {
                             eq("maria"),
                             benefits.capture(),
                             situations.capture(),
+                            // requestStage não é o foco deste teste; basta não filtrar.
+                            isNull(),
                             clientTypes.capture(),
                             eq(true),
                             from.capture(),
@@ -318,8 +321,8 @@ class ClientControllerUnitTest {
 
             verify(clientService)
                     .listSummary(
-                            eq(1), eq(10), isNull(), isNull(), isNull(), isNull(), eq(false),
-                            isNull(), isNull());
+                            eq(1), eq(10), isNull(), isNull(), isNull(), isNull(), isNull(),
+                            eq(false), isNull(), isNull());
         }
 
         @Test
@@ -330,7 +333,7 @@ class ClientControllerUnitTest {
             verify(clientService)
                     .listSummary(
                             eq(1), eq(10), isNull(), isNull(), isNull(), isNull(), isNull(),
-                            isNull(), isNull());
+                            isNull(), isNull(), isNull());
         }
 
         @Test
@@ -494,7 +497,7 @@ class ClientControllerUnitTest {
         private void stubOutcome(
                 boolean situation, boolean benefit, boolean type, boolean billable) {
             when(clientService.patch(any(), any()))
-                    .thenReturn(new ClientPatchOutcome(situation, benefit, type, billable));
+                    .thenReturn(new ClientPatchOutcome(situation, false, benefit, type, billable));
         }
 
         @ParameterizedTest(name = "{4}")

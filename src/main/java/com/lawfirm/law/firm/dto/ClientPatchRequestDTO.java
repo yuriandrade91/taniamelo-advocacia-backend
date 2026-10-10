@@ -1,10 +1,10 @@
 package com.lawfirm.law.firm.dto;
 
 /**
- * Atualização parcial do cliente (PATCH /clients/{clientId}): situação, benefício, tipo de cliente
- * e/ou arrecadação. Envie só os campos que quer mudar - null significa "não mexer nisso".
- * situation/benefit/clientType aceitam o nome do enum ou o label PT-BR (validado no service para
- * produzir erro amigável).
+ * Atualização parcial do cliente (PATCH /clients/{clientId}): situação, etapa no INSS, benefício,
+ * tipo de cliente e/ou arrecadação. Envie só os campos que quer mudar - null significa "não mexer
+ * nisso". situation/benefit/clientType aceitam o nome do enum ou o label PT-BR (validado no service
+ * para produzir erro amigável).
  *
  * <p><b>Recusa campo que não aplica, de propósito.</b> O default do Spring Boot é {@code
  * FAIL_ON_UNKNOWN_PROPERTIES=false}: sem a anotação abaixo, um PATCH com {@code mobilePhone} era
@@ -44,12 +44,29 @@ public class ClientPatchRequestDTO {
     }
 
     private String situation;
+
+    /**
+     * Etapa do requerimento no INSS. Entra aqui, e não só no PUT, porque é o campo que mais muda ao
+     * longo de um caso: exigência vira cumprimento, cumprimento vira deferimento ou indeferimento.
+     * Obrigar um PUT completo a cada andamento faria a tela reenviar o cadastro inteiro para mexer
+     * numa palavra.
+     */
+    private String requestStage;
+
     private String benefit;
     private String clientType;
     private Boolean notBillable;
 
     public String getSituation() {
         return situation;
+    }
+
+    public String getRequestStage() {
+        return requestStage;
+    }
+
+    public void setRequestStage(String requestStage) {
+        this.requestStage = requestStage;
     }
 
     public void setSituation(String situation) {

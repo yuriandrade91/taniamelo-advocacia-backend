@@ -4,6 +4,7 @@ import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
+import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.validation.ValidCPF;
 import jakarta.validation.constraints.Email;
@@ -78,6 +79,13 @@ public class ClientUpdateRequestDTO implements ClientWritableFields {
     @NotNull private BenefitType benefit;
 
     @NotNull private Situation situation;
+
+    /**
+     * Etapa do requerimento no INSS. Anulável: nulo significa "ainda não protocolado", estado
+     * legítimo de cliente em prospecção ou planejamento. Não confundir com {@code situation}, que é
+     * a esteira interna do escritório.
+     */
+    private RequestStage requestStage;
 
     @Size(max = 30)
     private String beneficiaryNumber;
@@ -256,6 +264,14 @@ public class ClientUpdateRequestDTO implements ClientWritableFields {
 
     public void setSituation(Situation situation) {
         this.situation = situation;
+    }
+
+    public RequestStage getRequestStage() {
+        return requestStage;
+    }
+
+    public void setRequestStage(RequestStage requestStage) {
+        this.requestStage = requestStage;
     }
 
     @Override

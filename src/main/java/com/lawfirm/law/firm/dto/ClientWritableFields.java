@@ -4,6 +4,7 @@ import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
+import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -41,6 +42,9 @@ public interface ClientWritableFields {
     BenefitType getBenefit();
 
     Situation getSituation();
+
+    /** Etapa no INSS. Anulável: nem todo cliente tem requerimento protocolado. */
+    RequestStage getRequestStage();
 
     String getBeneficiaryNumber();
 

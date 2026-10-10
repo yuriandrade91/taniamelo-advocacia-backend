@@ -3,6 +3,7 @@ package com.lawfirm.law.firm.dto;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.ClientType;
+import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import java.time.Instant;
 import java.util.UUID;
@@ -27,6 +28,14 @@ public class ClientListResponseDTO {
     private String mobilePhone;
     private BenefitType benefit;
     private Situation situation;
+
+    /**
+     * Etapa do requerimento no INSS. Anulável: nulo significa "ainda não protocolado", estado
+     * legítimo de cliente em prospecção ou planejamento. Não confundir com {@code situation}, que é
+     * a esteira interna do escritório.
+     */
+    private RequestStage requestStage;
+
     private ClientType clientType;
 
     /**
@@ -90,6 +99,14 @@ public class ClientListResponseDTO {
 
     public void setSituation(Situation situation) {
         this.situation = situation;
+    }
+
+    public RequestStage getRequestStage() {
+        return requestStage;
+    }
+
+    public void setRequestStage(RequestStage requestStage) {
+        this.requestStage = requestStage;
     }
 
     public ClientType getClientType() {

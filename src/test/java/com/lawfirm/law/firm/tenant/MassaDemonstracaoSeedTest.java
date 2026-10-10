@@ -76,6 +76,17 @@ class MassaDemonstracaoSeedTest {
                     contar(schema, "appointments"),
                     "esperado 3 tipos x 10 meses + 1 cancelado em " + schema);
 
+            // V25 preenche a etapa do INSS na massa. Nem todos: cliente sem requerimento
+            // protocolado fica nulo de propósito, e uma massa em que todo mundo tem etapa
+            // esconderia justamente o estado mais comum da base real.
+            assertTrue(
+                    contar(schema, "clients WHERE request_stage IS NOT NULL") > 0,
+                    "nenhum cliente com etapa do INSS em " + schema);
+            assertTrue(
+                    contar(schema, "clients WHERE cpf LIKE '870.11%' AND request_stage IS NULL")
+                            > 0,
+                    "esperado ao menos um cliente sem requerimento protocolado em " + schema);
+
             // A janela pedida é fechada: janeiro a outubro de 2026, nada fora dela.
             assertEquals(
                     0,

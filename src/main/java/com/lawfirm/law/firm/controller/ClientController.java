@@ -16,6 +16,7 @@ import com.lawfirm.law.firm.exception.ValidationErrorCode;
 import com.lawfirm.law.firm.exception.ValidationException;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.ClientType;
+import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.security.RequerAdvogado;
 import com.lawfirm.law.firm.service.ClientPatchOutcome;
@@ -107,7 +108,20 @@ public class ClientController {
                     - `Planejamento em execução`
                     - `Planejamento concluído`
                     - `Benefício futuro`
-                    - `Benefício concluído`""")
+                    - `Benefício concluído`
+
+                    **Valores válidos de `requestStage`** (etapa no INSS, independente de \
+                    `situation`; ausente = requerimento ainda não protocolado):
+                    - `Requerimento`
+                    - `Exigência`
+                    - `Cumprimento de exigência`
+                    - `Deferimento`
+                    - `Indeferimento`
+                    - `Recurso`
+
+                    `situation` e `requestStage` são esteiras paralelas: a primeira é o andamento \
+                    DENTRO do escritório, a segunda é o andamento do requerimento NO INSS. \
+                    Filtrar pelas duas combina as condições (E, não OU).""")
     @GetMapping
     public ResponseEntity<ApiResponse<ClientListResponseDTO>> list(
             @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1")
@@ -126,6 +140,14 @@ public class ClientController {
             @Parameter(description = "Filtra por uma ou mais situações (nome ou label)")
                     @RequestParam(required = false)
                     List<String> situation,
+            @Parameter(
+                            description =
+                                    "Filtra por uma ou mais etapas do requerimento no INSS (nome da"
+                                            + " constante ou label). Repita o parâmetro para múltiplos"
+                                            + " valores. Cliente sem requerimento protocolado não entra"
+                                            + " em nenhum valor do filtro.")
+                    @RequestParam(required = false)
+                    List<String> requestStage,
             @Parameter(
                             description =
                                     "Filtra por um ou mais tipos de cliente: VERIFICADO / POTENCIAL"
@@ -155,6 +177,7 @@ public class ClientController {
                         searchTerm,
                         parseEnumList("benefitType", benefitType, BenefitType::fromLabel),
                         parseEnumList("situation", situation, Situation::fromLabel),
+                        parseEnumList("requestStage", requestStage, RequestStage::fromLabel),
                         parseEnumList("clientType", clientType, ClientType::fromLabel),
                         notBillable,
                         RequestDates.parseInstant("createdFrom", createdFrom, true),
@@ -394,6 +417,11 @@ public class ClientController {
         List<Boolean> feminine = new ArrayList<>();
         if (outcome.situationChanged()) {
             names.add("Situação");
+            feminine.add(true);
+        }
+        if (outcome.requestStageChanged()) {
+            // "Etapa" é feminino - entra na concordância junto com "Situação" e "Arrecadação".
+            names.add("Etapa no INSS");
             feminine.add(true);
         }
         if (outcome.benefitChanged()) {

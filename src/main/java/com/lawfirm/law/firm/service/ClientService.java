@@ -14,6 +14,7 @@ import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
 import com.lawfirm.law.firm.dto.UpcomingBirthdayDTO;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.ClientType;
+import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import java.time.Instant;
 import java.util.List;
@@ -31,6 +32,7 @@ public interface ClientService {
             String searchTerm,
             List<BenefitType> benefitTypes,
             List<Situation> situations,
+            List<RequestStage> requestStages,
             List<ClientType> clientTypes,
             Boolean notBillable,
             Instant createdFrom,

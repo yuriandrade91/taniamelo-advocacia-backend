@@ -39,6 +39,7 @@ import com.lawfirm.law.firm.model.ClientSituationHistory;
 import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
+import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
@@ -335,7 +336,7 @@ class ClientServiceImplTest {
         @DisplayName("página 1-based vira índice 0-based e ordena por atividade recente")
         void translatesOneBasedPageAndSortsByUpdatedAt() {
             Page<ClientListResponseDTO> page =
-                    service.listSummary(1, 25, null, null, null, null, null, null, null);
+                    service.listSummary(1, 25, null, null, null, null, null, null, null, null);
 
             assertEquals(1, page.getContent().size());
             Pageable pageable = capturePageable();
@@ -353,14 +354,14 @@ class ClientServiceImplTest {
         @Test
         @DisplayName("página 0 ou negativa é normalizada para a primeira")
         void nonPositivePageFallsBackToFirst() {
-            service.listSummary(0, 10, null, null, null, null, null, null, null);
+            service.listSummary(0, 10, null, null, null, null, null, null, null, null);
             assertEquals(0, capturePageable().getPageNumber());
         }
 
         @Test
         @DisplayName("tamanho de página inválido cai no default de 10")
         void invalidPageSizeFallsBackToTen() {
-            service.listSummary(1, 0, null, null, null, null, null, null, null);
+            service.listSummary(1, 0, null, null, null, null, null, null, null, null);
             assertEquals(10, capturePageable().getPageSize());
         }
 
@@ -374,6 +375,7 @@ class ClientServiceImplTest {
                             "maria",
                             List.of(BenefitType.APOSENTADORIA_RURAL),
                             List.of(Situation.ANALISE_DOCUMENTAL),
+                            List.of(RequestStage.EXIGENCIA),
                             List.of(ClientType.POTENCIAL),
                             true,
                             Instant.parse("2026-01-01T00:00:00Z"),

@@ -143,4 +143,19 @@ UPDATE appointments
        past_date_authorized_at = now()
  WHERE id = 'bb000001-0000-4000-8000-000000000001';
 
+-- ── Etapa do requerimento no INSS (coluna request_stage, V24) ──
+--
+-- Distribuição determinística por hash do id: a mesma massa produz sempre as
+-- mesmas etapas, então um teste que conte "quantos estão em Exigência" não muda
+-- de resultado entre execuções. Um sétimo fica NULO de propósito - cliente em
+-- prospecção não protocolou requerimento, e é o estado mais comum na base real.
+UPDATE clients
+   SET request_stage = (ARRAY['Requerimento',
+                              'Exigência',
+                              'Cumprimento de exigência',
+                              'Deferimento',
+                              'Indeferimento',
+                              'Recurso',
+                              NULL])[1 + (abs(hashtext(id::text)) % 7)];
+
 COMMIT;

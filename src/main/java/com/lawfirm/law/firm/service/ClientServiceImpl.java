@@ -24,6 +24,7 @@ import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Client;
 import com.lawfirm.law.firm.model.ClientSituationHistory;
 import com.lawfirm.law.firm.model.ClientType;
+import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
@@ -89,6 +90,7 @@ public class ClientServiceImpl implements ClientService {
             String searchTerm,
             List<BenefitType> benefitTypes,
             List<Situation> situations,
+            List<RequestStage> requestStages,
             List<ClientType> clientTypes,
             Boolean notBillable,
             Instant createdFrom,
@@ -99,6 +101,7 @@ public class ClientServiceImpl implements ClientService {
                                 ClientSpecification.searchTerm(searchTerm),
                                 ClientSpecification.benefitIn(benefitTypes),
                                 ClientSpecification.situationIn(situations),
+                                ClientSpecification.requestStageIn(requestStages),
                                 ClientSpecification.clientTypeIn(clientTypes),
                                 ClientSpecification.notBillableIs(notBillable),
                                 ClientSpecification.createdBetween(createdFrom, createdTo)));
@@ -174,6 +177,7 @@ public class ClientServiceImpl implements ClientService {
         Client existing = findOrThrow(id);
 
         boolean situationChanged = false;
+        boolean requestStageChanged = false;
         boolean benefitChanged = false;
         boolean clientTypeChanged = false;
         boolean notBillableChanged = false;
@@ -188,6 +192,16 @@ public class ClientServiceImpl implements ClientService {
                 Client saved = repository.save(existing);
                 recordHistory(previous, saved);
                 existing = saved;
+            }
+        }
+
+        if (patch.getRequestStage() != null) {
+            RequestStage incoming = parseRequestStage(patch.getRequestStage());
+            if (!Objects.equals(existing.getRequestStage(), incoming)) {
+                existing.setRequestStage(incoming);
+                existing.setUpdatedBy(CurrentUser.id());
+                existing = repository.save(existing);
+                requestStageChanged = true;
             }
         }
 
@@ -220,7 +234,11 @@ public class ClientServiceImpl implements ClientService {
         }
 
         return new ClientPatchOutcome(
-                situationChanged, benefitChanged, clientTypeChanged, notBillableChanged);
+                situationChanged,
+                requestStageChanged,
+                benefitChanged,
+                clientTypeChanged,
+                notBillableChanged);
     }
 
     /**
@@ -411,6 +429,22 @@ public class ClientServiceImpl implements ClientService {
 
     private Client findOrThrow(UUID id) {
         return repository.findById(id).orElseThrow(() -> NotFoundException.of("Cliente", id));
+    }
+
+    private static RequestStage parseRequestStage(String raw) {
+        try {
+            RequestStage s = RequestStage.fromLabel(raw);
+            if (s == null) {
+                throw new ValidationException(
+                        "requestStage", ValidationErrorCode.INVALID_REQUEST_STAGE);
+            }
+            return s;
+        } catch (IllegalArgumentException ex) {
+            throw new ValidationException(
+                    "requestStage",
+                    ValidationErrorCode.INVALID_REQUEST_STAGE,
+                    "Etapa do requerimento inválida: " + raw);
+        }
     }
 
     private static Situation parseSituation(String raw) {
