@@ -70,6 +70,18 @@ BEGIN
         RETURN;
     END IF;
 
+    -- Já semeado? Sai sem tocar em nada.
+    --
+    -- Pagamentos, receitas e despesas não têm id fixo (são séries de
+    -- generate_series), logo não têm ON CONFLICT para protegê-los. Sem esta
+    -- sentinela, reaplicar a migration num schema que já a recebeu duplicaria 63
+    -- linhas. E reaplicar é exatamente o que acontece quando a V23 aplica num
+    -- schema e falha em outro na mesma execução - que foi o caso.
+    IF EXISTS (SELECT 1 FROM office_revenues WHERE description LIKE 'Honorários do mês%') THEN
+        RAISE NOTICE 'V23: massa de demonstração já presente no schema %; nada a fazer.', v_schema;
+        RETURN;
+    END IF;
+
     SELECT id INTO v_admin FROM users WHERE role = 'ADMIN' ORDER BY created_at LIMIT 1;
     SELECT id INTO v_staff FROM users WHERE role = 'STAFF' ORDER BY created_at LIMIT 1;
     v_staff := COALESCE(v_staff, v_admin);
