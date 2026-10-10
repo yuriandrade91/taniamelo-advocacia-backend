@@ -156,6 +156,21 @@ public class ClientServiceImpl implements ClientService {
     @Override
     @Transactional
     public ClientPatchOutcome patch(UUID id, ClientPatchRequestDTO patch) {
+        // Campo que este recurso não aplica recusa a requisição inteira, em vez de ser descartado
+        // com um 200 por cima. Era a origem do relato "editei o telefone e a Home mostra o
+        // antigo": o PATCH aceitava mobilePhone, jogava fora e respondia sucesso - e a releitura,
+        // correta, devolvia o valor gravado. Para telefone e os demais campos o recurso é o PUT.
+        if (!patch.camposNaoSuportados().isEmpty()) {
+            String campos = String.join(", ", patch.camposNaoSuportados());
+            throw new ValidationException(
+                    campos,
+                    ValidationErrorCode.CONFLICTING_PARAMETERS,
+                    "Campos não suportados pelo PATCH de cliente: "
+                            + campos
+                            + ". Este recurso altera apenas situation, benefit, clientType e"
+                            + " notBillable; para os demais use PUT /clients/{clientId}.");
+        }
+
         Client existing = findOrThrow(id);
 
         boolean situationChanged = false;
