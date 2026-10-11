@@ -14,6 +14,7 @@ import com.lawfirm.law.firm.dto.ClientPersonalDataRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPersonalDataResponseDTO;
 import com.lawfirm.law.firm.dto.ClientProfessionalDataRequestDTO;
 import com.lawfirm.law.firm.dto.ClientProfessionalDataResponseDTO;
+import com.lawfirm.law.firm.dto.ClientRequestStageHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
 import com.lawfirm.law.firm.dto.UpcomingBirthdayDTO;
@@ -22,11 +23,13 @@ import com.lawfirm.law.firm.exception.ValidationErrorCode;
 import com.lawfirm.law.firm.exception.ValidationException;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.Client;
+import com.lawfirm.law.firm.model.ClientRequestStageHistory;
 import com.lawfirm.law.firm.model.ClientSituationHistory;
 import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.repository.ClientRepository;
+import com.lawfirm.law.firm.repository.ClientRequestStageHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSpecification;
 import com.lawfirm.law.firm.security.CurrentUser;
@@ -57,16 +60,19 @@ public class ClientServiceImpl implements ClientService {
     private final ClientRepository repository;
     private final ClientMapper mapper;
     private final ClientSituationHistoryRepository historyRepository;
+    private final ClientRequestStageHistoryRepository requestStageHistoryRepository;
     private final AuditLogRepository auditRepository;
 
     public ClientServiceImpl(
             ClientRepository repository,
             ClientMapper mapper,
             ClientSituationHistoryRepository historyRepository,
+            ClientRequestStageHistoryRepository requestStageHistoryRepository,
             AuditLogRepository auditRepository) {
         this.repository = repository;
         this.mapper = mapper;
         this.historyRepository = historyRepository;
+        this.requestStageHistoryRepository = requestStageHistoryRepository;
         this.auditRepository = auditRepository;
     }
 
@@ -136,6 +142,7 @@ public class ClientServiceImpl implements ClientService {
     public ClientDetailsDTO update(UUID id, ClientUpdateRequestDTO dto) {
         Client existing = findOrThrow(id);
         Situation previous = existing.getSituation();
+        RequestStage previousStage = existing.getRequestStage();
 
         validarIdentidadeUnica(
                 id,
@@ -152,6 +159,9 @@ public class ClientServiceImpl implements ClientService {
         Client saved = repository.save(existing);
         if (!Objects.equals(previous, saved.getSituation())) {
             recordHistory(previous, saved);
+        }
+        if (!Objects.equals(previousStage, saved.getRequestStage())) {
+            recordRequestStageHistory(previousStage, saved);
         }
         return mapper.toDTO(saved);
     }
@@ -197,10 +207,12 @@ public class ClientServiceImpl implements ClientService {
 
         if (patch.getRequestStage() != null) {
             RequestStage incoming = parseRequestStage(patch.getRequestStage());
-            if (!Objects.equals(existing.getRequestStage(), incoming)) {
+            RequestStage anterior = existing.getRequestStage();
+            if (!Objects.equals(anterior, incoming)) {
                 existing.setRequestStage(incoming);
                 existing.setUpdatedBy(CurrentUser.id());
                 existing = repository.save(existing);
+                recordRequestStageHistory(anterior, existing);
                 requestStageChanged = true;
             }
         }
@@ -315,6 +327,16 @@ public class ClientServiceImpl implements ClientService {
         findOrThrow(clientId);
         var pageable = PageRequests.of(pageNumber, pageSize, Sort.by("changedAt").descending());
         return historyRepository.findByClient_Id(clientId, pageable).map(mapper::toHistoryDTO);
+    }
+
+    @Override
+    public Page<ClientRequestStageHistoryDTO> requestStageHistoryByClientId(
+            UUID clientId, int pageNumber, int pageSize) {
+        findOrThrow(clientId);
+        var pageable = PageRequests.of(pageNumber, pageSize, Sort.by("changedAt").descending());
+        return requestStageHistoryRepository
+                .findByClient_Id(clientId, pageable)
+                .map(mapper::toRequestStageHistoryDTO);
     }
 
     // ── Dados pessoais (aba "Dados pessoais") ──
@@ -489,6 +511,29 @@ public class ClientServiceImpl implements ClientService {
                     ValidationErrorCode.INVALID_CLIENT_TYPE,
                     "Tipo de cliente inválido: " + raw);
         }
+    }
+
+    /**
+     * Grava a transição da etapa no INSS.
+     *
+     * <p>{@code previousStageEnteredAt} vem do {@code changedAt} da última transição deste cliente:
+     * o começo da etapa que está terminando é o instante em que ela começou. Sem transição anterior
+     * o campo fica nulo, e a tela não tem tempo a mostrar - correto, porque aquela é a primeira
+     * etapa registrada.
+     */
+    private void recordRequestStageHistory(RequestStage previous, Client saved) {
+        ClientRequestStageHistory h = new ClientRequestStageHistory();
+        h.setClient(saved);
+        h.setPreviousStage(previous == null ? null : previous.getLabel());
+        h.setNewStage(saved.getRequestStage() == null ? null : saved.getRequestStage().getLabel());
+        h.setChangedAt(Instant.now());
+        h.setChangedBy(CurrentUser.id());
+        if (previous != null) {
+            requestStageHistoryRepository
+                    .findFirstByClient_IdOrderByChangedAtDesc(saved.getId())
+                    .ifPresent(ultima -> h.setPreviousStageEnteredAt(ultima.getChangedAt()));
+        }
+        requestStageHistoryRepository.save(h);
     }
 
     private void recordHistory(Situation previous, Client saved) {

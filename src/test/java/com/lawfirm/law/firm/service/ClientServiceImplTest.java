@@ -42,6 +42,7 @@ import com.lawfirm.law.firm.model.MaritalStatus;
 import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.repository.ClientRepository;
+import com.lawfirm.law.firm.repository.ClientRequestStageHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.security.UserPrincipal;
 import com.lawfirm.law.firm.support.TestFixtures;
@@ -78,13 +79,20 @@ class ClientServiceImplTest {
     @Mock private ClientRepository repository;
     @Mock private ClientMapper mapper;
     @Mock private ClientSituationHistoryRepository historyRepository;
+    @Mock private ClientRequestStageHistoryRepository requestStageHistoryRepository;
     @Mock private AuditLogRepository auditRepository;
 
     private ClientServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ClientServiceImpl(repository, mapper, historyRepository, auditRepository);
+        service =
+                new ClientServiceImpl(
+                        repository,
+                        mapper,
+                        historyRepository,
+                        requestStageHistoryRepository,
+                        auditRepository);
         when(repository.save(any(Client.class))).thenAnswer(i -> i.getArgument(0));
     }
 

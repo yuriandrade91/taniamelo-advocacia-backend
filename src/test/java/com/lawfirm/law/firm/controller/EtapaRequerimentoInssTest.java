@@ -126,6 +126,60 @@ class EtapaRequerimentoInssTest extends PostgresIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    @DisplayName("cada mudança de etapa vira uma entrada no histórico, com DE e PARA")
+    void mudancaGeraHistorico() throws Exception {
+        avancar(emExigencia, "Cumprimento de exigência");
+
+        mockMvc.perform(get("/api/v1/clients/{clientId}/request-stage-history", emExigencia))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].previousStage").value("Exigência"))
+                .andExpect(jsonPath("$.data[0].currentStage").value("Cumprimento de exigência"))
+                // Primeira transição: não havia etapa anterior cronometrada.
+                .andExpect(jsonPath("$.data[0].diasNaEtapaAnterior").doesNotExist())
+                // A esteira do INSS não tem funil, logo não tem retrocesso a sinalizar.
+                .andExpect(jsonPath("$.data[0].retrocesso").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("mais recente primeiro, e a partir da segunda transição há tempo na etapa")
+    void histiricoOrdenadoEComTempo() throws Exception {
+        avancar(emExigencia, "Cumprimento de exigência");
+        avancar(emExigencia, "Deferimento");
+
+        mockMvc.perform(get("/api/v1/clients/{clientId}/request-stage-history", emExigencia))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].currentStage").value("Deferimento"))
+                .andExpect(jsonPath("$.data[1].currentStage").value("Cumprimento de exigência"))
+                // A segunda transição sabe quando a anterior começou - é o que responde
+                // "está em exigência há quanto tempo". Aqui as duas ocorrem no mesmo
+                // instante, então zero; o que importa é o campo estar preenchido.
+                .andExpect(jsonPath("$.data[0].diasNaEtapaAnterior").value(0));
+    }
+
+    @Test
+    @DisplayName("as duas esteiras têm históricos separados")
+    void historicosNaoSeMisturam() throws Exception {
+        avancar(emExigencia, "Deferimento");
+
+        mockMvc.perform(get("/api/v1/clients/{clientId}/request-stage-history", emExigencia))
+                .andExpect(jsonPath("$.data.length()").value(1));
+        // A esteira do escritório não foi tocada, então o histórico dela segue vazio.
+        mockMvc.perform(get("/api/v1/clients/{clientId}/situation-history", emExigencia))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    private void avancar(UUID clientId, String etapa) throws Exception {
+        mockMvc.perform(
+                        patch("/api/v1/clients/{clientId}", clientId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"requestStage\": \"" + etapa + "\"}"))
+                .andExpect(status().isOk());
+    }
+
     private UUID cadastrar(String nome, String cpf, RequestStage etapa) {
         Client cliente = new Client();
         cliente.setFullName(nome);

@@ -7,6 +7,7 @@ import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPatchResponseDTO;
+import com.lawfirm.law.firm.dto.ClientRequestStageHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
 import com.lawfirm.law.firm.dto.Pagination;
@@ -273,6 +274,42 @@ public class ClientController {
                     int pageSize) {
         Page<ClientSituationHistoryDTO> page =
                 clientService.historyByClientId(clientId, pageNumber, pageSize);
+        return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
+    }
+
+    @Operation(
+            summary = "Histórico de etapas do requerimento no INSS",
+            description =
+                    """
+                    Lista paginada no envelope padrão, mais recente primeiro. Toda mudança de \
+                    `requestStage` - por `PATCH` ou por `PUT /clients/{clientId}` - gera um \
+                    registro aqui automaticamente.
+
+                    Cada entrada traz `previousStage` e `currentStage`, para a linha do tempo dizer \
+                    "de X para Y". Na primeira entrada `previousStage` vem nulo: era o protocolo do \
+                    requerimento, sem etapa anterior.
+
+                    `diasNaEtapaAnterior` é quanto tempo o requerimento ficou na etapa que acabou \
+                    de sair - a resposta para "está em exigência há quanto tempo?". Nulo na \
+                    primeira entrada, pelo mesmo motivo.
+
+                    **Não há `retrocesso` aqui**, diferente de \
+                    `GET /clients/{clientId}/situation-history`: voltar de "Recurso" para \
+                    "Exigência" é caminho real no INSS, não anomalia a sinalizar.
+
+                    `changedByUserId` é o id do usuário; o nome sai de `GET /users`.""")
+    @GetMapping("/{clientId}/request-stage-history")
+    public ResponseEntity<ApiResponse<ClientRequestStageHistoryDTO>> requestStageHistory(
+            @PathVariable UUID clientId,
+            @Parameter(description = "Número da página (1-based)") @RequestParam(defaultValue = "1")
+                    int pageNumber,
+            @Parameter(
+                            description =
+                                    "Tamanho da página (máximo 100; valores acima são cortados no teto)")
+                    @RequestParam(defaultValue = "10")
+                    int pageSize) {
+        Page<ClientRequestStageHistoryDTO> page =
+                clientService.requestStageHistoryByClientId(clientId, pageNumber, pageSize);
         return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
     }
 

@@ -2166,6 +2166,95 @@
           ]
         },
         {
+          "name": "Etapa no INSS avança para Exigência",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestStage\": \"Exigência\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}"
+              ]
+            },
+            "description": "Prepara a transição que o histórico do INSS vai exibir em seguida."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Histórico do INSS traz DE, PARA e tempo na etapa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/request-stage-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "request-stage-history"
+              ]
+            },
+            "description": "Esteira do INSS, separada da esteira do escritório. Sem previousStage a linha do tempo só diz 'passou para X'."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envelope de sucesso\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.success, \"success\").to.be.true;",
+                  "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
+                  "});",
+                  "const h = pm.response.json().data;",
+                  "pm.test(\"registrou a transição do PATCH anterior\", () => {",
+                  "  pm.expect(h.length, \"sem entrada, o PATCH não gravou histórico\").to.be.above(0);",
+                  "  pm.expect(h[0].currentStage).to.eql(\"Exigência\");",
+                  "});",
+                  "pm.test(\"não traz o campo retrocesso - essa esteira não tem funil\", () => {",
+                  "  pm.expect(h[0]).to.not.have.property(\"retrocesso\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Próximos aniversariantes",
           "request": {
             "method": "GET",

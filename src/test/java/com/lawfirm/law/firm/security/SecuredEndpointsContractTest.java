@@ -140,6 +140,10 @@ class SecuredEndpointsContractTest {
                     Map.entry("ClientController#update", ABERTO),
                     Map.entry("ClientController#patch", ABERTO),
                     Map.entry("ClientController#situationHistory", ABERTO),
+                    // Mesma régua da irmã: é leitura do andamento do caso, trabalho
+                    // diário da secretaria, e não expõe nada que o detalhe do cliente
+                    // já não exponha.
+                    Map.entry("ClientController#requestStageHistory", ABERTO),
                     // Ligar para dar os parabéns é trabalho da secretaria, e a rota não
                     // devolve nada que a listagem já não devolva.
                     Map.entry("ClientController#upcomingBirthdays", ABERTO),

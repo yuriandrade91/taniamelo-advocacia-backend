@@ -109,6 +109,36 @@ public interface ClientMapper {
     @Mapping(target = "changedByUserId", source = "changedBy")
     ClientSituationHistoryDTO toHistoryDTO(com.lawfirm.law.firm.model.ClientSituationHistory h);
 
+    // request stage history mapping
+    @Mapping(target = "previousStage", source = "previousStage")
+    @Mapping(target = "currentStage", source = "newStage")
+    @Mapping(target = "changedByUserId", source = "changedBy")
+    @Mapping(target = "diasNaEtapaAnterior", ignore = true)
+    ClientRequestStageHistoryDTO toRequestStageHistoryDTO(
+            com.lawfirm.law.firm.model.ClientRequestStageHistory h);
+
+    /**
+     * Calcula há quantos dias o requerimento estava na etapa anterior.
+     *
+     * <p>Derivado aqui, e não gravado: o número depende de dois instantes que já estão na linha, e
+     * uma coluna a mais seria um terceiro lugar para divergir. Nulo na primeira entrada - não havia
+     * etapa anterior a cronometrar.
+     *
+     * <p>Dias inteiros, truncando: "está em exigência há 47 dias" é a frase que a tela mostra, e
+     * fração de dia não muda decisão nenhuma.
+     */
+    @AfterMapping
+    default void calcularDiasNaEtapaAnterior(
+            com.lawfirm.law.firm.model.ClientRequestStageHistory h,
+            @MappingTarget ClientRequestStageHistoryDTO dto) {
+        if (h == null || h.getPreviousStageEnteredAt() == null || h.getChangedAt() == null) {
+            return;
+        }
+        dto.setDiasNaEtapaAnterior(
+                java.time.Duration.between(h.getPreviousStageEnteredAt(), h.getChangedAt())
+                        .toDays());
+    }
+
     /**
      * Marca as entradas que andaram para trás no funil.
      *

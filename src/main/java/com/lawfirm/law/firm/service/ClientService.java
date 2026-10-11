@@ -9,6 +9,7 @@ import com.lawfirm.law.firm.dto.ClientPersonalDataRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPersonalDataResponseDTO;
 import com.lawfirm.law.firm.dto.ClientProfessionalDataRequestDTO;
 import com.lawfirm.law.firm.dto.ClientProfessionalDataResponseDTO;
+import com.lawfirm.law.firm.dto.ClientRequestStageHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
 import com.lawfirm.law.firm.dto.UpcomingBirthdayDTO;
@@ -61,6 +62,15 @@ public interface ClientService {
     ClientInssPasswordDTO revealInssPassword(UUID id);
 
     Page<ClientSituationHistoryDTO> historyByClientId(UUID clientId, int pageNumber, int pageSize);
+
+    /**
+     * Linha do tempo da etapa do requerimento no INSS, mais recente primeiro.
+     *
+     * <p>Separada de {@link #historyByClientId}: são duas esteiras distintas, e juntá-las numa
+     * listagem só obrigaria quem lê a filtrar de novo.
+     */
+    Page<ClientRequestStageHistoryDTO> requestStageHistoryByClientId(
+            UUID clientId, int pageNumber, int pageSize);
 
     ClientPersonalDataResponseDTO getPersonalData(UUID id);
 
