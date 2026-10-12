@@ -4,17 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.lawfirm.law.firm.support.PostgresContainerConfig;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Map;
 import javax.sql.DataSource;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
@@ -99,23 +99,8 @@ class MassaDemonstracaoSeedTest {
     }
 
     @Test
-    @DisplayName("reaplicar a migration não duplica nada - a sentinela barra")
-    void reaplicarNaoDuplica() throws Exception {
-        // Esta propriedade não é teórica: a V23 aplicou em tenant_demo e falhou em
-        // tenant_tania na MESMA execução, então consertá-la exige poder rodar de novo nos dois.
-        // A remediação em produção (apagar a linha do flyway_schema_history e redeployar)
-        // depende exatamente disto, e por isso é afirmado aqui em vez de suposto.
-        String script =
-                new String(
-                                new ClassPathResource(
-                                                "db/migration/tenant/V23__massa_demonstracao_2026.sql")
-                                        .getInputStream()
-                                        .readAllBytes(),
-                                StandardCharsets.UTF_8)
-                        // O placeholder é resolvido pelo Flyway em tempo de migration; aqui a
-                        // execução é direta, então a substituição é manual.
-                        .replace("${seedDemoData}", "true");
-
+    @DisplayName("reexecutar migrate não duplica migrations já aplicadas")
+    void reaplicarMigrateNaoDuplica() throws Exception {
         for (String schema : new String[] {"tenant_tania", "tenant_demo"}) {
             long pagamentosAntes = contar(schema, "client_payments");
             long receitasAntes = contar(schema, "office_revenues");
@@ -123,11 +108,15 @@ class MassaDemonstracaoSeedTest {
             long agendaAntes = contar(schema, "appointments");
             long clientesAntes = contar(schema, "clients");
 
-            try (Connection conn = dataSource.getConnection();
-                    Statement st = conn.createStatement()) {
-                st.execute("SET search_path TO " + schema + ", public");
-                st.execute(script);
-            }
+            Flyway.configure()
+                    .dataSource(dataSource)
+                    .schemas(schema)
+                    .createSchemas(true)
+                    .locations("classpath:db/migration/tenant")
+                    .placeholders(Map.of("seedDemoData", "true"))
+                    .baselineOnMigrate(true)
+                    .load()
+                    .migrate();
 
             assertEquals(
                     pagamentosAntes,

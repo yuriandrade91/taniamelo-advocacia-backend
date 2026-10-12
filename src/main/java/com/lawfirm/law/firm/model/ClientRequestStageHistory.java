@@ -46,6 +46,13 @@ public class ClientRequestStageHistory {
     @Column(name = "changed_by")
     private UUID changedBy;
 
+    /**
+     * Por que a etapa mudou. Obrigatória ao entrar em exigência, indeferimento ou recurso ({@link
+     * RequestStage#exigeJustificativa()}); opcional nas demais. Nula nas entradas anteriores à V27.
+     */
+    @Column(name = "justification")
+    private String justification;
+
     public UUID getId() {
         return id;
     }
@@ -100,5 +107,13 @@ public class ClientRequestStageHistory {
 
     public void setChangedBy(UUID changedBy) {
         this.changedBy = changedBy;
+    }
+
+    public String getJustification() {
+        return justification;
+    }
+
+    public void setJustification(String justification) {
+        this.justification = justification;
     }
 }

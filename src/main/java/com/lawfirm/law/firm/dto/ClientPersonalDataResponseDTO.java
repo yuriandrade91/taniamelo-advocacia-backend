@@ -10,9 +10,12 @@ import java.util.UUID;
 @JsonPropertyOrder({"clientId"})
 public class ClientPersonalDataResponseDTO {
 
+    private UUID id;
     private UUID clientId;
 
     private String fullName;
+    private String firstName;
+    private String lastName;
 
     private LocalDate birthDate;
 
@@ -46,16 +49,32 @@ public class ClientPersonalDataResponseDTO {
 
     private Boolean hasDisability;
 
+    private String profession;
+    private String nitPis;
+    private String ctps;
+    private String ctpsSeries;
+    private String inssPassword;
+
     private UUID updatedBy;
 
     private Instant updatedAt;
 
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+        this.clientId = id;
+    }
+
     public UUID getClientId() {
-        return clientId;
+        return clientId != null ? clientId : id;
     }
 
     public void setClientId(UUID clientId) {
         this.clientId = clientId;
+        this.id = clientId;
     }
 
     public String getFullName() {
@@ -64,6 +83,22 @@ public class ClientPersonalDataResponseDTO {
 
     public void setFullName(String fullName) {
         this.fullName = fullName;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
     }
 
     public LocalDate getBirthDate() {
@@ -192,6 +227,46 @@ public class ClientPersonalDataResponseDTO {
 
     public void setHasDisability(Boolean hasDisability) {
         this.hasDisability = hasDisability;
+    }
+
+    public String getProfession() {
+        return profession;
+    }
+
+    public void setProfession(String profession) {
+        this.profession = profession;
+    }
+
+    public String getNitPis() {
+        return nitPis;
+    }
+
+    public void setNitPis(String nitPis) {
+        this.nitPis = nitPis;
+    }
+
+    public String getCtps() {
+        return ctps;
+    }
+
+    public void setCtps(String ctps) {
+        this.ctps = ctps;
+    }
+
+    public String getCtpsSeries() {
+        return ctpsSeries;
+    }
+
+    public void setCtpsSeries(String ctpsSeries) {
+        this.ctpsSeries = ctpsSeries;
+    }
+
+    public String getInssPassword() {
+        return inssPassword;
+    }
+
+    public void setInssPassword(String inssPassword) {
+        this.inssPassword = inssPassword;
     }
 
     public UUID getUpdatedBy() {

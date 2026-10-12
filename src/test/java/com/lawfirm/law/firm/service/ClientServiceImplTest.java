@@ -591,6 +591,55 @@ class ClientServiceImplTest {
         }
 
         @Test
+        @DisplayName(
+                "PUT que leva a etapa no INSS a indeferimento sem justificativa é recusado antes de gravar")
+        void putIntoStageThatNeedsJustificationWithoutItThrows() {
+            Client existing = TestFixtures.client();
+            existing.setRequestStage(RequestStage.EXIGENCIA);
+            when(repository.findById(TestFixtures.CLIENT_ID)).thenReturn(Optional.of(existing));
+            ClientUpdateRequestDTO dto = new ClientUpdateRequestDTO();
+            dto.setRequestStage(RequestStage.INDEFERIMENTO);
+
+            ValidationException error =
+                    assertThrows(
+                            ValidationException.class,
+                            () -> service.update(TestFixtures.CLIENT_ID, dto));
+
+            assertEquals("requestStageJustification", error.getField());
+            verify(repository, never()).save(any());
+            verify(requestStageHistoryRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("PUT com justificativa grava o motivo no histórico da etapa no INSS")
+        void putIntoStageWithJustificationRecordsIt() {
+            Client existing = TestFixtures.client();
+            existing.setRequestStage(RequestStage.REQUERIMENTO);
+            when(repository.findById(TestFixtures.CLIENT_ID)).thenReturn(Optional.of(existing));
+            when(mapper.toDTO(any(Client.class))).thenReturn(new ClientDetailsDTO());
+            org.mockito.Mockito.doAnswer(
+                            invocation -> {
+                                existing.setRequestStage(RequestStage.EXIGENCIA);
+                                return null;
+                            })
+                    .when(mapper)
+                    .updateEntityFromDto(any(), any());
+            ClientUpdateRequestDTO dto = new ClientUpdateRequestDTO();
+            dto.setRequestStage(RequestStage.EXIGENCIA);
+            dto.setRequestStageJustification("  CTPS original e PPP.  ");
+
+            service.update(TestFixtures.CLIENT_ID, dto);
+
+            ArgumentCaptor<com.lawfirm.law.firm.model.ClientRequestStageHistory> history =
+                    ArgumentCaptor.forClass(
+                            com.lawfirm.law.firm.model.ClientRequestStageHistory.class);
+            verify(requestStageHistoryRepository).save(history.capture());
+            assertEquals("Requerimento", history.getValue().getPreviousStage());
+            assertEquals("Exigência", history.getValue().getNewStage());
+            assertEquals("CTPS original e PPP.", history.getValue().getJustification());
+        }
+
+        @Test
         @DisplayName("o total de meses é recalculado a partir dos números atualizados")
         void recomputesContributionMonths() {
             Client existing = TestFixtures.client();

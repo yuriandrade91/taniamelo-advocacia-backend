@@ -1,7 +1,6 @@
 package com.lawfirm.law.firm.service;
 
 import com.lawfirm.law.firm.audit.AuditAction;
-import com.lawfirm.law.firm.audit.AuditIntent;
 import com.lawfirm.law.firm.audit.AuditLog;
 import com.lawfirm.law.firm.audit.AuditLogRepository;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
@@ -28,27 +27,27 @@ import com.lawfirm.law.firm.model.ClientSituationHistory;
 import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
+import com.lawfirm.law.firm.repository.BirthdayRow;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.repository.ClientRequestStageHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSpecification;
 import com.lawfirm.law.firm.security.CurrentUser;
-import com.lawfirm.law.firm.util.Birthdays;
 import com.lawfirm.law.firm.util.DocumentoIdentidade;
 import com.lawfirm.law.firm.util.OfficeClock;
 import com.lawfirm.law.firm.util.PageRequests;
 import com.lawfirm.law.firm.util.TempoDeContribuicao;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.Period;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.BiPredicate;
-import java.util.function.Predicate;
+import java.util.function.Function;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -80,16 +79,22 @@ public class ClientServiceImpl implements ClientService {
     @Transactional
     public ClientDetailsDTO create(ClientCreateRequestDTO dto) {
         Client entity = mapper.toEntity(dto);
-        normalizarIdentidade(entity);
-        validarIdentidadeUnica(entity, null);
-        recalcularTempoDeContribuicao(entity);
+        normalizarDocumentosIdentidade(entity);
+        validateUniqueness(entity);
         entity.setCreatedBy(CurrentUser.id());
+        entity.setUpdatedBy(CurrentUser.id());
+        entity.setContributionInMonths(
+                TempoDeContribuicao.emMeses(
+                        entity.getContributionYears(),
+                        entity.getContributionMonths(),
+                        entity.getContributionDays()));
         Client saved = repository.save(entity);
         recordHistory(null, saved);
         return mapper.toDTO(saved);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<ClientListResponseDTO> listSummary(
             int pageNumber,
             int pageSize,
@@ -112,27 +117,22 @@ public class ClientServiceImpl implements ClientService {
                                 ClientSpecification.notBillableIs(notBillable),
                                 ClientSpecification.createdBetween(createdFrom, createdTo)));
 
-        // updatedAt é sempre populado (prePersist/preUpdate), então ordenar por ele
-        // dá "atividade mais recente primeiro" sem query manual.
-        var pageable =
+        Pageable pageable =
                 PageRequests.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "updatedAt"));
-        return repository.findAll(spec, pageable).map(mapper::toListDTO);
+        Page<Client> page = repository.findAll(spec, pageable);
+        return page.map(mapper::toListDTO);
     }
 
-    /**
-     * A lixeira: clientes excluídos, mais recentes primeiro.
-     *
-     * <p>Existe porque {@code PATCH /{id}/restore} só servia a quem tivesse anotado o UUID antes de
-     * excluir - desfazer estava na API e não era alcançável. Consulta nativa no repositório, porque
-     * {@code @SQLRestriction} esconde excluído de toda consulta JPQL (que é o que se quer em todo o
-     * resto).
-     */
     @Override
+    @Transactional(readOnly = true)
     public Page<ClientListResponseDTO> listDeleted(int pageNumber, int pageSize) {
-        return repository.findDeleted(PageRequests.of(pageNumber, pageSize)).map(mapper::toListDTO);
+        Pageable pageable =
+                PageRequests.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "deletedAt"));
+        return repository.findDeleted(pageable).map(mapper::toListDTO);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<ClientDetailsDTO> findById(UUID id) {
         return repository.findById(id).map(mapper::toDTO);
     }
@@ -141,27 +141,28 @@ public class ClientServiceImpl implements ClientService {
     @Transactional
     public ClientDetailsDTO update(UUID id, ClientUpdateRequestDTO dto) {
         Client existing = findOrThrow(id);
-        Situation previous = existing.getSituation();
+        Situation previousSituation = existing.getSituation();
         RequestStage previousStage = existing.getRequestStage();
+        String justification =
+                justificativaDaTransicao(
+                        previousStage, dto.getRequestStage(), dto.getRequestStageJustification());
 
-        validarIdentidadeUnica(
-                id,
-                dto.getCpf(),
-                dto.getRg(),
-                dto.getCtps(),
-                dto.getNitPis(),
-                dto.getBeneficiaryNumber());
         mapper.updateEntityFromDto(dto, existing);
-        normalizarIdentidade(existing);
-        recalcularTempoDeContribuicao(existing);
+        normalizarDocumentosIdentidade(existing);
+        validateUniqueness(existing, id);
+        existing.setContributionInMonths(
+                TempoDeContribuicao.emMeses(
+                        existing.getContributionYears(),
+                        existing.getContributionMonths(),
+                        existing.getContributionDays()));
         existing.setUpdatedBy(CurrentUser.id());
-
         Client saved = repository.save(existing);
-        if (!Objects.equals(previous, saved.getSituation())) {
-            recordHistory(previous, saved);
+
+        if (!Objects.equals(previousSituation, saved.getSituation())) {
+            recordHistory(previousSituation, saved);
         }
         if (!Objects.equals(previousStage, saved.getRequestStage())) {
-            recordRequestStageHistory(previousStage, saved);
+            recordRequestStageHistory(saved, previousStage, saved.getRequestStage(), justification);
         }
         return mapper.toDTO(saved);
     }
@@ -169,23 +170,21 @@ public class ClientServiceImpl implements ClientService {
     @Override
     @Transactional
     public ClientPatchOutcome patch(UUID id, ClientPatchRequestDTO patch) {
-        // Campo que este recurso não aplica recusa a requisição inteira, em vez de ser descartado
-        // com um 200 por cima. Era a origem do relato "editei o telefone e a Home mostra o
-        // antigo": o PATCH aceitava mobilePhone, jogava fora e respondia sucesso - e a releitura,
-        // correta, devolvia o valor gravado. Para telefone e os demais campos o recurso é o PUT.
         if (!patch.camposNaoSuportados().isEmpty()) {
-            String campos = String.join(", ", patch.camposNaoSuportados());
+            String unsupported = String.join(", ", patch.camposNaoSuportados());
             throw new ValidationException(
-                    campos,
+                    "payload",
                     ValidationErrorCode.CONFLICTING_PARAMETERS,
-                    "Campos não suportados pelo PATCH de cliente: "
-                            + campos
-                            + ". Este recurso altera apenas situation, benefit, clientType e"
-                            + " notBillable; para os demais use PUT /clients/{clientId}.");
+                    "Campos não suportados no PATCH: " + unsupported);
         }
 
         Client existing = findOrThrow(id);
-
+        Situation previousSituation = existing.getSituation();
+        RequestStage previousStage = existing.getRequestStage();
+        BenefitType previousBenefit = existing.getBenefit();
+        ClientType previousType = existing.getClientType();
+        Boolean previousNotBillable = existing.getNotBillable();
+        String justification = null;
         boolean situationChanged = false;
         boolean requestStageChanged = false;
         boolean benefitChanged = false;
@@ -193,56 +192,80 @@ public class ClientServiceImpl implements ClientService {
         boolean notBillableChanged = false;
 
         if (patch.getSituation() != null) {
-            Situation incoming = parseSituation(patch.getSituation());
-            Situation previous = existing.getSituation();
-            if (!Objects.equals(previous, incoming)) {
-                existing.setSituation(incoming);
-                situationChanged = true;
-                existing.setUpdatedBy(CurrentUser.id());
-                Client saved = repository.save(existing);
-                recordHistory(previous, saved);
-                existing = saved;
+            Situation newSituation =
+                    parseEnum(
+                            patch.getSituation(),
+                            "situation",
+                            Situation::fromLabel,
+                            ValidationErrorCode.INVALID_SITUATION);
+            situationChanged = !Objects.equals(previousSituation, newSituation);
+            if (situationChanged) {
+                existing.setSituation(newSituation);
+            }
+        }
+        if (patch.getBenefit() != null) {
+            BenefitType newBenefit =
+                    parseEnum(
+                            patch.getBenefit(),
+                            "benefit",
+                            BenefitType::fromLabel,
+                            ValidationErrorCode.INVALID_BENEFIT);
+            benefitChanged = !Objects.equals(previousBenefit, newBenefit);
+            if (benefitChanged) {
+                existing.setBenefit(newBenefit);
+            }
+        }
+        if (patch.getClientType() != null) {
+            ClientType newType =
+                    parseEnum(
+                            patch.getClientType(),
+                            "clientType",
+                            ClientType::fromLabel,
+                            ValidationErrorCode.INVALID_CLIENT_TYPE);
+            clientTypeChanged = !Objects.equals(previousType, newType);
+            if (clientTypeChanged) {
+                existing.setClientType(newType);
+            }
+        }
+        if (patch.getNotBillable() != null) {
+            notBillableChanged = !Objects.equals(previousNotBillable, patch.getNotBillable());
+            if (notBillableChanged) {
+                existing.setNotBillable(patch.getNotBillable());
             }
         }
 
         if (patch.getRequestStage() != null) {
-            RequestStage incoming = parseRequestStage(patch.getRequestStage());
-            RequestStage anterior = existing.getRequestStage();
-            if (!Objects.equals(anterior, incoming)) {
-                existing.setRequestStage(incoming);
-                existing.setUpdatedBy(CurrentUser.id());
-                existing = repository.save(existing);
-                recordRequestStageHistory(anterior, existing);
-                requestStageChanged = true;
+            RequestStage newStage =
+                    parseEnum(
+                            patch.getRequestStage(),
+                            "requestStage",
+                            RequestStage::fromLabel,
+                            ValidationErrorCode.INVALID_REQUEST_STAGE);
+            requestStageChanged = !Objects.equals(previousStage, newStage);
+            if (requestStageChanged) {
+                justification =
+                        justificativaDaTransicao(
+                                previousStage, newStage, patch.getRequestStageJustification());
+                existing.setRequestStage(newStage);
             }
         }
 
-        if (patch.getBenefit() != null) {
-            BenefitType incoming = parseBenefit(patch.getBenefit());
-            if (!Objects.equals(existing.getBenefit(), incoming)) {
-                existing.setBenefit(incoming);
-                existing.setUpdatedBy(CurrentUser.id());
-                existing = repository.save(existing);
-                benefitChanged = true;
-            }
+        if (!situationChanged
+                && !requestStageChanged
+                && !benefitChanged
+                && !clientTypeChanged
+                && !notBillableChanged) {
+            return new ClientPatchOutcome(false, false, false, false, false);
         }
 
-        if (patch.getClientType() != null) {
-            ClientType incoming = parseClientType(patch.getClientType());
-            if (!Objects.equals(existing.getClientType(), incoming)) {
-                existing.setClientType(incoming);
-                existing.setUpdatedBy(CurrentUser.id());
-                existing = repository.save(existing);
-                clientTypeChanged = true;
-            }
-        }
+        existing.setUpdatedBy(CurrentUser.id());
+        Client saved = repository.save(existing);
 
-        if (patch.getNotBillable() != null
-                && !Objects.equals(existing.getNotBillable(), patch.getNotBillable())) {
-            existing.setNotBillable(patch.getNotBillable());
-            existing.setUpdatedBy(CurrentUser.id());
-            repository.save(existing);
-            notBillableChanged = true;
+        if (situationChanged) {
+            recordHistory(previousSituation, saved);
+        }
+        if (requestStageChanged) {
+            recordRequestStageHistory(saved, previousStage, saved.getRequestStage(), justification);
         }
 
         return new ClientPatchOutcome(
@@ -253,97 +276,88 @@ public class ClientServiceImpl implements ClientService {
                 notBillableChanged);
     }
 
-    /**
-     * Exclusão lógica. Não apaga a linha: as FKs de endereços, entrevistas, arquivos, pagamentos e
-     * histórico são {@code ON DELETE CASCADE}, então um delete de verdade levaria a ficha inteira
-     * junto - inclusive o histórico, que é o registro do que aconteceu. O cliente some das
-     * consultas pelo {@code @SQLRestriction} da entidade e volta por {@link #restore(UUID)}.
-     */
+    public static String justificativaDaTransicao(
+            RequestStage etapaAnterior, RequestStage novaEtapa, String justificativa) {
+        if (novaEtapa == null || Objects.equals(etapaAnterior, novaEtapa)) {
+            return null;
+        }
+        if (novaEtapa.exigeJustificativa() && (justificativa == null || justificativa.isBlank())) {
+            throw new ValidationException(
+                    "requestStageJustification",
+                    ValidationErrorCode.REQUIRED_FIELD,
+                    "Justificativa obrigatória para mudança para " + novaEtapa.getLabel());
+        }
+        return justificativa == null ? null : justificativa.trim();
+    }
+
     @Override
     @Transactional
     public void delete(UUID id) {
-        Client existing = findOrThrow(id);
-        existing.setDeletedAt(Instant.now());
-        existing.setUpdatedBy(CurrentUser.id());
-        // Sem declarar, a trilha registraria UPDATE - indistinguível de uma correção de
-        // telefone. Ver AuditIntent.
-        AuditIntent.declaring(AuditAction.DELETE, () -> repository.saveAndFlush(existing));
+        Client client = findOrThrow(id);
+        if (client.getDeletedAt() != null) {
+            return;
+        }
+        client.setDeletedAt(Instant.now());
+        client.setUpdatedBy(CurrentUser.id());
+        repository.saveAndFlush(client);
     }
 
-    /**
-     * Desfaz a exclusão lógica. Idempotente: restaurar um cliente ativo não é erro, só não muda
-     * nada - quem clica duas vezes não deveria ver uma falha.
-     */
     @Override
     @Transactional
     public void restore(UUID id) {
-        Client existing =
+        Client client =
                 repository
                         .findByIdIncludingDeleted(id)
                         .orElseThrow(() -> NotFoundException.of("Cliente", id));
-        if (existing.getDeletedAt() == null) {
+        if (client.getDeletedAt() == null) {
             return;
         }
-        // Enquanto este cliente esteve excluído, o CPF dele ficou livre - o índice
-        // único é parcial de propósito. Se alguém recadastrou a mesma pessoa nesse
-        // meio-tempo, trazer o antigo de volta estouraria unique violation no banco:
-        // 409 genérico, sem dizer qual campo nem qual cliente está ocupando. Checando
-        // aqui, a recusa é 400 nomeando o documento.
-        validarIdentidadeUnica(existing, id);
-        existing.setDeletedAt(null);
-        existing.setUpdatedBy(CurrentUser.id());
-        AuditIntent.declaring(AuditAction.RESTORE, () -> repository.saveAndFlush(existing));
+        client.setDeletedAt(null);
+        client.setUpdatedBy(CurrentUser.id());
+        repository.saveAndFlush(client);
     }
 
-    /**
-     * Devolve a senha do INSS e registra QUEM leu e QUANDO.
-     *
-     * <p>A auditoria é o ponto do endpoint, não um detalhe: a senha é criptografada em repouso, e
-     * devolvê-la sem rastro tornaria a criptografia meia medida - protegeria contra quem lê o banco
-     * e não contra quem tem login. Com o registro, o escritório consegue responder "quem abriu a
-     * senha da dona Maria em março?".
-     *
-     * <p>Grava em transação própria, como o {@link com.lawfirm.law.firm.audit.AuditLogListener}: o
-     * registro da leitura não pode depender de uma transação de escrita que pode nem existir aqui.
-     */
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public ClientInssPasswordDTO revealInssPassword(UUID id) {
-        Client existing = findOrThrow(id);
+        Client client = findOrThrow(id);
         auditRepository.save(
                 new AuditLog(
                         "Client",
-                        existing.getId(),
+                        client.getId(),
                         AuditAction.READ,
                         CurrentUser.id(),
                         CurrentUser.actingSupportId(),
-                        "Senha do INSS consultada"));
-        return new ClientInssPasswordDTO(existing.getInssPassword());
+                        "INSS password revealed"));
+        return new ClientInssPasswordDTO(client.getInssPassword());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<ClientSituationHistoryDTO> historyByClientId(
             UUID clientId, int pageNumber, int pageSize) {
         findOrThrow(clientId);
-        var pageable = PageRequests.of(pageNumber, pageSize, Sort.by("changedAt").descending());
+        Pageable pageable =
+                PageRequests.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "changedAt"));
         return historyRepository.findByClient_Id(clientId, pageable).map(mapper::toHistoryDTO);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<ClientRequestStageHistoryDTO> requestStageHistoryByClientId(
             UUID clientId, int pageNumber, int pageSize) {
         findOrThrow(clientId);
-        var pageable = PageRequests.of(pageNumber, pageSize, Sort.by("changedAt").descending());
+        Pageable pageable =
+                PageRequests.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "changedAt"));
         return requestStageHistoryRepository
                 .findByClient_Id(clientId, pageable)
                 .map(mapper::toRequestStageHistoryDTO);
     }
 
-    // ── Dados pessoais (aba "Dados pessoais") ──
-
     @Override
+    @Transactional(readOnly = true)
     public ClientPersonalDataResponseDTO getPersonalData(UUID id) {
-        return toPersonalDataDTO(findOrThrow(id));
+        return mapPersonalData(findOrThrow(id));
     }
 
     @Override
@@ -351,52 +365,30 @@ public class ClientServiceImpl implements ClientService {
     public ClientPersonalDataResponseDTO updatePersonalData(
             UUID id, ClientPersonalDataRequestDTO dto) {
         Client existing = findOrThrow(id);
-
-        // Antes de escrever: a entidade é gerenciada, e mutar antes de consultar
-        // dispara flush automático - aí o índice do banco estoura primeiro e a resposta
-        // vira 409 sem dizer o campo. Os três documentos que esta aba não edita vão como
-        // estão na entidade.
-        validarIdentidadeUnica(
-                id,
-                dto.getCpf(),
-                dto.getRg(),
-                existing.getCtps(),
-                existing.getNitPis(),
-                existing.getBeneficiaryNumber());
-
         existing.setFullName(dto.getFullName());
         existing.setBirthDate(dto.getBirthDate());
-        existing.setCpf(dto.getCpf());
-        existing.setRg(dto.getRg());
+        existing.setCpf(DocumentoIdentidade.apenasDigitos(dto.getCpf()));
+        existing.setRg(DocumentoIdentidade.alfanumericoMaiusculo(dto.getRg()));
         existing.setRgIssuer(dto.getRgIssuer());
         existing.setRgIssueDate(dto.getRgIssueDate());
         existing.setMotherName(dto.getMotherName());
         existing.setGender(dto.getGender());
         existing.setMaritalStatus(dto.getMaritalStatus());
-        if (dto.getNationality() != null) {
-            existing.setNationality(dto.getNationality());
-        }
+        if (dto.getNationality() != null) existing.setNationality(dto.getNationality());
         existing.setMobilePhone(dto.getMobilePhone());
-        if (dto.getIsWhatsapp() != null) {
-            existing.setIsWhatsapp(dto.getIsWhatsapp());
-        }
         existing.setReferencePhone(dto.getReferencePhone());
         existing.setReferenceResponsible(dto.getReferenceResponsible());
+        if (dto.getIsWhatsapp() != null) existing.setIsWhatsapp(dto.getIsWhatsapp());
         existing.setEmail(dto.getEmail());
-        if (dto.getHasDisability() != null) {
-            existing.setHasDisability(dto.getHasDisability());
-        }
+        if (dto.getHasDisability() != null) existing.setHasDisability(dto.getHasDisability());
         existing.setUpdatedBy(CurrentUser.id());
-
-        normalizarIdentidade(existing);
-        return toPersonalDataDTO(repository.save(existing));
+        return mapPersonalData(repository.save(existing));
     }
 
-    // ── Dados profissionais (aba "Dados profissionais") ──
-
     @Override
+    @Transactional(readOnly = true)
     public ClientProfessionalDataResponseDTO getProfessionalData(UUID id) {
-        return toProfessionalDataDTO(findOrThrow(id));
+        return mapProfessionalData(findOrThrow(id));
     }
 
     @Override
@@ -404,139 +396,170 @@ public class ClientServiceImpl implements ClientService {
     public ClientProfessionalDataResponseDTO updateProfessionalData(
             UUID id, ClientProfessionalDataRequestDTO dto) {
         Client existing = findOrThrow(id);
-
-        // Mesma razão da aba de dados pessoais: validar antes de mutar. CPF e RG não são
-        // editados aqui e vão como estão na entidade.
-        validarIdentidadeUnica(
-                id,
-                existing.getCpf(),
-                existing.getRg(),
-                dto.getCtps(),
-                dto.getNitPis(),
-                dto.getBeneficiaryNumber());
-
         existing.setProfession(dto.getProfession());
         existing.setNitPis(dto.getNitPis());
         existing.setCtps(dto.getCtps());
         existing.setCtpsSeries(dto.getCtpsSeries());
-        existing.setBeneficiaryNumber(dto.getBeneficiaryNumber());
         existing.setContributionYears(dto.getContributionYears());
         existing.setContributionMonths(dto.getContributionMonths());
         existing.setContributionDays(dto.getContributionDays());
-        recalcularTempoDeContribuicao(existing);
-        // Ausente = mantém: a senha não volta no GET, então quem edita a aba não a tem em mãos.
+        existing.setContributionInMonths(
+                TempoDeContribuicao.emMeses(
+                        dto.getContributionYears(),
+                        dto.getContributionMonths(),
+                        dto.getContributionDays()));
+        existing.setBeneficiaryNumber(dto.getBeneficiaryNumber());
         if (dto.getInssPassword() != null && !dto.getInssPassword().isBlank()) {
             existing.setInssPassword(dto.getInssPassword());
         }
         existing.setUpdatedBy(CurrentUser.id());
-
-        normalizarIdentidade(existing);
-        return toProfessionalDataDTO(repository.save(existing));
+        return mapProfessionalData(repository.save(existing));
     }
 
-    // ── Private helpers ──
+    @Override
+    @Transactional(readOnly = true)
+    public List<UpcomingBirthdayDTO> upcomingBirthdays(int days, int limit) {
+        int windowDays = Math.max(0, Math.min(days, 365));
+        int pageSize = Math.max(1, Math.min(limit, 50));
+        LocalDate today = OfficeClock.today();
+        LocalDate end = today.plusDays(windowDays);
+        short fromMmdd = toMmdd(today);
+        short toMmdd = toMmdd(end);
+        boolean wraps = toMmdd < fromMmdd;
 
-    /**
-     * O total em meses é derivado, nunca recebido: a API aceita anos, meses e dias, e quem grava o
-     * total é o servidor. Recalcular num lugar só evita o total sobreviver a uma edição dos três
-     * números - foi assim que "300000000 anos" deixou -694967296 gravado.
-     */
-    private static void recalcularTempoDeContribuicao(Client entity) {
-        entity.setContributionInMonths(
-                TempoDeContribuicao.emMeses(
-                        entity.getContributionYears(),
-                        entity.getContributionMonths(),
-                        entity.getContributionDays()));
+        List<BirthdayRow> rows =
+                repository.findBirthdaysInWindow(
+                        fromMmdd, toMmdd, wraps, false, PageRequest.of(0, pageSize));
+        return rows.stream().map(row -> toBirthday(row, today)).toList();
     }
 
     private Client findOrThrow(UUID id) {
         return repository.findById(id).orElseThrow(() -> NotFoundException.of("Cliente", id));
     }
 
-    private static RequestStage parseRequestStage(String raw) {
-        try {
-            RequestStage s = RequestStage.fromLabel(raw);
-            if (s == null) {
-                throw new ValidationException(
-                        "requestStage", ValidationErrorCode.INVALID_REQUEST_STAGE);
-            }
-            return s;
-        } catch (IllegalArgumentException ex) {
-            throw new ValidationException(
-                    "requestStage",
-                    ValidationErrorCode.INVALID_REQUEST_STAGE,
-                    "Etapa do requerimento inválida: " + raw);
+    private void validateUniqueness(ClientCreateRequestDTO dto) {
+        checkDuplicate(
+                dto.getBeneficiaryNumber(),
+                repository::existsByBeneficiaryNumber,
+                "beneficiaryNumber",
+                "Número do benefício já cadastrado");
+        checkDuplicate(dto.getCpf(), repository::existsByCpf, "cpf", "CPF já cadastrado");
+        checkDuplicate(dto.getRg(), repository::existsByRg, "rg", "RG já cadastrado");
+        checkDuplicate(
+                dto.getNitPis(), repository::existsByNitPis, "nitPis", "NIT/PIS já cadastrado");
+        checkDuplicate(dto.getCtps(), repository::existsByCtps, "ctps", "CTPS já cadastrado");
+    }
+
+    private void validateUniqueness(Client entity) {
+        checkDuplicate(
+                entity.getBeneficiaryNumber(),
+                repository::existsByBeneficiaryNumber,
+                "beneficiaryNumber",
+                "Número do benefício já cadastrado");
+        checkDuplicate(entity.getCpf(), repository::existsByCpf, "cpf", "CPF já cadastrado");
+        checkDuplicate(entity.getRg(), repository::existsByRg, "rg", "RG já cadastrado");
+        checkDuplicate(
+                entity.getNitPis(), repository::existsByNitPis, "nitPis", "NIT/PIS já cadastrado");
+        checkDuplicate(entity.getCtps(), repository::existsByCtps, "ctps", "CTPS já cadastrado");
+    }
+
+    private void validateUniqueness(Client entity, UUID id) {
+        checkDuplicate(
+                entity.getBeneficiaryNumber(),
+                value -> repository.existsByBeneficiaryNumberAndIdNot(value, id),
+                "beneficiaryNumber",
+                "Número do benefício já cadastrado");
+        checkDuplicate(
+                entity.getCpf(),
+                value -> repository.existsByCpfAndIdNot(value, id),
+                "cpf",
+                "CPF já cadastrado");
+        checkDuplicate(
+                entity.getRg(),
+                value -> repository.existsByRgAndIdNot(value, id),
+                "rg",
+                "RG já cadastrado");
+        checkDuplicate(
+                entity.getNitPis(),
+                value -> repository.existsByNitPisAndIdNot(value, id),
+                "nitPis",
+                "NIT/PIS já cadastrado");
+        checkDuplicate(
+                entity.getCtps(),
+                value -> repository.existsByCtpsAndIdNot(value, id),
+                "ctps",
+                "CTPS já cadastrado");
+    }
+
+    private void validateUniqueness(ClientUpdateRequestDTO dto, UUID id) {
+        checkDuplicate(
+                dto.getBeneficiaryNumber(),
+                value -> repository.existsByBeneficiaryNumberAndIdNot(value, id),
+                "beneficiaryNumber",
+                "Número do benefício já cadastrado");
+        checkDuplicate(
+                dto.getCpf(),
+                value -> repository.existsByCpfAndIdNot(value, id),
+                "cpf",
+                "CPF já cadastrado");
+        checkDuplicate(
+                dto.getRg(),
+                value -> repository.existsByRgAndIdNot(value, id),
+                "rg",
+                "RG já cadastrado");
+        checkDuplicate(
+                dto.getNitPis(),
+                value -> repository.existsByNitPisAndIdNot(value, id),
+                "nitPis",
+                "NIT/PIS já cadastrado");
+        checkDuplicate(
+                dto.getCtps(),
+                value -> repository.existsByCtpsAndIdNot(value, id),
+                "ctps",
+                "CTPS já cadastrado");
+    }
+
+    private void normalizarDocumentosIdentidade(Client entity) {
+        if (entity == null) {
+            return;
+        }
+        entity.setCpf(DocumentoIdentidade.apenasDigitos(entity.getCpf()));
+        entity.setRg(DocumentoIdentidade.alfanumericoMaiusculo(entity.getRg()));
+        entity.setCtps(DocumentoIdentidade.apenasDigitos(entity.getCtps()));
+        entity.setNitPis(DocumentoIdentidade.apenasDigitos(entity.getNitPis()));
+        entity.setBeneficiaryNumber(
+                DocumentoIdentidade.apenasDigitos(entity.getBeneficiaryNumber()));
+    }
+
+    private void checkDuplicate(
+            String value,
+            java.util.function.Predicate<String> existsFn,
+            String field,
+            String message) {
+        String normalized = normalizeUniqueValue(value, field);
+        if (normalized != null && existsFn.test(normalized)) {
+            throw new ValidationException(field, ValidationErrorCode.DUPLICATE_VALUE, message);
         }
     }
 
-    private static Situation parseSituation(String raw) {
-        try {
-            Situation s = Situation.fromLabel(raw);
-            if (s == null) {
-                throw new ValidationException("situation", ValidationErrorCode.INVALID_SITUATION);
-            }
-            return s;
-        } catch (IllegalArgumentException ex) {
-            throw new ValidationException(
-                    "situation",
-                    ValidationErrorCode.INVALID_SITUATION,
-                    "Situação inválida: " + raw);
+    private static String normalizeUniqueValue(String value, String field) {
+        if (value == null) {
+            return null;
         }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return switch (field) {
+            case "beneficiaryNumber", "cpf", "nitPis", "ctps" ->
+                    DocumentoIdentidade.apenasDigitos(trimmed);
+            case "rg" -> DocumentoIdentidade.alfanumericoMaiusculo(trimmed);
+            default -> DocumentoIdentidade.aparado(trimmed);
+        };
     }
 
-    private static BenefitType parseBenefit(String raw) {
-        try {
-            BenefitType b = BenefitType.fromLabel(raw);
-            if (b == null) {
-                throw new ValidationException("benefit", ValidationErrorCode.INVALID_BENEFIT);
-            }
-            return b;
-        } catch (IllegalArgumentException ex) {
-            throw new ValidationException(
-                    "benefit", ValidationErrorCode.INVALID_BENEFIT, "Benefício inválido: " + raw);
-        }
-    }
-
-    private static ClientType parseClientType(String raw) {
-        try {
-            ClientType t = ClientType.fromLabel(raw);
-            if (t == null) {
-                throw new ValidationException(
-                        "clientType", ValidationErrorCode.INVALID_CLIENT_TYPE);
-            }
-            return t;
-        } catch (IllegalArgumentException ex) {
-            throw new ValidationException(
-                    "clientType",
-                    ValidationErrorCode.INVALID_CLIENT_TYPE,
-                    "Tipo de cliente inválido: " + raw);
-        }
-    }
-
-    /**
-     * Grava a transição da etapa no INSS.
-     *
-     * <p>{@code previousStageEnteredAt} vem do {@code changedAt} da última transição deste cliente:
-     * o começo da etapa que está terminando é o instante em que ela começou. Sem transição anterior
-     * o campo fica nulo, e a tela não tem tempo a mostrar - correto, porque aquela é a primeira
-     * etapa registrada.
-     */
-    private void recordRequestStageHistory(RequestStage previous, Client saved) {
-        ClientRequestStageHistory h = new ClientRequestStageHistory();
-        h.setClient(saved);
-        h.setPreviousStage(previous == null ? null : previous.getLabel());
-        h.setNewStage(saved.getRequestStage() == null ? null : saved.getRequestStage().getLabel());
-        h.setChangedAt(Instant.now());
-        h.setChangedBy(CurrentUser.id());
-        if (previous != null) {
-            requestStageHistoryRepository
-                    .findFirstByClient_IdOrderByChangedAtDesc(saved.getId())
-                    .ifPresent(ultima -> h.setPreviousStageEnteredAt(ultima.getChangedAt()));
-        }
-        requestStageHistoryRepository.save(h);
-    }
-
-    private void recordHistory(Situation previous, Client saved) {
+    @Transactional
+    protected void recordHistory(Situation previous, Client saved) {
         ClientSituationHistory h = new ClientSituationHistory();
         h.setClient(saved);
         h.setPreviousSituation(previous == null ? null : previous.getLabel());
@@ -546,128 +569,46 @@ public class ClientServiceImpl implements ClientService {
         historyRepository.save(h);
     }
 
-    /**
-     * Normaliza os cinco documentos que identificam o cliente, na entidade, antes de qualquer
-     * gravação.
-     *
-     * <p>Fica aqui, e não no mapper, porque as abas de dados pessoais e profissionais escrevem
-     * direto na entidade sem passar por ele - normalizar no mapper deixaria dois dos quatro
-     * caminhos de escrita de fora, que é como o defeito nasceu.
-     */
-    private void normalizarIdentidade(Client entity) {
-        entity.setCpf(DocumentoIdentidade.apenasDigitos(entity.getCpf()));
-        entity.setRg(DocumentoIdentidade.alfanumericoMaiusculo(entity.getRg()));
-        entity.setCtps(DocumentoIdentidade.apenasDigitos(entity.getCtps()));
-        entity.setNitPis(DocumentoIdentidade.apenasDigitos(entity.getNitPis()));
-        entity.setBeneficiaryNumber(
-                DocumentoIdentidade.apenasDigitos(entity.getBeneficiaryNumber()));
-    }
-
-    /**
-     * Recusa documento que já pertence a outro cliente ativo.
-     *
-     * <p>Vale para criação E edição. Antes só valia na criação, então o mesmo CPF duplicado dava
-     * 400 com o campo apontado no cadastro e 409 genérico na edição - mesma regra, duas respostas,
-     * e uma delas sem dizer qual campo.
-     *
-     * <p>Contato (celular, e-mail, telefone de recado) NÃO entra: contato se compartilha entre mãe
-     * e filho, casal, responsável. Tornar único recusaria o segundo cadastro de uma família.
-     *
-     * @param idAtual id do cliente sendo editado, ou {@code null} na criação. Sem isso, salvar sem
-     *     mexer no CPF acusaria duplicidade do registro contra ele mesmo.
-     */
-    private void validarIdentidadeUnica(Client entity, UUID idAtual) {
-        validarIdentidadeUnica(
-                idAtual,
-                entity.getCpf(),
-                entity.getRg(),
-                entity.getCtps(),
-                entity.getNitPis(),
-                entity.getBeneficiaryNumber());
-    }
-
-    /**
-     * Mesma validação, sobre os valores que ESTÃO PRESTES a ser gravados.
-     *
-     * <p>Na edição isto tem de rodar ANTES de mexer na entidade. A entidade é gerenciada pelo JPA:
-     * assim que os campos mudam, qualquer consulta à mesma tabela dispara um flush automático, e o
-     * índice único do banco estoura primeiro - 409 genérico, sem dizer qual campo, que é exatamente
-     * o que esta validação existe para evitar. Validar antes de mutar mantém a resposta em 400
-     * nomeando o documento.
-     */
-    private void validarIdentidadeUnica(
-            UUID idAtual,
-            String cpf,
-            String rg,
-            String ctps,
-            String nitPis,
-            String beneficiaryNumber) {
-        checarDocumento(
-                DocumentoIdentidade.apenasDigitos(cpf),
-                idAtual,
-                repository::existsByCpf,
-                repository::existsByCpfAndIdNot,
-                "cpf",
-                "CPF já cadastrado para outro cliente");
-        checarDocumento(
-                DocumentoIdentidade.alfanumericoMaiusculo(rg),
-                idAtual,
-                repository::existsByRg,
-                repository::existsByRgAndIdNot,
-                "rg",
-                "RG já cadastrado para outro cliente");
-        checarDocumento(
-                DocumentoIdentidade.apenasDigitos(ctps),
-                idAtual,
-                repository::existsByCtps,
-                repository::existsByCtpsAndIdNot,
-                "ctps",
-                "CTPS já cadastrada para outro cliente");
-        checarDocumento(
-                DocumentoIdentidade.apenasDigitos(nitPis),
-                idAtual,
-                repository::existsByNitPis,
-                repository::existsByNitPisAndIdNot,
-                "nitPis",
-                "NIT/PIS já cadastrado para outro cliente");
-        checarDocumento(
-                DocumentoIdentidade.apenasDigitos(beneficiaryNumber),
-                idAtual,
-                repository::existsByBeneficiaryNumber,
-                repository::existsByBeneficiaryNumberAndIdNot,
-                "beneficiaryNumber",
-                "Número do benefício já cadastrado para outro cliente");
-    }
-
-    private void checarDocumento(
-            String valorNormalizado,
-            UUID idAtual,
-            Predicate<String> existeNaBase,
-            BiPredicate<String, UUID> existeEmOutro,
-            String campo,
-            String mensagem) {
-        if (valorNormalizado == null || valorNormalizado.isBlank()) {
+    @Transactional
+    protected void recordRequestStageHistory(
+            Client client,
+            RequestStage previousStage,
+            RequestStage newStage,
+            String justification) {
+        if (Objects.equals(previousStage, newStage)) {
             return;
         }
-        boolean duplicado =
-                idAtual == null
-                        ? existeNaBase.test(valorNormalizado)
-                        : existeEmOutro.test(valorNormalizado, idAtual);
-        if (duplicado) {
-            throw new ValidationException(campo, ValidationErrorCode.DUPLICATE_VALUE, mensagem);
+        ClientRequestStageHistory h = new ClientRequestStageHistory();
+        h.setClient(client);
+        h.setPreviousStage(previousStage == null ? null : previousStage.getLabel());
+        h.setNewStage(newStage == null ? null : newStage.getLabel());
+        h.setPreviousStageEnteredAt(resolvePreviousStageEnteredAt(client.getId(), previousStage));
+        h.setChangedAt(Instant.now());
+        h.setChangedBy(CurrentUser.id());
+        h.setJustification(justification);
+        requestStageHistoryRepository.save(h);
+    }
+
+    private Instant resolvePreviousStageEnteredAt(UUID clientId, RequestStage previousStage) {
+        if (previousStage == null) {
+            return null;
         }
+        return requestStageHistoryRepository
+                .findFirstByClient_IdOrderByChangedAtDesc(clientId)
+                .map(ClientRequestStageHistory::getChangedAt)
+                .orElse(null);
     }
 
-    private static Integer ageOf(LocalDate birthDate) {
-        return birthDate == null ? null : Period.between(birthDate, OfficeClock.today()).getYears();
-    }
-
-    private ClientPersonalDataResponseDTO toPersonalDataDTO(Client entity) {
+    private ClientPersonalDataResponseDTO mapPersonalData(Client entity) {
         ClientPersonalDataResponseDTO dto = new ClientPersonalDataResponseDTO();
-        dto.setClientId(entity.getId());
+        dto.setId(entity.getId());
         dto.setFullName(entity.getFullName());
+        dto.setFirstName(entity.getFirstName());
+        dto.setLastName(entity.getLastName());
         dto.setBirthDate(entity.getBirthDate());
-        dto.setAge(ageOf(entity.getBirthDate()));
+        if (entity.getBirthDate() != null) {
+            dto.setAge((int) ChronoUnit.YEARS.between(entity.getBirthDate(), OfficeClock.today()));
+        }
         dto.setCpf(entity.getCpf());
         dto.setRg(entity.getRg());
         dto.setRgIssuer(entity.getRgIssuer());
@@ -677,17 +618,22 @@ public class ClientServiceImpl implements ClientService {
         dto.setMaritalStatus(entity.getMaritalStatus());
         dto.setNationality(entity.getNationality());
         dto.setMobilePhone(entity.getMobilePhone());
-        dto.setIsWhatsapp(entity.getIsWhatsapp());
         dto.setReferencePhone(entity.getReferencePhone());
         dto.setReferenceResponsible(entity.getReferenceResponsible());
+        dto.setIsWhatsapp(entity.getIsWhatsapp());
         dto.setEmail(entity.getEmail());
         dto.setHasDisability(entity.getHasDisability());
+        dto.setProfession(entity.getProfession());
+        dto.setNitPis(entity.getNitPis());
+        dto.setCtps(entity.getCtps());
+        dto.setCtpsSeries(entity.getCtpsSeries());
+        dto.setInssPassword(entity.getInssPassword());
         dto.setUpdatedBy(entity.getUpdatedBy());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
     }
 
-    private ClientProfessionalDataResponseDTO toProfessionalDataDTO(Client entity) {
+    private ClientProfessionalDataResponseDTO mapProfessionalData(Client entity) {
         ClientProfessionalDataResponseDTO dto = new ClientProfessionalDataResponseDTO();
         dto.setClientId(entity.getId());
         dto.setProfession(entity.getProfession());
@@ -709,37 +655,56 @@ public class ClientServiceImpl implements ClientService {
         return dto;
     }
 
-    static final int BIRTHDAY_DAYS_MAX = 365;
-    static final int BIRTHDAY_LIMIT_MAX = 50;
+    private static <T extends Enum<T>> T parseEnum(
+            String raw, String field, Function<String, T> parser, ValidationErrorCode code) {
+        if (raw == null) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        if (trimmed.isEmpty()) {
+            throw new ValidationException(field, code, "Valor inválido para " + field + ": " + raw);
+        }
+        try {
+            return parser.apply(trimmed);
+        } catch (RuntimeException e) {
+            throw new ValidationException(field, code, "Valor inválido para " + field + ": " + raw);
+        }
+    }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<UpcomingBirthdayDTO> upcomingBirthdays(int days, int limit) {
-        int window = Math.clamp(days, 0, BIRTHDAY_DAYS_MAX);
-        int size = Math.clamp(limit, 1, BIRTHDAY_LIMIT_MAX);
+    private static short toMmdd(LocalDate date) {
+        return (short) ((date.getMonthValue() * 100) + date.getDayOfMonth());
+    }
 
-        // "Hoje" no fuso do escritório: perto da meia-noite, UTC já estaria no dia seguinte.
-        LocalDate today = OfficeClock.today();
-        short fromMmdd = Birthdays.mmdd(today);
-        short toMmdd = Birthdays.windowEndMmdd(today.plusDays(window));
-        boolean allYear = window >= BIRTHDAY_DAYS_MAX;
-        boolean wraps = fromMmdd > toMmdd;
+    private static UpcomingBirthdayDTO toBirthday(BirthdayRow row, LocalDate today) {
+        LocalDate nextBirthday = nextBirthday(row.birthDate(), today);
+        long daysUntil = ChronoUnit.DAYS.between(today, nextBirthday);
+        int turningAge = nextBirthday.getYear() - row.birthDate().getYear();
+        return new UpcomingBirthdayDTO(
+                row.clientId(),
+                row.fullName(),
+                row.birthDate(),
+                nextBirthday,
+                daysUntil,
+                turningAge,
+                row.mobilePhone(),
+                Boolean.TRUE.equals(row.isWhatsapp()));
+    }
 
-        return repository
-                .findBirthdaysInWindow(fromMmdd, toMmdd, wraps, allYear, PageRequest.of(0, size))
-                .stream()
-                .map(
-                        row ->
-                                new UpcomingBirthdayDTO(
-                                        row.clientId(),
-                                        row.fullName(),
-                                        row.birthDate(),
-                                        Birthdays.next(row.birthDate(), today),
-                                        Birthdays.daysUntil(row.birthDate(), today),
-                                        Birthdays.turningAge(row.birthDate(), today),
-                                        row.mobilePhone(),
-                                        // Nulo em linha antiga: o padrão da coluna é "é WhatsApp".
-                                        !Boolean.FALSE.equals(row.isWhatsapp())))
-                .toList();
+    private static LocalDate nextBirthday(LocalDate birthDate, LocalDate today) {
+        int year = today.getYear();
+        LocalDate candidate =
+                LocalDate.of(year, birthDate.getMonthValue(), birthDate.getDayOfMonth());
+        if (candidate.isBefore(today) || candidate.isEqual(today)) {
+            candidate = candidate.plusYears(1);
+        }
+        if (birthDate.getMonthValue() == 2
+                && birthDate.getDayOfMonth() == 29
+                && !candidate.isLeapYear()) {
+            candidate = LocalDate.of(year, 2, 28);
+            if (candidate.isBefore(today) || candidate.isEqual(today)) {
+                candidate = candidate.plusYears(1);
+            }
+        }
+        return candidate;
     }
 }

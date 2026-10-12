@@ -8,133 +8,61 @@ import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.validation.ValidCPF;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Past;
-import jakarta.validation.constraints.PastOrPresent;
-import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.UUID;
 
-/**
- * Payload de criação de cliente (POST /clients). Endereços são um recurso próprio (POST
- * /clients/{clientId}/addresses) - não fazem parte deste payload.
- */
 public class ClientCreateRequestDTO implements ClientWritableFields {
+    @NotBlank private String fullName;
 
-    @Size(max = 255)
-    @NotBlank
-    private String fullName;
+    @NotNull private LocalDate birthDate;
 
-    /**
-     * No passado, sempre. Sem isto, {@code 2090-01-01} era aceito com 201 e a ficha passava a
-     * mostrar {@code age: -63} - verificado rodando.
-     */
-    @Past(message = "Data de nascimento precisa estar no passado")
-    @NotNull
-    private LocalDate birthDate;
+    @NotBlank @ValidCPF private String cpf;
 
-    @Size(max = 14)
-    @NotBlank
-    @ValidCPF
-    private String cpf;
+    @NotBlank private String motherName;
 
-    @Size(max = 255)
-    @NotBlank
-    private String motherName;
+    @NotBlank private String mobilePhone;
 
-    @Size(max = 20)
-    @NotBlank
-    private String mobilePhone;
-
-    @Size(max = 255)
-    @NotBlank
-    private String inssPassword;
+    @NotBlank private String inssPassword;
 
     @NotNull private Gender gender;
 
-    @Size(max = 20)
+    // optional writable fields
     private String rg;
-
-    @Size(max = 255)
-    @Email
-    private String email;
-
-    @Size(max = 20)
+    @Email private String email;
     private String referencePhone;
-
-    @Size(max = 255)
     private String referenceResponsible;
-
     private MaritalStatus maritalStatus;
-
     @NotNull private BenefitType benefit;
-
     @NotNull private Situation situation;
-
-    /**
-     * Etapa do requerimento no INSS. Anulável: nulo significa "ainda não protocolado", estado
-     * legítimo de cliente em prospecção ou planejamento. Não confundir com {@code situation}, que é
-     * a esteira interna do escritório.
-     */
-    private RequestStage requestStage;
-
-    @Size(max = 30)
     private String beneficiaryNumber;
-
-    @Size(max = 20)
     private String nitPis;
-
-    @Size(max = 100)
     private String profession;
-
-    @Size(max = 30)
     private String ctps;
-
-    @Size(max = 20)
     private String ctpsSeries;
-
-    /**
-     * Tempo de contribuição em três campos, e não numa frase: "nao informado" virava 0 e "300000000
-     * anos" virava -694967296 quando isto era texto interpretado por regex. Faixas em
-     * TempoDeContribuicao (mês de 30 dias, ano de 12 meses).
-     */
-    @Min(value = 0, message = "Anos de contribuição não pode ser negativo")
-    @Max(value = 130, message = "Anos de contribuição não pode passar de 130")
+    private Integer contributionTime;
     private Integer contributionYears;
-
-    @Min(value = 0, message = "Meses de contribuição não pode ser negativo")
-    @Max(value = 11, message = "Meses de contribuição vai de 0 a 11 - 12 meses são 1 ano")
     private Integer contributionMonths;
-
-    @Min(value = 0, message = "Dias de contribuição não pode ser negativo")
-    @Max(value = 29, message = "Dias de contribuição vai de 0 a 29 - 30 dias são 1 mês")
     private Integer contributionDays;
-
-    private Boolean notBillable;
-
-    @Size(max = 20)
+    private RequestStage requestStage;
+    private String requestStageJustification;
     private String rgIssuer;
-
-    @PastOrPresent(message = "Data de emissão do RG não pode estar no futuro")
     private LocalDate rgIssueDate;
-
-    @Size(max = 50)
     private String nationality;
-
     private Boolean isWhatsapp;
-
     private Boolean hasDisability;
-
     private String notes;
-
     private UUID responsibleUserId;
-
     private ClientType clientType;
 
-    @Override
+    @com.fasterxml.jackson.annotation.JsonProperty("notBillable")
+    @com.fasterxml.jackson.annotation.JsonAlias({"notbillable", "not_billable", "not-billable"})
+    private Boolean notBillable;
+
+    private UUID createdBy;
+
+    // getters and setters
     public String getFullName() {
         return fullName;
     }
@@ -143,7 +71,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.fullName = fullName;
     }
 
-    @Override
     public LocalDate getBirthDate() {
         return birthDate;
     }
@@ -152,7 +79,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.birthDate = birthDate;
     }
 
-    @Override
     public String getCpf() {
         return cpf;
     }
@@ -161,7 +87,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.cpf = cpf;
     }
 
-    @Override
     public String getMotherName() {
         return motherName;
     }
@@ -170,7 +95,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.motherName = motherName;
     }
 
-    @Override
     public String getMobilePhone() {
         return mobilePhone;
     }
@@ -179,7 +103,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.mobilePhone = mobilePhone;
     }
 
-    @Override
     public String getInssPassword() {
         return inssPassword;
     }
@@ -188,7 +111,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.inssPassword = inssPassword;
     }
 
-    @Override
     public Gender getGender() {
         return gender;
     }
@@ -197,7 +119,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.gender = gender;
     }
 
-    @Override
     public String getRg() {
         return rg;
     }
@@ -206,7 +127,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.rg = rg;
     }
 
-    @Override
     public String getEmail() {
         return email;
     }
@@ -215,7 +135,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.email = email;
     }
 
-    @Override
     public String getReferencePhone() {
         return referencePhone;
     }
@@ -224,7 +143,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.referencePhone = referencePhone;
     }
 
-    @Override
     public String getReferenceResponsible() {
         return referenceResponsible;
     }
@@ -233,7 +151,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.referenceResponsible = referenceResponsible;
     }
 
-    @Override
     public MaritalStatus getMaritalStatus() {
         return maritalStatus;
     }
@@ -242,7 +159,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.maritalStatus = maritalStatus;
     }
 
-    @Override
     public BenefitType getBenefit() {
         return benefit;
     }
@@ -251,7 +167,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.benefit = benefit;
     }
 
-    @Override
     public Situation getSituation() {
         return situation;
     }
@@ -260,15 +175,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.situation = situation;
     }
 
-    public RequestStage getRequestStage() {
-        return requestStage;
-    }
-
-    public void setRequestStage(RequestStage requestStage) {
-        this.requestStage = requestStage;
-    }
-
-    @Override
     public String getBeneficiaryNumber() {
         return beneficiaryNumber;
     }
@@ -277,7 +183,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.beneficiaryNumber = beneficiaryNumber;
     }
 
-    @Override
     public String getNitPis() {
         return nitPis;
     }
@@ -286,7 +191,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.nitPis = nitPis;
     }
 
-    @Override
     public String getProfession() {
         return profession;
     }
@@ -295,7 +199,6 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.profession = profession;
     }
 
-    @Override
     public String getCtps() {
         return ctps;
     }
@@ -304,13 +207,29 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.ctps = ctps;
     }
 
-    @Override
     public String getCtpsSeries() {
         return ctpsSeries;
     }
 
     public void setCtpsSeries(String ctpsSeries) {
         this.ctpsSeries = ctpsSeries;
+    }
+
+    public Integer getContributionTime() {
+        return contributionTime;
+    }
+
+    public void setContributionTime(Integer contributionTime) {
+        this.contributionTime = contributionTime;
+    }
+
+    @Override
+    public RequestStage getRequestStage() {
+        return requestStage;
+    }
+
+    public void setRequestStage(RequestStage requestStage) {
+        this.requestStage = requestStage;
     }
 
     @Override
@@ -322,6 +241,7 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.contributionYears = contributionYears;
     }
 
+    @Override
     public Integer getContributionMonths() {
         return contributionMonths;
     }
@@ -330,6 +250,7 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
         this.contributionMonths = contributionMonths;
     }
 
+    @Override
     public Integer getContributionDays() {
         return contributionDays;
     }
@@ -417,5 +338,21 @@ public class ClientCreateRequestDTO implements ClientWritableFields {
 
     public void setClientType(ClientType clientType) {
         this.clientType = clientType;
+    }
+
+    public UUID getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(UUID createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public String getRequestStageJustification() {
+        return requestStageJustification;
+    }
+
+    public void setRequestStageJustification(String requestStageJustification) {
+        this.requestStageJustification = requestStageJustification;
     }
 }

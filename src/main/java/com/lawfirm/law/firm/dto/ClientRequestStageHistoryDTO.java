@@ -33,6 +33,13 @@ public class ClientRequestStageHistoryDTO {
     /** Nulo na primeira entrada: não havia etapa anterior a cronometrar. */
     private Long diasNaEtapaAnterior;
 
+    /**
+     * O motivo da transição - o que o INSS exigiu, por que indeferiu, contra o quê se recorre.
+     * Sempre presente ao entrar em exigência, indeferimento ou recurso; nas demais, só se quem
+     * mudou escreveu.
+     */
+    private String justification;
+
     public UUID getId() {
         return id;
     }
@@ -79,5 +86,13 @@ public class ClientRequestStageHistoryDTO {
 
     public void setDiasNaEtapaAnterior(Long diasNaEtapaAnterior) {
         this.diasNaEtapaAnterior = diasNaEtapaAnterior;
+    }
+
+    public String getJustification() {
+        return justification;
+    }
+
+    public void setJustification(String justification) {
+        this.justification = justification;
     }
 }

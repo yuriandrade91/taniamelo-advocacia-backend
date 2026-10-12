@@ -62,6 +62,19 @@ public enum RequestStage {
         return this == DEFERIMENTO;
     }
 
+    /**
+     * Mudar para esta etapa exige justificativa.
+     *
+     * <p>São as três etapas que existem por causa de um <i>motivo</i>: a exigência (o que o INSS
+     * pediu), o indeferimento (por que negou) e o recurso (contra o quê se recorre). É esse motivo
+     * que orienta o próximo passo do escritório - juntar o documento, preparar o recurso -, e sem
+     * ele o histórico diria "foi para exigência" deixando "exigência de quê?" na cabeça de quem
+     * atendeu. As demais transições (protocolo, cumprimento, deferimento) se explicam sozinhas.
+     */
+    public boolean exigeJustificativa() {
+        return this == EXIGENCIA || this == INDEFERIMENTO || this == RECURSO;
+    }
+
     @JsonValue
     public String getLabel() {
         return label;

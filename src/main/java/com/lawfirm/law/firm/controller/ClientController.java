@@ -293,6 +293,9 @@ public class ClientController {
                     de sair - a resposta para "está em exigência há quanto tempo?". Nulo na \
                     primeira entrada, pelo mesmo motivo.
 
+                    `justification` é o motivo da mudança: sempre presente ao entrar em \
+                    `Exigência`, `Indeferimento` ou `Recurso`; nas demais, só se foi escrito.
+
                     **Não há `retrocesso` aqui**, diferente de \
                     `GET /clients/{clientId}/situation-history`: voltar de "Recurso" para \
                     "Exigência" é caminho real no INSS, não anomalia a sinalizar.
@@ -329,13 +332,23 @@ public class ClientController {
     }
 
     @Operation(
-            summary = "Atualização parcial (situação, benefício, tipo de cliente e/ou arrecadação)",
+            summary =
+                    "Atualização parcial (situação, etapa no INSS, benefício, tipo de cliente e/ou"
+                            + " arrecadação)",
             description =
                     """
-                    PATCH parcial: envie só o que quer mudar (`situation`, `benefit`, `clientType` \
-                    e/ou `notBillable`). Mudança de situação gera automaticamente um registro no \
-                    histórico (`GET /clients/{clientId}/situation-history`); mudança de benefício, tipo \
-                    de cliente e de arrecadação não.
+                    PATCH parcial: envie só o que quer mudar (`situation`, `requestStage`, \
+                    `benefit`, `clientType` e/ou `notBillable`). Mudança de situação gera \
+                    automaticamente um registro no histórico \
+                    (`GET /clients/{clientId}/situation-history`), e mudança de etapa no INSS, no \
+                    dela (`GET /clients/{clientId}/request-stage-history`); mudança de benefício, \
+                    tipo de cliente e de arrecadação não.
+
+                    **Justificativa da etapa no INSS:** mudar `requestStage` para `Exigência`, \
+                    `Indeferimento` ou `Recurso` exige `requestStageJustification` (até 1000 \
+                    caracteres) - o que o INSS pediu, por que negou, contra o quê se recorre. Sem \
+                    ela, 400 `REQUIRED_FIELD`. Nas demais etapas é opcional e, se vier, também vai \
+                    para o histórico. Mandada sem `requestStage`, 400 `CONFLICTING_PARAMETERS`.
 
                     **Formato de `situation`, `benefit` e `clientType`:** aceita o nome da \
                     constante (ex.: `APOSENTADORIA_RURAL`) ou o label em PT-BR (ex.: \
@@ -368,7 +381,7 @@ public class ClientController {
                     - `Potencial`""")
     @PatchMapping("/{clientId}")
     public ResponseEntity<ApiResponse<ClientPatchResponseDTO>> patch(
-            @PathVariable UUID clientId, @RequestBody ClientPatchRequestDTO patch) {
+            @PathVariable UUID clientId, @Valid @RequestBody ClientPatchRequestDTO patch) {
         ClientPatchOutcome outcome = clientService.patch(clientId, patch);
         return ResponseEntity.ok(
                 ApiResponse.successObject(new ClientPatchResponseDTO(patchMessage(outcome))));

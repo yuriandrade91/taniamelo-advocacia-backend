@@ -1,7 +1,5 @@
 package com.lawfirm.law.firm.model;
 
-import com.lawfirm.law.firm.audit.AuditLogListener;
-import com.lawfirm.law.firm.audit.Auditable;
 import com.lawfirm.law.firm.model.converter.CryptoConverter;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -10,32 +8,12 @@ import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
-import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UuidGenerator;
 
-/**
- * Cliente do escritório. Decisões de modelagem: - Endereços NÃO ficam embutidos aqui: são a coleção
- * 1:N client_addresses (um marcado como principal). O endereço embutido antigo foi removido. -
- * first_name/last_name gerados no banco foram removidos: derivados de fullName quando necessário,
- * sem duplicar estado. - Únicos no banco: cpf, nit_pis e benefit_number (identificadores reais).
- * Telefones, e-mail, RG e CTPS não são únicos - podem se repetir legitimamente entre clientes
- * (casal com mesmo e-mail/telefone, RG de estados diferentes etc.). - inss_password é criptografada
- * em repouso via {@link CryptoConverter}.
- */
 @Entity
 @Table(name = "clients")
-@EntityListeners(AuditLogListener.class)
-/*
- * Exclusão é lógica: a restrição abaixo some com os excluídos de TODA consulta JPA
- * desta entidade - listagem, findById, existsByCpf e o findAllById que a agenda usa
- * para resolver nome. Fica na entidade, e não repetida em cada query, porque a
- * regra precisa valer também para a consulta que alguém escrever amanhã.
- *
- * Para alcançar um excluído (restaurar), use ClientRepository#findByIdIncludingDeleted,
- * que é nativa e por isso escapa da restrição.
- */
-@SQLRestriction("deleted_at IS NULL")
-public class Client implements Auditable {
+@org.hibernate.annotations.SQLRestriction("deleted_at IS NULL")
+public class Client {
 
     @Id
     @GeneratedValue
@@ -43,21 +21,16 @@ public class Client implements Auditable {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    // ── Obrigatórios ──
-
     @NotBlank
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
-    @NotNull
+    // ============================================
+    // OBRIGATÓRIOS
+    // ============================================
     @Column(name = "birth_date", nullable = false)
     private LocalDate birthDate;
 
-    /**
-     * Mês*100+dia do nascimento (ex.: 12/10 -> 1012). Coluna GERADA pelo banco (V22) e indexada,
-     * base da consulta de próximos aniversariantes. Somente leitura: sem setter de propósito - o
-     * banco a calcula a partir de {@code birth_date}, e o MapStruct não a trata como alvo.
-     */
     @Column(name = "birth_mmdd", insertable = false, updatable = false)
     private Short birthMmdd;
 
@@ -70,7 +43,7 @@ public class Client implements Auditable {
     private String motherName;
 
     @NotBlank
-    @Column(name = "mobile_phone", nullable = false, length = 20)
+    @Column(name = "mobile_phone", nullable = false, unique = true, length = 20)
     private String mobilePhone;
 
     @NotBlank
@@ -79,75 +52,62 @@ public class Client implements Auditable {
     private String inssPassword;
 
     @NotNull
-    @Column(name = "gender", nullable = false, length = 20)
+    @Column(name = "gender", nullable = false, length = 10)
     private Gender gender;
 
     @NotNull
-    @Column(name = "situation", nullable = false, length = 100)
+    @Column(name = "situation", length = 100)
     private Situation situation;
 
-    /**
-     * Etapa do requerimento no INSS - a esteira de fora, paralela a {@link #situation}, que é a
-     * esteira do escritório. Sem {@code @NotNull}: nulo significa "ainda não protocolado", estado
-     * legítimo de quem está em prospecção ou planejamento (ver V24).
-     */
+    @NotNull
+    @Column(name = "benefit", length = 100)
+    private BenefitType benefit;
+
     @Column(name = "request_stage", length = 100)
     private RequestStage requestStage;
 
-    @NotNull
-    @Column(name = "benefit", nullable = false, length = 100)
-    private BenefitType benefit;
+    // ============================================
+    // OPCIONAIS - GERADOS AUTOMATICAMENTE
+    // ============================================
+    @Transient private String firstName;
 
-    // ── Identificação complementar ──
+    @Transient private String lastName;
 
-    @Column(name = "rg", length = 20)
+    // ============================================
+    // OPCIONAIS
+    // ============================================
+    @Column(name = "rg", unique = true, length = 20)
     private String rg;
 
-    @Column(name = "rg_issuer", length = 20)
-    private String rgIssuer;
-
-    @Column(name = "rg_issue_date")
-    private LocalDate rgIssueDate;
-
-    @Column(name = "nationality", length = 50)
-    private String nationality = "Brasileira";
-
-    @Column(name = "marital_status", length = 50)
-    private MaritalStatus maritalStatus;
-
-    // ── Contato ──
-
     @Email
-    @Column(name = "email", length = 255)
+    @Column(name = "email", unique = true, length = 255)
     private String email;
 
-    @Column(name = "is_whatsapp", nullable = false)
-    private Boolean isWhatsapp = true;
-
-    @Column(name = "reference_phone", length = 20)
+    @Column(name = "reference_phone", unique = true, length = 20)
     private String referencePhone;
 
     @Column(name = "reference_responsible")
     private String referenceResponsible;
 
-    // ── Dados profissionais / previdenciários ──
-
-    @Column(name = "profession", length = 100)
-    private String profession;
-
-    @Column(name = "nit_pis", unique = true, length = 20)
-    private String nitPis;
-
-    @Column(name = "ctps", length = 30)
-    private String ctps;
-
-    @Column(name = "ctps_series", length = 20)
-    private String ctpsSeries;
+    @Column(name = "marital_status", length = 50)
+    private MaritalStatus
+            maritalStatus; // Solteiro(a), Casado(a), Separada(a), Divorciado(a), Viúvo(a)
 
     @Column(name = "benefit_number", unique = true, length = 30)
     private String beneficiaryNumber;
 
-    // Tempo de contribuição: três números, não texto livre. Ver TempoDeContribuicao.
+    @Column(name = "nit_pis", unique = true, length = 20)
+    private String nitPis;
+
+    @Column(name = "profession")
+    private String profession;
+
+    @Column(name = "ctps", unique = true, length = 30)
+    private String ctps;
+
+    @Column(name = "ctps_series", unique = true, length = 20)
+    private String ctpsSeries;
+
     @Column(name = "contribution_years")
     private Integer contributionYears;
 
@@ -157,20 +117,44 @@ public class Client implements Auditable {
     @Column(name = "contribution_days")
     private Integer contributionDays;
 
-    /** Derivado dos três acima via TempoDeContribuicao - nunca escrito direto pela API. */
     @Column(name = "contribution_in_months")
     private Integer contributionInMonths;
 
+    // ============================================
+    // ENDEREÇO
+    // ============================================
+    // Endereço é persistido em ClientAddress; estes campos legados não mapeiam colunas em clients.
+    @Transient private String street;
+
+    @Transient private String addressNumber;
+
+    @Transient private String complement;
+
+    @Transient private String neighborhood;
+
+    @Transient private String city;
+
+    @Transient private String state;
+
+    @Transient private String zipCode;
+
+    // ============================================
+    // DADOS COMPLEMENTARES DE CADASTRO
+    // ============================================
+    @Column(name = "rg_issuer", length = 20)
+    private String rgIssuer;
+
+    @Column(name = "rg_issue_date")
+    private LocalDate rgIssueDate;
+
+    @Column(name = "nationality", length = 50)
+    private String nationality = "Brasileira";
+
+    @Column(name = "is_whatsapp", nullable = false)
+    private Boolean isWhatsapp = true;
+
     @Column(name = "has_disability", nullable = false)
     private Boolean hasDisability = false;
-
-    // ── Gestão do caso ──
-
-    @Column(name = "client_type", nullable = false, length = 20)
-    private ClientType clientType = ClientType.POTENCIAL;
-
-    @Column(name = "not_billable", nullable = false)
-    private Boolean notBillable = false;
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
@@ -178,7 +162,8 @@ public class Client implements Auditable {
     @Column(name = "responsible_user_id")
     private UUID responsibleUserId;
 
-    // ── Auditoria ──
+    @Column(name = "client_type", nullable = false, length = 20)
+    private ClientType clientType = ClientType.POTENCIAL;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -186,20 +171,32 @@ public class Client implements Auditable {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    @Column(name = "not_billable", nullable = false)
+    private Boolean notBillable = false;
+
     @Column(name = "created_by")
     private UUID createdBy;
 
     @Column(name = "updated_by")
     private UUID updatedBy;
 
-    /** Marca da exclusão lógica. Nulo = cliente ativo (ver {@code @SQLRestriction} na classe). */
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    // Constructors
+    public Client() {
+        // createdAt will be set by DB default NOW() on insert; keep null on new entity so DB
+        // default applies
+    }
+
     @PrePersist
     public void prePersist() {
-        if (this.createdAt == null) this.createdAt = Instant.now();
-        if (this.updatedAt == null) this.updatedAt = Instant.now();
+        if (this.createdAt == null) {
+            this.createdAt = Instant.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = Instant.now();
+        }
     }
 
     @PreUpdate
@@ -207,6 +204,7 @@ public class Client implements Auditable {
         this.updatedAt = Instant.now();
     }
 
+    // Getters and setters
     public UUID getId() {
         return id;
     }
@@ -223,108 +221,28 @@ public class Client implements Auditable {
         this.fullName = fullName;
     }
 
+    public String getFirstName() {
+        String[] nameParts = nameParts();
+        return nameParts.length == 0 ? null : nameParts[0];
+    }
+
+    public String getLastName() {
+        String[] nameParts = nameParts();
+        return nameParts.length < 2 ? null : nameParts[1];
+    }
+
+    private String[] nameParts() {
+        return fullName == null || fullName.isBlank()
+                ? new String[0]
+                : fullName.trim().split("\\s+", 2);
+    }
+
     public LocalDate getBirthDate() {
         return birthDate;
     }
 
     public void setBirthDate(LocalDate birthDate) {
         this.birthDate = birthDate;
-    }
-
-    public String getCpf() {
-        return cpf;
-    }
-
-    public void setCpf(String cpf) {
-        this.cpf = cpf;
-    }
-
-    public String getMotherName() {
-        return motherName;
-    }
-
-    public void setMotherName(String motherName) {
-        this.motherName = motherName;
-    }
-
-    public String getMobilePhone() {
-        return mobilePhone;
-    }
-
-    public void setMobilePhone(String mobilePhone) {
-        this.mobilePhone = mobilePhone;
-    }
-
-    public String getInssPassword() {
-        return inssPassword;
-    }
-
-    public void setInssPassword(String inssPassword) {
-        this.inssPassword = inssPassword;
-    }
-
-    public Gender getGender() {
-        return gender;
-    }
-
-    public void setGender(Gender gender) {
-        this.gender = gender;
-    }
-
-    public Situation getSituation() {
-        return situation;
-    }
-
-    public RequestStage getRequestStage() {
-        return requestStage;
-    }
-
-    public void setRequestStage(RequestStage requestStage) {
-        this.requestStage = requestStage;
-    }
-
-    public void setSituation(Situation situation) {
-        this.situation = situation;
-    }
-
-    public BenefitType getBenefit() {
-        return benefit;
-    }
-
-    public void setBenefit(BenefitType benefit) {
-        this.benefit = benefit;
-    }
-
-    public String getRg() {
-        return rg;
-    }
-
-    public void setRg(String rg) {
-        this.rg = rg;
-    }
-
-    public String getRgIssuer() {
-        return rgIssuer;
-    }
-
-    public void setRgIssuer(String rgIssuer) {
-        this.rgIssuer = rgIssuer;
-    }
-
-    public LocalDate getRgIssueDate() {
-        return rgIssueDate;
-    }
-
-    public void setRgIssueDate(LocalDate rgIssueDate) {
-        this.rgIssueDate = rgIssueDate;
-    }
-
-    public String getNationality() {
-        return nationality;
-    }
-
-    public void setNationality(String nationality) {
-        this.nationality = nationality;
     }
 
     public MaritalStatus getMaritalStatus() {
@@ -335,6 +253,30 @@ public class Client implements Auditable {
         this.maritalStatus = maritalStatus;
     }
 
+    public String getCpf() {
+        return cpf;
+    }
+
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
+
+    public String getRg() {
+        return rg;
+    }
+
+    public void setRg(String rg) {
+        this.rg = rg;
+    }
+
+    public String getMotherName() {
+        return motherName;
+    }
+
+    public void setMotherName(String motherName) {
+        this.motherName = motherName;
+    }
+
     public String getEmail() {
         return email;
     }
@@ -343,12 +285,12 @@ public class Client implements Auditable {
         this.email = email;
     }
 
-    public Boolean getIsWhatsapp() {
-        return isWhatsapp;
+    public String getMobilePhone() {
+        return mobilePhone;
     }
 
-    public void setIsWhatsapp(Boolean isWhatsapp) {
-        this.isWhatsapp = isWhatsapp;
+    public void setMobilePhone(String mobilePhone) {
+        this.mobilePhone = mobilePhone;
     }
 
     public String getReferencePhone() {
@@ -367,12 +309,36 @@ public class Client implements Auditable {
         this.referenceResponsible = referenceResponsible;
     }
 
-    public String getProfession() {
-        return profession;
+    public BenefitType getBenefit() {
+        return benefit;
     }
 
-    public void setProfession(String profession) {
-        this.profession = profession;
+    public void setBenefit(BenefitType benefit) {
+        this.benefit = benefit;
+    }
+
+    public Situation getSituation() {
+        return situation;
+    }
+
+    public void setSituation(Situation situation) {
+        this.situation = situation;
+    }
+
+    public RequestStage getRequestStage() {
+        return requestStage;
+    }
+
+    public void setRequestStage(RequestStage requestStage) {
+        this.requestStage = requestStage;
+    }
+
+    public String getBeneficiaryNumber() {
+        return beneficiaryNumber;
+    }
+
+    public void setBeneficiaryNumber(String beneficiaryNumber) {
+        this.beneficiaryNumber = beneficiaryNumber;
     }
 
     public String getNitPis() {
@@ -381,6 +347,14 @@ public class Client implements Auditable {
 
     public void setNitPis(String nitPis) {
         this.nitPis = nitPis;
+    }
+
+    public String getProfession() {
+        return profession;
+    }
+
+    public void setProfession(String profession) {
+        this.profession = profession;
     }
 
     public String getCtps() {
@@ -399,12 +373,12 @@ public class Client implements Auditable {
         this.ctpsSeries = ctpsSeries;
     }
 
-    public String getBeneficiaryNumber() {
-        return beneficiaryNumber;
+    public String getInssPassword() {
+        return inssPassword;
     }
 
-    public void setBeneficiaryNumber(String beneficiaryNumber) {
-        this.beneficiaryNumber = beneficiaryNumber;
+    public void setInssPassword(String inssPassword) {
+        this.inssPassword = inssPassword;
     }
 
     public Integer getContributionYears() {
@@ -439,28 +413,100 @@ public class Client implements Auditable {
         this.contributionInMonths = contributionInMonths;
     }
 
+    public String getStreet() {
+        return street;
+    }
+
+    public void setStreet(String street) {
+        this.street = street;
+    }
+
+    public String getAddressNumber() {
+        return addressNumber;
+    }
+
+    public void setAddressNumber(String addressNumber) {
+        this.addressNumber = addressNumber;
+    }
+
+    public String getComplement() {
+        return complement;
+    }
+
+    public void setComplement(String complement) {
+        this.complement = complement;
+    }
+
+    public String getNeighborhood() {
+        return neighborhood;
+    }
+
+    public void setNeighborhood(String neighborhood) {
+        this.neighborhood = neighborhood;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getZipCode() {
+        return zipCode;
+    }
+
+    public void setZipCode(String zipCode) {
+        this.zipCode = zipCode;
+    }
+
+    public String getRgIssuer() {
+        return rgIssuer;
+    }
+
+    public void setRgIssuer(String rgIssuer) {
+        this.rgIssuer = rgIssuer;
+    }
+
+    public LocalDate getRgIssueDate() {
+        return rgIssueDate;
+    }
+
+    public void setRgIssueDate(LocalDate rgIssueDate) {
+        this.rgIssueDate = rgIssueDate;
+    }
+
+    public String getNationality() {
+        return nationality;
+    }
+
+    public void setNationality(String nationality) {
+        this.nationality = nationality;
+    }
+
+    public Boolean getIsWhatsapp() {
+        return isWhatsapp;
+    }
+
+    public void setIsWhatsapp(Boolean isWhatsapp) {
+        this.isWhatsapp = isWhatsapp;
+    }
+
     public Boolean getHasDisability() {
         return hasDisability;
     }
 
     public void setHasDisability(Boolean hasDisability) {
         this.hasDisability = hasDisability;
-    }
-
-    public ClientType getClientType() {
-        return clientType;
-    }
-
-    public void setClientType(ClientType clientType) {
-        this.clientType = clientType;
-    }
-
-    public Boolean getNotBillable() {
-        return notBillable;
-    }
-
-    public void setNotBillable(Boolean notBillable) {
-        this.notBillable = notBillable;
     }
 
     public String getNotes() {
@@ -479,6 +525,14 @@ public class Client implements Auditable {
         this.responsibleUserId = responsibleUserId;
     }
 
+    public ClientType getClientType() {
+        return clientType;
+    }
+
+    public void setClientType(ClientType clientType) {
+        this.clientType = clientType;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -493,6 +547,14 @@ public class Client implements Auditable {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Boolean getNotBillable() {
+        return notBillable;
+    }
+
+    public void setNotBillable(Boolean notBillable) {
+        this.notBillable = notBillable;
     }
 
     public UUID getCreatedBy() {
@@ -511,15 +573,19 @@ public class Client implements Auditable {
         this.updatedBy = updatedBy;
     }
 
-    public Short getBirthMmdd() {
-        return birthMmdd;
-    }
-
     public Instant getDeletedAt() {
         return deletedAt;
     }
 
     public void setDeletedAt(Instant deletedAt) {
         this.deletedAt = deletedAt;
+    }
+
+    public Gender getGender() {
+        return gender;
+    }
+
+    public void setGender(Gender gender) {
+        this.gender = gender;
     }
 }

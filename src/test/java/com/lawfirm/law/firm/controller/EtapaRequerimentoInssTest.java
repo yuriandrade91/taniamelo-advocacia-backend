@@ -15,6 +15,7 @@ import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.support.PostgresIntegrationTest;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -170,6 +171,83 @@ class EtapaRequerimentoInssTest extends PostgresIntegrationTest {
         mockMvc.perform(get("/api/v1/clients/{clientId}/situation-history", emExigencia))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    @DisplayName(
+            "entrar em exigência, indeferimento ou recurso sem justificativa é recusado, e nada muda")
+    void etapaQueExigeJustificativaSemElaERecusada() throws Exception {
+        for (String etapa : List.of("Exigência", "Indeferimento", "Recurso")) {
+            mockMvc.perform(
+                            patch("/api/v1/clients/{clientId}", semRequerimento)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"requestStage\": \"" + etapa + "\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors[0].field").value("requestStageJustification"))
+                    .andExpect(jsonPath("$.errors[0].code").value("REQUIRED_FIELD"));
+        }
+        // Em branco é o mesmo que ausente: espaço não explica nada.
+        mockMvc.perform(
+                        patch("/api/v1/clients/{clientId}", semRequerimento)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"requestStage\": \"Exigência\","
+                                                + " \"requestStageJustification\": \"   \"}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/v1/clients/{clientId}", semRequerimento))
+                .andExpect(jsonPath("$.data.requestStage").doesNotExist());
+        mockMvc.perform(get("/api/v1/clients/{clientId}/request-stage-history", semRequerimento))
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    @DisplayName(
+            "com justificativa a etapa muda, e o motivo vai para o histórico sem espaços nas pontas")
+    void justificativaVaiParaOHistorico() throws Exception {
+        mockMvc.perform(
+                        patch("/api/v1/clients/{clientId}", emExigencia)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"requestStage\": \"Indeferimento\","
+                                                + " \"requestStageJustification\":"
+                                                + " \"  Falta de carência.  \"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/clients/{clientId}/request-stage-history", emExigencia))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].currentStage").value("Indeferimento"))
+                .andExpect(jsonPath("$.data[0].justification").value("Falta de carência."));
+    }
+
+    @Test
+    @DisplayName("nas demais etapas a justificativa é opcional")
+    void demaisEtapasNaoExigemJustificativa() throws Exception {
+        avancar(emExigencia, "Cumprimento de exigência");
+
+        mockMvc.perform(get("/api/v1/clients/{clientId}/request-stage-history", emExigencia))
+                .andExpect(jsonPath("$.data[0].currentStage").value("Cumprimento de exigência"))
+                .andExpect(jsonPath("$.data[0].justification").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("repetir a etapa gravada não é transição e não pede justificativa")
+    void mesmaEtapaNaoPedeJustificativa() throws Exception {
+        avancar(emExigencia, "Exigência");
+
+        mockMvc.perform(get("/api/v1/clients/{clientId}/request-stage-history", emExigencia))
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("justificativa sem etapa é recusada, em vez de descartada em silêncio")
+    void justificativaSemEtapaERecusada() throws Exception {
+        mockMvc.perform(
+                        patch("/api/v1/clients/{clientId}", emExigencia)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"requestStageJustification\": \"sem etapa\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].code").value("CONFLICTING_PARAMETERS"));
     }
 
     private void avancar(UUID clientId, String etapa) throws Exception {

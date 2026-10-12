@@ -17,8 +17,6 @@ public interface ClientMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "updatedBy", ignore = true)
-    @Mapping(target = "contributionInMonths", ignore = true)
-    @Mapping(target = "deletedAt", ignore = true)
     Client toEntity(ClientCreateRequestDTO dto);
 
     // ── Update: request DTO -> existing entity (in place) ──
@@ -26,8 +24,6 @@ public interface ClientMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "updatedBy", ignore = true)
-    @Mapping(target = "contributionInMonths", ignore = true)
-    @Mapping(target = "deletedAt", ignore = true)
     void updateEntityFromDto(ClientUpdateRequestDTO dto, @MappingTarget Client entity);
 
     /**
@@ -96,7 +92,7 @@ public interface ClientMapper {
     }
 
     // ── Response mapping ──
-    @Mapping(target = "clientId", source = "id")
+    @Mapping(target = "id", source = "id")
     ClientDetailsDTO toDTO(Client entity);
 
     // map entity -> list item DTO for grid/listing
@@ -104,7 +100,6 @@ public interface ClientMapper {
     ClientListResponseDTO toListDTO(Client entity);
 
     // history mapping
-    @Mapping(target = "previousSituation", source = "previousSituation")
     @Mapping(target = "currentSituation", source = "newSituation")
     @Mapping(target = "changedByUserId", source = "changedBy")
     ClientSituationHistoryDTO toHistoryDTO(com.lawfirm.law.firm.model.ClientSituationHistory h);

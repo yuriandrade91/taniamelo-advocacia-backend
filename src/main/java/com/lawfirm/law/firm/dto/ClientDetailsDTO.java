@@ -1,115 +1,98 @@
 package com.lawfirm.law.firm.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
-import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
+import com.lawfirm.law.firm.validation.ValidCPF;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-/**
- * Resposta completa de um cliente (somente saída). Endereços, arquivos, entrevistas e pagamentos
- * são recursos próprios sob /clients/{clientId}/...
- */
-@JsonPropertyOrder({"clientId"})
+@JsonPropertyOrder({"id"})
 public class ClientDetailsDTO {
+    private UUID id;
 
-    private UUID clientId;
+    // ============================================
+    // OBRIGATÓRIOS
+    // ============================================
+    @NotBlank private String fullName;
 
-    private String fullName;
+    @NotNull private LocalDate birthDate;
 
-    private LocalDate birthDate;
+    @NotBlank @ValidCPF private String cpf;
 
-    private Integer age;
+    @NotBlank private String motherName;
 
-    private String cpf;
+    @NotBlank private String mobilePhone;
 
-    private String motherName;
+    @NotBlank private String inssPassword;
 
-    private String mobilePhone;
+    @NotNull private Gender gender;
 
-    private Gender gender;
+    // ============================================
+    // OPCIONAIS
+    // ============================================
+    private String firstName;
+    private String lastName;
 
     private String rg;
 
-    private String rgIssuer;
-
-    private LocalDate rgIssueDate;
-
-    private String email;
+    @Email private String email;
 
     private String referencePhone;
-
     private String referenceResponsible;
 
-    private MaritalStatus maritalStatus;
+    private MaritalStatus maritalStatus; // enum
 
-    private BenefitType benefit;
-
-    private Situation situation;
-
-    /**
-     * Etapa do requerimento no INSS. Anulável: nulo significa "ainda não protocolado", estado
-     * legítimo de cliente em prospecção ou planejamento. Não confundir com {@code situation}, que é
-     * a esteira interna do escritório.
-     */
-    private RequestStage requestStage;
-
+    @NotNull private BenefitType benefit;
+    @NotNull private Situation situation;
     private String beneficiaryNumber;
 
     private String nitPis;
-
     private String profession;
 
     private String ctps;
-
     private String ctpsSeries;
 
-    private Integer contributionYears;
-
-    private Integer contributionMonths;
-
-    private Integer contributionDays;
-
-    /**
-     * Derivado: "33 anos, 11 meses e 5 dias". Somente leitura - o que se grava são os três acima.
-     */
+    /** Derivado: "33 anos, 11 meses e 5 dias". Somente leitura. */
     private String contributionTime;
 
-    private Integer contributionInMonths;
-
-    private String nationality;
-
-    private Boolean isWhatsapp;
-
-    private Boolean hasDisability;
-
-    private String notes;
-
-    private UUID responsibleUserId;
-
-    private ClientType clientType;
-
-    private Boolean notBillable;
-
     private Instant createdAt;
-
     private Instant updatedAt;
 
+    @com.fasterxml.jackson.annotation.JsonProperty("notBillable")
+    @com.fasterxml.jackson.annotation.JsonAlias({"notbillable", "not_billable", "not-billable"})
+    private Boolean notBillable;
+
     private UUID createdBy;
+    private ClientType clientType;
 
-    private UUID updatedBy;
+    private Integer age;
 
-    public UUID getClientId() {
-        return clientId;
+    public UUID getId() {
+        return id;
     }
 
+    public UUID getClientId() {
+        return id;
+    }
+
+    @JsonProperty(access = Access.READ_ONLY)
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    @JsonProperty(access = Access.READ_ONLY)
     public void setClientId(UUID clientId) {
-        this.clientId = clientId;
+        this.id = clientId;
     }
 
     public String getFullName() {
@@ -120,6 +103,22 @@ public class ClientDetailsDTO {
         this.fullName = fullName;
     }
 
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
     public LocalDate getBirthDate() {
         return birthDate;
     }
@@ -128,12 +127,12 @@ public class ClientDetailsDTO {
         this.birthDate = birthDate;
     }
 
-    public Integer getAge() {
-        return age;
+    public MaritalStatus getMaritalStatus() {
+        return maritalStatus;
     }
 
-    public void setAge(Integer age) {
-        this.age = age;
+    public void setMaritalStatus(MaritalStatus maritalStatus) {
+        this.maritalStatus = maritalStatus;
     }
 
     public String getCpf() {
@@ -144,30 +143,6 @@ public class ClientDetailsDTO {
         this.cpf = cpf;
     }
 
-    public String getMotherName() {
-        return motherName;
-    }
-
-    public void setMotherName(String motherName) {
-        this.motherName = motherName;
-    }
-
-    public String getMobilePhone() {
-        return mobilePhone;
-    }
-
-    public void setMobilePhone(String mobilePhone) {
-        this.mobilePhone = mobilePhone;
-    }
-
-    public Gender getGender() {
-        return gender;
-    }
-
-    public void setGender(Gender gender) {
-        this.gender = gender;
-    }
-
     public String getRg() {
         return rg;
     }
@@ -176,20 +151,12 @@ public class ClientDetailsDTO {
         this.rg = rg;
     }
 
-    public String getRgIssuer() {
-        return rgIssuer;
+    public String getMotherName() {
+        return motherName;
     }
 
-    public void setRgIssuer(String rgIssuer) {
-        this.rgIssuer = rgIssuer;
-    }
-
-    public LocalDate getRgIssueDate() {
-        return rgIssueDate;
-    }
-
-    public void setRgIssueDate(LocalDate rgIssueDate) {
-        this.rgIssueDate = rgIssueDate;
+    public void setMotherName(String motherName) {
+        this.motherName = motherName;
     }
 
     public String getEmail() {
@@ -198,6 +165,14 @@ public class ClientDetailsDTO {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getMobilePhone() {
+        return mobilePhone;
+    }
+
+    public void setMobilePhone(String mobilePhone) {
+        this.mobilePhone = mobilePhone;
     }
 
     public String getReferencePhone() {
@@ -216,14 +191,6 @@ public class ClientDetailsDTO {
         this.referenceResponsible = referenceResponsible;
     }
 
-    public MaritalStatus getMaritalStatus() {
-        return maritalStatus;
-    }
-
-    public void setMaritalStatus(MaritalStatus maritalStatus) {
-        this.maritalStatus = maritalStatus;
-    }
-
     public BenefitType getBenefit() {
         return benefit;
     }
@@ -238,14 +205,6 @@ public class ClientDetailsDTO {
 
     public void setSituation(Situation situation) {
         this.situation = situation;
-    }
-
-    public RequestStage getRequestStage() {
-        return requestStage;
-    }
-
-    public void setRequestStage(RequestStage requestStage) {
-        this.requestStage = requestStage;
     }
 
     public String getBeneficiaryNumber() {
@@ -288,28 +247,12 @@ public class ClientDetailsDTO {
         this.ctpsSeries = ctpsSeries;
     }
 
-    public Integer getContributionYears() {
-        return contributionYears;
+    public String getInssPassword() {
+        return inssPassword;
     }
 
-    public void setContributionYears(Integer contributionYears) {
-        this.contributionYears = contributionYears;
-    }
-
-    public Integer getContributionMonths() {
-        return contributionMonths;
-    }
-
-    public void setContributionMonths(Integer contributionMonths) {
-        this.contributionMonths = contributionMonths;
-    }
-
-    public Integer getContributionDays() {
-        return contributionDays;
-    }
-
-    public void setContributionDays(Integer contributionDays) {
-        this.contributionDays = contributionDays;
+    public void setInssPassword(String inssPassword) {
+        this.inssPassword = inssPassword;
     }
 
     public String getContributionTime() {
@@ -320,60 +263,30 @@ public class ClientDetailsDTO {
         this.contributionTime = contributionTime;
     }
 
-    public Integer getContributionInMonths() {
-        return contributionInMonths;
-    }
-
-    public void setContributionInMonths(Integer contributionInMonths) {
-        this.contributionInMonths = contributionInMonths;
-    }
-
-    public String getNationality() {
-        return nationality;
-    }
-
-    public void setNationality(String nationality) {
-        this.nationality = nationality;
-    }
-
-    public Boolean getIsWhatsapp() {
-        return isWhatsapp;
-    }
-
-    public void setIsWhatsapp(Boolean isWhatsapp) {
-        this.isWhatsapp = isWhatsapp;
-    }
-
-    public Boolean getHasDisability() {
-        return hasDisability;
-    }
-
-    public void setHasDisability(Boolean hasDisability) {
-        this.hasDisability = hasDisability;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
-    }
-
-    public UUID getResponsibleUserId() {
-        return responsibleUserId;
-    }
-
-    public void setResponsibleUserId(UUID responsibleUserId) {
-        this.responsibleUserId = responsibleUserId;
-    }
-
     public ClientType getClientType() {
         return clientType;
     }
 
     public void setClientType(ClientType clientType) {
         this.clientType = clientType;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    @JsonProperty(access = Access.READ_ONLY)
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    @JsonProperty(access = Access.READ_ONLY)
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public Boolean getNotBillable() {
@@ -384,35 +297,29 @@ public class ClientDetailsDTO {
         this.notBillable = notBillable;
     }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
     public UUID getCreatedBy() {
         return createdBy;
     }
 
+    @JsonProperty(access = Access.READ_ONLY)
     public void setCreatedBy(UUID createdBy) {
         this.createdBy = createdBy;
     }
 
-    public UUID getUpdatedBy() {
-        return updatedBy;
+    public Gender getGender() {
+        return gender;
     }
 
-    public void setUpdatedBy(UUID updatedBy) {
-        this.updatedBy = updatedBy;
+    public void setGender(Gender gender) {
+        this.gender = gender;
+    }
+
+    public Integer getAge() {
+        return age;
+    }
+
+    @JsonProperty(access = Access.READ_ONLY)
+    public void setAge(Integer age) {
+        this.age = age;
     }
 }

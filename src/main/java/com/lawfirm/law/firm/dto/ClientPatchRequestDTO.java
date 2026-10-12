@@ -1,5 +1,7 @@
 package com.lawfirm.law.firm.dto;
 
+import jakarta.validation.constraints.Size;
+
 /**
  * Atualização parcial do cliente (PATCH /clients/{clientId}): situação, etapa no INSS, benefício,
  * tipo de cliente e/ou arrecadação. Envie só os campos que quer mudar - null significa "não mexer
@@ -53,6 +55,14 @@ public class ClientPatchRequestDTO {
      */
     private String requestStage;
 
+    /**
+     * Por que a etapa no INSS mudou. Obrigatória quando {@code requestStage} leva a exigência,
+     * indeferimento ou recurso; opcional nas demais etapas. Só vale junto de {@code requestStage}:
+     * sozinha não teria onde ser gravada, e o PATCH não descarta campo em silêncio.
+     */
+    @Size(max = 1000)
+    private String requestStageJustification;
+
     private String benefit;
     private String clientType;
     private Boolean notBillable;
@@ -67,6 +77,14 @@ public class ClientPatchRequestDTO {
 
     public void setRequestStage(String requestStage) {
         this.requestStage = requestStage;
+    }
+
+    public String getRequestStageJustification() {
+        return requestStageJustification;
+    }
+
+    public void setRequestStageJustification(String requestStageJustification) {
+        this.requestStageJustification = requestStageJustification;
     }
 
     public void setSituation(String situation) {

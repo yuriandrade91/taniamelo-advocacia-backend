@@ -87,6 +87,14 @@ public class ClientUpdateRequestDTO implements ClientWritableFields {
      */
     private RequestStage requestStage;
 
+    /**
+     * Por que a etapa no INSS mudou - a mesma regra do PATCH: obrigatória quando {@code
+     * requestStage} muda para exigência, indeferimento ou recurso. Sem ela o PUT seria a porta dos
+     * fundos da regra. Mandar a etapa que já está gravada não é mudança e não pede nada.
+     */
+    @Size(max = 1000)
+    private String requestStageJustification;
+
     @Size(max = 30)
     private String beneficiaryNumber;
 
@@ -272,6 +280,14 @@ public class ClientUpdateRequestDTO implements ClientWritableFields {
 
     public void setRequestStage(RequestStage requestStage) {
         this.requestStage = requestStage;
+    }
+
+    public String getRequestStageJustification() {
+        return requestStageJustification;
+    }
+
+    public void setRequestStageJustification(String requestStageJustification) {
+        this.requestStageJustification = requestStageJustification;
     }
 
     @Override
