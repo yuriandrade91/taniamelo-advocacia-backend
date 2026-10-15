@@ -7,6 +7,7 @@ import com.lawfirm.law.firm.model.BenefitType;
 import com.lawfirm.law.firm.model.ClientType;
 import com.lawfirm.law.firm.model.Gender;
 import com.lawfirm.law.firm.model.MaritalStatus;
+import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.validation.ValidCPF;
 import jakarta.validation.constraints.Email;
@@ -54,6 +55,7 @@ public class ClientDetailsDTO {
 
     @NotNull private BenefitType benefit;
     @NotNull private Situation situation;
+    private RequestStage requestStage;
     private String beneficiaryNumber;
 
     private String nitPis;
@@ -205,6 +207,14 @@ public class ClientDetailsDTO {
 
     public void setSituation(Situation situation) {
         this.situation = situation;
+    }
+
+    public RequestStage getRequestStage() {
+        return requestStage;
+    }
+
+    public void setRequestStage(RequestStage requestStage) {
+        this.requestStage = requestStage;
     }
 
     public String getBeneficiaryNumber() {

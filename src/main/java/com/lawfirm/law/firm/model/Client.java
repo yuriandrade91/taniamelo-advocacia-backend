@@ -1,5 +1,7 @@
 package com.lawfirm.law.firm.model;
 
+import com.lawfirm.law.firm.audit.AuditLogListener;
+import com.lawfirm.law.firm.audit.Auditable;
 import com.lawfirm.law.firm.model.converter.CryptoConverter;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -13,7 +15,8 @@ import org.hibernate.annotations.UuidGenerator;
 @Entity
 @Table(name = "clients")
 @org.hibernate.annotations.SQLRestriction("deleted_at IS NULL")
-public class Client {
+@EntityListeners(AuditLogListener.class)
+public class Client implements Auditable {
 
     @Id
     @GeneratedValue

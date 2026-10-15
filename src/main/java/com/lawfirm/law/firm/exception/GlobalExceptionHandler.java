@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -64,6 +65,11 @@ public class GlobalExceptionHandler {
 
     /** Matches the key column inside Postgres "Key (column)=(value)" messages. */
     private static final Pattern KEY_PATTERN = Pattern.compile("Key \\(([^)]+)\\)");
+
+    private static final Pattern JACKSON_FIELD_PATTERN = Pattern.compile("\\[\"([^\"]+)\"\\]");
+
+    private static final Pattern JACKSON_ENUM_TYPE_PATTERN =
+            Pattern.compile("Cannot construct instance of `[^`]+\\.([^`.]+)`");
 
     // ── Bean-validation (@Valid) ──
 
@@ -215,6 +221,14 @@ public class GlobalExceptionHandler {
                 List.of(new ApiError(null, "Acesso negado", "ACCESS_DENIED")));
     }
 
+    @ExceptionHandler(TooManyAttemptsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTooManyAttempts(TooManyAttemptsException ex) {
+        List<ApiError> errors = List.of(new ApiError(null, ex.getMessage(), "TOO_MANY_ATTEMPTS"));
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
+                .body(ApiResponse.error(errors));
+    }
+
     // ── Not found ──
 
     @ExceptionHandler(NotFoundException.class)
@@ -260,18 +274,24 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleUnreadable(HttpMessageNotReadableException ex) {
-        Throwable cause = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause() : ex;
-        if (cause instanceof InvalidFormatException invalidFormat) {
+        JsonMappingException invalidEnum = findInvalidEnumCause(ex);
+        if (invalidEnum != null || hasEnumCreatorFailure(ex)) {
             String field =
-                    invalidFormat.getPath().stream()
-                            .map(JsonMappingException.Reference::getFieldName)
-                            .filter(java.util.Objects::nonNull)
-                            .reduce((first, ignored) -> ignored)
-                            .orElse(null);
-            String value =
-                    invalidFormat.getValue() == null ? "nulo" : invalidFormat.getValue().toString();
-            String message =
-                    "Valor inválido para " + (field != null ? field : "campo") + ": " + value;
+                    invalidEnum != null
+                            ? invalidEnum.getPath().stream()
+                                    .map(JsonMappingException.Reference::getFieldName)
+                                    .filter(java.util.Objects::nonNull)
+                                    .reduce((first, ignored) -> ignored)
+                                    .orElseGet(() -> fieldFromMessage(ex.getMessage()))
+                            : fieldFromMessage(ex.getMessage());
+            String message = "Valor inválido para " + (field != null ? field : "campo");
+            if (invalidEnum instanceof InvalidFormatException invalidFormat) {
+                String value =
+                        invalidFormat.getValue() == null
+                                ? "nulo"
+                                : invalidFormat.getValue().toString();
+                message += ": " + value;
+            }
             return badRequest(
                     List.of(
                             new ApiError(
@@ -279,8 +299,70 @@ public class GlobalExceptionHandler {
                                     message,
                                     ValidationErrorCode.INVALID_ENUM_VALUE.getCode())));
         }
+        Throwable cause = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause() : ex;
         String msg = cause.getMessage() != null ? cause.getMessage() : ex.getMessage();
         return badRequest(List.of(new ApiError(null, msg, "INVALID_REQUEST_BODY")));
+    }
+
+    private static JsonMappingException findInvalidEnumCause(Throwable throwable) {
+        for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+            if (cause instanceof InvalidFormatException invalidFormat) {
+                return invalidFormat;
+            }
+            if (cause instanceof JsonMappingException mappingException
+                    && !mappingException.getPath().isEmpty()
+                    && hasCause(mappingException, IllegalArgumentException.class)) {
+                return mappingException;
+            }
+        }
+        return null;
+    }
+
+    private static boolean hasEnumCreatorFailure(Throwable throwable) {
+        for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+            if (cause instanceof IllegalArgumentException
+                    && cause.getMessage() != null
+                    && cause.getMessage().startsWith("Valor inválido:")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String fieldFromMessage(String message) {
+        if (message == null) {
+            return null;
+        }
+        Matcher matcher = JACKSON_FIELD_PATTERN.matcher(message);
+        String field = null;
+        while (matcher.find()) {
+            field = matcher.group(1);
+        }
+        if (field != null) {
+            return field;
+        }
+        matcher = JACKSON_ENUM_TYPE_PATTERN.matcher(message);
+        if (!matcher.find()) {
+            return null;
+        }
+        String enumType = matcher.group(1);
+        return "BenefitType".equals(enumType) ? "benefit" : decapitalize(enumType);
+    }
+
+    private static String decapitalize(String value) {
+        if (value.isEmpty() || (value.length() > 1 && Character.isUpperCase(value.charAt(1)))) {
+            return value;
+        }
+        return Character.toLowerCase(value.charAt(0)) + value.substring(1);
+    }
+
+    private static boolean hasCause(Throwable throwable, Class<? extends Throwable> type) {
+        for (Throwable cause = throwable.getCause(); cause != null; cause = cause.getCause()) {
+            if (type.isInstance(cause)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @ExceptionHandler(JpaSystemException.class)

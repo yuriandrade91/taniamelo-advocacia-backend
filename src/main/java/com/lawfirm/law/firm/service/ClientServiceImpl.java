@@ -1,6 +1,7 @@
 package com.lawfirm.law.firm.service;
 
 import com.lawfirm.law.firm.audit.AuditAction;
+import com.lawfirm.law.firm.audit.AuditIntent;
 import com.lawfirm.law.firm.audit.AuditLog;
 import com.lawfirm.law.firm.audit.AuditLogRepository;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
@@ -33,6 +34,7 @@ import com.lawfirm.law.firm.repository.ClientRequestStageHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSituationHistoryRepository;
 import com.lawfirm.law.firm.repository.ClientSpecification;
 import com.lawfirm.law.firm.security.CurrentUser;
+import com.lawfirm.law.firm.util.Birthdays;
 import com.lawfirm.law.firm.util.DocumentoIdentidade;
 import com.lawfirm.law.firm.util.OfficeClock;
 import com.lawfirm.law.firm.util.PageRequests;
@@ -177,6 +179,12 @@ public class ClientServiceImpl implements ClientService {
                     ValidationErrorCode.CONFLICTING_PARAMETERS,
                     "Campos não suportados no PATCH: " + unsupported);
         }
+        if (patch.getRequestStage() == null && patch.getRequestStageJustification() != null) {
+            throw new ValidationException(
+                    "requestStageJustification",
+                    ValidationErrorCode.CONFLICTING_PARAMETERS,
+                    "requestStageJustification exige requestStage");
+        }
 
         Client existing = findOrThrow(id);
         Situation previousSituation = existing.getSituation();
@@ -299,7 +307,7 @@ public class ClientServiceImpl implements ClientService {
         }
         client.setDeletedAt(Instant.now());
         client.setUpdatedBy(CurrentUser.id());
-        repository.saveAndFlush(client);
+        AuditIntent.declaring(AuditAction.DELETE, () -> repository.saveAndFlush(client));
     }
 
     @Override
@@ -314,7 +322,7 @@ public class ClientServiceImpl implements ClientService {
         }
         client.setDeletedAt(null);
         client.setUpdatedBy(CurrentUser.id());
-        repository.saveAndFlush(client);
+        AuditIntent.declaring(AuditAction.RESTORE, () -> repository.saveAndFlush(client));
     }
 
     @Override
@@ -676,7 +684,7 @@ public class ClientServiceImpl implements ClientService {
     }
 
     private static UpcomingBirthdayDTO toBirthday(BirthdayRow row, LocalDate today) {
-        LocalDate nextBirthday = nextBirthday(row.birthDate(), today);
+        LocalDate nextBirthday = Birthdays.next(row.birthDate(), today);
         long daysUntil = ChronoUnit.DAYS.between(today, nextBirthday);
         int turningAge = nextBirthday.getYear() - row.birthDate().getYear();
         return new UpcomingBirthdayDTO(
@@ -688,23 +696,5 @@ public class ClientServiceImpl implements ClientService {
                 turningAge,
                 row.mobilePhone(),
                 Boolean.TRUE.equals(row.isWhatsapp()));
-    }
-
-    private static LocalDate nextBirthday(LocalDate birthDate, LocalDate today) {
-        int year = today.getYear();
-        LocalDate candidate =
-                LocalDate.of(year, birthDate.getMonthValue(), birthDate.getDayOfMonth());
-        if (candidate.isBefore(today) || candidate.isEqual(today)) {
-            candidate = candidate.plusYears(1);
-        }
-        if (birthDate.getMonthValue() == 2
-                && birthDate.getDayOfMonth() == 29
-                && !candidate.isLeapYear()) {
-            candidate = LocalDate.of(year, 2, 28);
-            if (candidate.isBefore(today) || candidate.isEqual(today)) {
-                candidate = candidate.plusYears(1);
-            }
-        }
-        return candidate;
     }
 }
