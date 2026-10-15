@@ -31,14 +31,15 @@ import org.springframework.test.context.ActiveProfiles;
  * cria um contexto (e um container) separado, e é isso que mantém a massa fora do banco dos demais
  * testes.
  *
- * <p>O que ele afirma é modesto e suficiente: a V23 aplica sem erro e a massa dos dez meses chega
- * ao banco nos dois schemas. Erro de sintaxe, coluna errada, rótulo de enum inválido ou violação de
- * restrição passam a quebrar aqui, não no deploy.
+ * <p>O que ele afirma é modesto e suficiente: a cadeia de seed (V23, depois substituída pela massa
+ * completa da V29) aplica sem erro e chega ao banco nos dois schemas com o volume dos seeds locais.
+ * Erro de sintaxe, coluna errada, rótulo de enum inválido ou violação de restrição passam a quebrar
+ * aqui, não no deploy.
  */
 @SpringBootTest(properties = "app.seed.demo-data=true")
 @ActiveProfiles("test")
 @Import(PostgresContainerConfig.class)
-@DisplayName("Massa de demonstração (V23) aplica e popula os dez meses")
+@DisplayName("Massa de demonstração (V23/V29) aplica e popula os dois schemas")
 class MassaDemonstracaoSeedTest {
 
     @Autowired private DataSource dataSource;
@@ -46,55 +47,48 @@ class MassaDemonstracaoSeedTest {
     @Test
     @DisplayName("os dois schemas recebem carteira, pagamentos, agenda e financeiro")
     void massaAplicadaNosDoisSchemas() throws Exception {
+        // Estado final da cadeia de seed: a V29 trunca e resemeia com a massa de db/mock-data,
+        // então os números são os dos seeds locais (seed_tenant_tania.sql, seed_tenant_demo.sql).
+        Map<String, long[]> esperado =
+                Map.of(
+                        // usuários, clientes, pagamentos, receitas, despesas, agenda, histórico
+                        "tenant_tania", new long[] {2, 125, 78, 53, 119, 7, 3},
+                        "tenant_demo", new long[] {2, 6, 3, 5, 7, 4, 2});
+        String[] tabelas = {
+            "users",
+            "clients",
+            "client_payments",
+            "office_revenues",
+            "office_expenses",
+            "appointments",
+            "appointment_history"
+        };
+
         for (String schema : new String[] {"tenant_tania", "tenant_demo"}) {
-            // A carteira é o que o resto depende; se ela não entrou, o guard da V23 pula o resto.
-            assertTrue(
-                    contar(schema, "clients WHERE cpf LIKE '870.11%'") > 0,
-                    "carteira de demonstração ausente em " + schema);
+            long[] valores = esperado.get(schema);
+            for (int i = 0; i < tabelas.length; i++) {
+                assertEquals(
+                        valores[i],
+                        contar(schema, tabelas[i]),
+                        tabelas[i] + " fora do esperado pela massa local em " + schema);
+            }
 
-            // Dez parcelas de janeiro a outubro, mais o honorário de êxito em atraso.
+            // A massa enxuta da V23 não pode sobrar: a V28 deu a um cliente dela o mesmo CPF da
+            // Maria do seed_mock, e conviver com ela é o que quebraria ux_clients_cpf_active.
             assertEquals(
-                    11,
-                    contar(schema, "client_payments"),
-                    "esperado 10 parcelas (jan-out) + 1 honorário de êxito em " + schema);
+                    0,
+                    contar(schema, "clients WHERE id::text LIKE 'd0000023%'"),
+                    "massa da V23 sobrou em " + schema);
 
-            // Dez meses de honorários, mais o parecer avulso e a receita cancelada.
-            assertEquals(
-                    12,
-                    contar(schema, "office_revenues"),
-                    "esperado 10 meses + 2 avulsas em " + schema);
-
-            // Quatro despesas recorrentes por mês, dez meses.
-            assertEquals(
-                    40,
-                    contar(schema, "office_expenses"),
-                    "esperado 4 categorias x 10 meses em " + schema);
-
-            // Três compromissos por mês, dez meses, mais um cancelado.
-            assertEquals(
-                    31,
-                    contar(schema, "appointments"),
-                    "esperado 3 tipos x 10 meses + 1 cancelado em " + schema);
-
-            // V25 preenche a etapa do INSS na massa. Nem todos: cliente sem requerimento
+            // Etapa do INSS preenchida na massa, mas não em todos: cliente sem requerimento
             // protocolado fica nulo de propósito, e uma massa em que todo mundo tem etapa
             // esconderia justamente o estado mais comum da base real.
             assertTrue(
                     contar(schema, "clients WHERE request_stage IS NOT NULL") > 0,
                     "nenhum cliente com etapa do INSS em " + schema);
             assertTrue(
-                    contar(schema, "clients WHERE cpf LIKE '870.11%' AND request_stage IS NULL")
-                            > 0,
+                    contar(schema, "clients WHERE request_stage IS NULL") > 0,
                     "esperado ao menos um cliente sem requerimento protocolado em " + schema);
-
-            // A janela pedida é fechada: janeiro a outubro de 2026, nada fora dela.
-            assertEquals(
-                    0,
-                    contar(
-                            schema,
-                            "office_revenues WHERE due_date < DATE '2026-01-01'"
-                                    + " AND description LIKE 'Honorários do mês%'"),
-                    "receita mensal antes de jan/2026 em " + schema);
         }
     }
 
