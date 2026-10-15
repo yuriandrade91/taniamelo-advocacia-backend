@@ -125,12 +125,18 @@ public class ClientServiceImpl implements ClientService {
         return page.map(mapper::toListDTO);
     }
 
+    /**
+     * A lixeira: clientes excluídos, mais recentes primeiro.
+     *
+     * <p>Sem {@code Sort} no {@code Pageable}, de propósito: a consulta é nativa e já ordena por
+     * {@code deleted_at}; um {@code Sort.by("deletedAt")} é anexado ao SQL com o nome Java e quebra
+     * com "column deletedat does not exist". Nativa porque {@code @SQLRestriction} esconde excluído
+     * de toda consulta JPQL (que é o que se quer em todo o resto).
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<ClientListResponseDTO> listDeleted(int pageNumber, int pageSize) {
-        Pageable pageable =
-                PageRequests.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "deletedAt"));
-        return repository.findDeleted(pageable).map(mapper::toListDTO);
+        return repository.findDeleted(PageRequests.of(pageNumber, pageSize)).map(mapper::toListDTO);
     }
 
     @Override
