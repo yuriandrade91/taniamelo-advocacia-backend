@@ -92,7 +92,7 @@ public interface ClientMapper {
     }
 
     // ── Response mapping ──
-    @Mapping(target = "id", source = "id")
+    @Mapping(target = "clientId", source = "id")
     ClientDetailsDTO toDTO(Client entity);
 
     // map entity -> list item DTO for grid/listing
