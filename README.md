@@ -39,6 +39,10 @@ mvn spring-boot:run
   zero - não há caminho de migração incremental entre os dois esquemas.
 - **Nunca edite uma migration já commitada/já aplicada em algum ambiente.** Qualquer ajuste de
   schema vira uma migration nova (`V9`, `V10`, ...).
+- Na inicialização, o app repara automaticamente apenas divergências de checksum históricas
+  explicitamente reconhecidas (edições de comentários em V1–V9 e versões antigas da V23). O
+  reparo atualiza o histórico Flyway, não reaplica a migration; qualquer checksum ou metadado
+  desconhecido, ou migration com falha, interrompe a subida para investigação.
 - **Adotando o Flyway em um banco já existente** (schema criado à mão antes do Flyway): rode uma
   vez com `SPRING_FLYWAY_BASELINE_ON_MIGRATE=true` e `SPRING_FLYWAY_BASELINE_VERSION=<versão atual>`
   exportados no shell (ou via `docker-compose`), só nesse boot. Depois disso o `flyway_schema_history`
@@ -110,4 +114,3 @@ mvn spring-boot:run
 - `/clients/{id}/interviews` (CRUD completo): entrevistas com data, duração e conteúdo rich text.
 - `/clients/{id}/payments` (POST/GET/PATCH/DELETE): parcelas de honorários;
   "atrasado" é calculado na leitura, nunca gravado no banco.
-

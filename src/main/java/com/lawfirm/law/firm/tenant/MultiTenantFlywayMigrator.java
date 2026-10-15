@@ -49,38 +49,44 @@ public class MultiTenantFlywayMigrator {
     @PostConstruct
     public void migrate() {
         // 1. Compartilhada (public): extensões.
-        Flyway.configure()
-                .dataSource(dataSource)
-                .schemas("public")
-                .locations("classpath:db/migration/shared")
-                .baselineOnMigrate(true)
-                .load()
-                .migrate();
+        Flyway sharedFlyway =
+                Flyway.configure()
+                        .dataSource(dataSource)
+                        .schemas("public")
+                        .locations("classpath:db/migration/shared")
+                        .baselineOnMigrate(true)
+                        .load();
+        FlywayChecksumRepair.repairKnownChecksumChanges(sharedFlyway, "public");
+        sharedFlyway.migrate();
         log.info("Flyway: migrations compartilhadas aplicadas (schema public).");
 
         // 2. Por tenant: o catálogo public.tenants (semeado na migration compartilhada) é a fonte
         // de verdade dos schemas ativos; a lista em app.tenancy.schemas é só fallback.
         List<String> schemas = activeTenantSchemas();
         for (String schema : schemas) {
-            Flyway.configure()
-                    .dataSource(dataSource)
-                    .schemas(schema)
-                    .createSchemas(true)
-                    .locations("classpath:db/migration/tenant")
-                    // ATENÇÃO: este placeholder é OBRIGATÓRIO para quem aponta para
-                    // db/migration/tenant. Sem ele o Flyway recusa a V23 com "No value
-                    // provided for placeholder" - foi o que quebrou o
-                    // MigracaoSobreDadoLegadoIntegrationTest, que configura o próprio Flyway.
-                    // Ao criar outra configuração para essa location, informe-o.
-                    //
-                    // Liga/desliga as migrations que semeiam massa de demonstração (V23). A
-                    // suíte roda com false: a massa entrando no banco de teste faria os testes
-                    // que afirmam contagem exata dependerem dela - e o primeiro efeito foi
-                    // colisão de CPF com a massa do próprio teste.
-                    .placeholders(Map.of("seedDemoData", String.valueOf(seedDemoData)))
-                    .baselineOnMigrate(true)
-                    .load()
-                    .migrate();
+            Flyway tenantFlyway =
+                    Flyway.configure()
+                            .dataSource(dataSource)
+                            .schemas(schema)
+                            .createSchemas(true)
+                            .locations("classpath:db/migration/tenant")
+                            // ATENÇÃO: este placeholder é OBRIGATÓRIO para quem aponta para
+                            // db/migration/tenant. Sem ele o Flyway recusa a V23 com "No value
+                            // provided for placeholder" - foi o que quebrou o
+                            // MigracaoSobreDadoLegadoIntegrationTest, que configura o próprio
+                            // Flyway.
+                            // Ao criar outra configuração para essa location, informe-o.
+                            //
+                            // Liga/desliga as migrations que semeiam massa de demonstração (V23). A
+                            // suíte roda com false: a massa entrando no banco de teste faria os
+                            // testes
+                            // que afirmam contagem exata dependerem dela - e o primeiro efeito foi
+                            // colisão de CPF com a massa do próprio teste.
+                            .placeholders(Map.of("seedDemoData", String.valueOf(seedDemoData)))
+                            .baselineOnMigrate(true)
+                            .load();
+            FlywayChecksumRepair.repairKnownChecksumChanges(tenantFlyway, schema);
+            tenantFlyway.migrate();
             log.info("Flyway: migrations de tenant aplicadas (schema {}).", schema);
         }
     }
