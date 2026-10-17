@@ -17,12 +17,14 @@ import org.springframework.util.CollectionUtils;
 /** Filtros da listagem da agenda (compromissos). Segue o padrão de {@code ClientSpecification}. */
 public final class AppointmentSpecification {
 
+    private static final String FIELD_START_AT = "startAt";
+
     private AppointmentSpecification() {}
 
     public static Specification<Appointment> startBetween(Instant from, Instant to) {
         return (root, query, cb) -> {
             if (from == null && to == null) return null;
-            var path = root.<Instant>get("startAt");
+            var path = root.<Instant>get(FIELD_START_AT);
             if (from != null && to != null) return cb.between(path, from, to);
             if (from != null) return cb.greaterThanOrEqualTo(path, from);
             return cb.lessThanOrEqualTo(path, to);
@@ -43,7 +45,8 @@ public final class AppointmentSpecification {
         return (root, query, cb) -> {
             if (from == null || to == null) return null;
             return cb.and(
-                    cb.lessThan(root.get("startAt"), to), cb.greaterThan(root.get("endAt"), from));
+                    cb.lessThan(root.get(FIELD_START_AT), to),
+                    cb.greaterThan(root.get("endAt"), from));
         };
     }
 
@@ -107,7 +110,7 @@ public final class AppointmentSpecification {
                         "timezone",
                         Instant.class,
                         cb.literal(OfficeClock.ID),
-                        root.<Instant>get("startAt"));
+                        root.<Instant>get(FIELD_START_AT));
         return cb.function("date_part", Double.class, cb.literal(campo), noFusoDoEscritorio);
     }
 

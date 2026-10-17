@@ -60,15 +60,9 @@ public final class TempoDeContribuicao {
         int d = dias == null ? 0 : dias;
 
         java.util.List<String> partes = new java.util.ArrayList<>(3);
-        if (a > 0) {
-            partes.add(a + (a == 1 ? " ano" : " anos"));
-        }
-        if (m > 0) {
-            partes.add(m + (m == 1 ? " mês" : " meses"));
-        }
-        if (d > 0) {
-            partes.add(d + (d == 1 ? " dia" : " dias"));
-        }
+        adicionarParte(partes, a, " ano", " anos");
+        adicionarParte(partes, m, " mês", " meses");
+        adicionarParte(partes, d, " dia", " dias");
         if (partes.isEmpty()) {
             return "0 dias";
         }
@@ -77,5 +71,12 @@ public final class TempoDeContribuicao {
         }
         String ultima = partes.remove(partes.size() - 1);
         return String.join(", ", partes) + " e " + ultima;
+    }
+
+    private static void adicionarParte(
+            java.util.List<String> partes, int valor, String singular, String plural) {
+        if (valor > 0) {
+            partes.add(valor + (valor == 1 ? singular : plural));
+        }
     }
 }

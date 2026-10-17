@@ -8,7 +8,10 @@ public class ApiResponse<T> {
     private Pagination pagination;
     private List<ApiError> errors;
 
-    public ApiResponse() {}
+    public ApiResponse() {
+        // Exigido pelo Jackson para desserializar (ex.: nos testes que fazem round-trip via
+        // ObjectMapper); a API só constrói instâncias pelas factories estáticas abaixo.
+    }
 
     public static <T> ApiResponse<T> successList(List<T> data, Pagination pagination) {
         ApiResponse<T> r = new ApiResponse<>();

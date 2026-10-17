@@ -11,7 +11,6 @@ import com.lawfirm.law.firm.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
 import java.util.List;
@@ -40,10 +39,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(
         name = "Financeiro — pagamentos aos clientes",
         description = "Visão consolidada do que os clientes têm a receber do INSS")
-@SecurityRequirements({
-    @SecurityRequirement(name = "bearerAuth"),
-    @SecurityRequirement(name = "tenantHeader")
-})
+@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = "tenantHeader")
 @RestController
 @RequestMapping("/api/v1/payments")
 @RequerAdmin

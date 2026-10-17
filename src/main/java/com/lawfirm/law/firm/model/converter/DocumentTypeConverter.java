@@ -20,7 +20,7 @@ public class DocumentTypeConverter implements AttributeConverter<DocumentType, S
         if (dbData == null) return null;
         try {
             return DocumentType.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown DocumentType value in DB: {} - returning null", dbData);
             return null;
         }

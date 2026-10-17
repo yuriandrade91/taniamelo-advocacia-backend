@@ -20,7 +20,7 @@ public class PaymentMethodConverter implements AttributeConverter<PaymentMethod,
         if (dbData == null) return null;
         try {
             return PaymentMethod.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown PaymentMethod value in DB: {} - returning null", dbData);
             return null;
         }

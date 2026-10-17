@@ -37,6 +37,8 @@ public class OfficeExpenseService {
      */
     private static final String ENTIDADE = "OfficeExpense";
 
+    private static final String FIELD_CATEGORY = "category";
+
     /** Bordas usadas quando a consulta não recorta período. Datas reais, nunca nulo. */
     private static final LocalDate SEM_INICIO = LocalDate.of(1900, 1, 1);
 
@@ -147,11 +149,11 @@ public class OfficeExpenseService {
 
     private static Specification<OfficeExpense> categoriaEm(List<String> brutos) {
         List<ExpenseCategory> categorias =
-                RequestEnums.list("category", brutos, ExpenseCategory::fromLabel);
+                RequestEnums.list(FIELD_CATEGORY, brutos, ExpenseCategory::fromLabel);
         return (root, query, cb) ->
                 categorias == null || categorias.isEmpty()
                         ? null
-                        : root.get("category").in(categorias);
+                        : root.get(FIELD_CATEGORY).in(categorias);
     }
 
     /** Monta o predicado de período para o resumo, no recorte que veio na requisição. */
@@ -184,7 +186,7 @@ public class OfficeExpenseService {
         entity.setDescription(dto.getDescription());
         entity.setAmount(dto.getAmount());
         entity.setCategory(
-                RequestEnums.single("category", dto.getCategory(), ExpenseCategory::fromLabel));
+                RequestEnums.single(FIELD_CATEGORY, dto.getCategory(), ExpenseCategory::fromLabel));
         entity.setSupplier(dto.getSupplier());
         entity.setDueDate(dto.getDueDate());
         entity.setNotes(dto.getNotes());

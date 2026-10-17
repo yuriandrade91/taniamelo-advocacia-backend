@@ -34,7 +34,7 @@ public final class RequestDates {
         String trimmed = value.trim();
         try {
             return Instant.parse(trimmed);
-        } catch (DateTimeParseException ignored) {
+        } catch (DateTimeParseException _) {
             // não é timestamp completo; tenta como data simples abaixo
         }
         try {
@@ -42,7 +42,7 @@ public final class RequestDates {
             return startOfDay
                     ? date.atStartOfDay(OfficeClock.ZONE).toInstant()
                     : date.plusDays(1).atStartOfDay(OfficeClock.ZONE).toInstant().minusNanos(1);
-        } catch (DateTimeParseException ex) {
+        } catch (DateTimeParseException _) {
             throw new ValidationException(
                     field,
                     ValidationErrorCode.INVALID_DATE,

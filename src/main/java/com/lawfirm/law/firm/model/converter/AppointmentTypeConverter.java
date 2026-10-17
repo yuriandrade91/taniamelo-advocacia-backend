@@ -20,7 +20,7 @@ public class AppointmentTypeConverter implements AttributeConverter<AppointmentT
         if (dbData == null) return null;
         try {
             return AppointmentType.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown AppointmentType value in DB: {} - returning null", dbData);
             return null;
         }

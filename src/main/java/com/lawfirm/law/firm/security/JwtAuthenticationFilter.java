@@ -77,7 +77,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         && SecurityContextHolder.getContext().getAuthentication() == null) {
                     autenticar(token, request);
                 }
-            } catch (Exception ex) {
+            } catch (Exception _) {
                 // Invalid/expired token: leave context unauthenticated, let Spring Security respond
                 // 401/403.
                 SecurityContextHolder.clearContext();

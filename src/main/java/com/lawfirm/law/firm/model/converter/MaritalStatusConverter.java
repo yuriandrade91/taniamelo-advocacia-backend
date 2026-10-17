@@ -20,7 +20,7 @@ public class MaritalStatusConverter implements AttributeConverter<MaritalStatus,
         if (dbData == null) return null;
         try {
             return MaritalStatus.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown MaritalStatus value in DB: {} - returning null", dbData);
             return null;
         }

@@ -20,7 +20,7 @@ public final class RequestEnums {
 
     public static <E extends Enum<E>> List<E> list(
             String campo, List<String> brutos, Function<String, E> deRotulo) {
-        if (brutos == null || brutos.isEmpty()) return null;
+        if (brutos == null || brutos.isEmpty()) return List.of();
         List<E> resultado = new ArrayList<>();
         for (String bruto : brutos) {
             resultado.add(single(campo, bruto, deRotulo));

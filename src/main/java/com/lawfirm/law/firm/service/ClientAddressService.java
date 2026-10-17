@@ -187,7 +187,7 @@ public class ClientAddressService {
         }
         try {
             return AddressType.fromLabel(raw);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             throw new ValidationException(
                     "addressType",
                     ValidationErrorCode.INVALID_ENUM_VALUE,

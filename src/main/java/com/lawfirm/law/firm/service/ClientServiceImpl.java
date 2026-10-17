@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -57,6 +58,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ClientServiceImpl implements ClientService {
+
+    private static final String FIELD_BENEFICIARY_NUMBER = "beneficiaryNumber";
+    private static final String FIELD_NIT_PIS = "nitPis";
+    private static final String MSG_BENEFICIARY_NUMBER_DUPLICADO =
+            "Número do benefício já cadastrado";
+    private static final String MSG_CPF_DUPLICADO = "CPF já cadastrado";
+    private static final String MSG_RG_DUPLICADO = "RG já cadastrado";
+    private static final String MSG_NIT_PIS_DUPLICADO = "NIT/PIS já cadastrado";
+    private static final String MSG_CTPS_DUPLICADO = "CTPS já cadastrado";
 
     private final ClientRepository repository;
     private final ClientMapper mapper;
@@ -205,42 +215,30 @@ public class ClientServiceImpl implements ClientService {
         boolean clientTypeChanged = false;
         boolean notBillableChanged = false;
 
-        if (patch.getSituation() != null) {
-            Situation newSituation =
-                    parseEnum(
-                            patch.getSituation(),
-                            "situation",
-                            Situation::fromLabel,
-                            ValidationErrorCode.INVALID_SITUATION);
-            situationChanged = !Objects.equals(previousSituation, newSituation);
-            if (situationChanged) {
-                existing.setSituation(newSituation);
-            }
-        }
-        if (patch.getBenefit() != null) {
-            BenefitType newBenefit =
-                    parseEnum(
-                            patch.getBenefit(),
-                            "benefit",
-                            BenefitType::fromLabel,
-                            ValidationErrorCode.INVALID_BENEFIT);
-            benefitChanged = !Objects.equals(previousBenefit, newBenefit);
-            if (benefitChanged) {
-                existing.setBenefit(newBenefit);
-            }
-        }
-        if (patch.getClientType() != null) {
-            ClientType newType =
-                    parseEnum(
-                            patch.getClientType(),
-                            "clientType",
-                            ClientType::fromLabel,
-                            ValidationErrorCode.INVALID_CLIENT_TYPE);
-            clientTypeChanged = !Objects.equals(previousType, newType);
-            if (clientTypeChanged) {
-                existing.setClientType(newType);
-            }
-        }
+        situationChanged =
+                applyEnumPatch(
+                        patch.getSituation(),
+                        previousSituation,
+                        existing::setSituation,
+                        "situation",
+                        Situation::fromLabel,
+                        ValidationErrorCode.INVALID_SITUATION);
+        benefitChanged =
+                applyEnumPatch(
+                        patch.getBenefit(),
+                        previousBenefit,
+                        existing::setBenefit,
+                        "benefit",
+                        BenefitType::fromLabel,
+                        ValidationErrorCode.INVALID_BENEFIT);
+        clientTypeChanged =
+                applyEnumPatch(
+                        patch.getClientType(),
+                        previousType,
+                        existing::setClientType,
+                        "clientType",
+                        ClientType::fromLabel,
+                        ValidationErrorCode.INVALID_CLIENT_TYPE);
         if (patch.getNotBillable() != null) {
             notBillableChanged = !Objects.equals(previousNotBillable, patch.getNotBillable());
             if (notBillableChanged) {
@@ -433,8 +431,8 @@ public class ClientServiceImpl implements ClientService {
     @Override
     @Transactional(readOnly = true)
     public List<UpcomingBirthdayDTO> upcomingBirthdays(int days, int limit) {
-        int windowDays = Math.max(0, Math.min(days, 365));
-        int pageSize = Math.max(1, Math.min(limit, 50));
+        int windowDays = Math.clamp(days, 0, 365);
+        int pageSize = Math.clamp(limit, 1, 50);
         LocalDate today = OfficeClock.today();
         LocalDate end = today.plusDays(windowDays);
         short fromMmdd = toMmdd(today);
@@ -451,86 +449,48 @@ public class ClientServiceImpl implements ClientService {
         return repository.findById(id).orElseThrow(() -> NotFoundException.of("Cliente", id));
     }
 
-    private void validateUniqueness(ClientCreateRequestDTO dto) {
-        checkDuplicate(
-                dto.getBeneficiaryNumber(),
-                repository::existsByBeneficiaryNumber,
-                "beneficiaryNumber",
-                "Número do benefício já cadastrado");
-        checkDuplicate(dto.getCpf(), repository::existsByCpf, "cpf", "CPF já cadastrado");
-        checkDuplicate(dto.getRg(), repository::existsByRg, "rg", "RG já cadastrado");
-        checkDuplicate(
-                dto.getNitPis(), repository::existsByNitPis, "nitPis", "NIT/PIS já cadastrado");
-        checkDuplicate(dto.getCtps(), repository::existsByCtps, "ctps", "CTPS já cadastrado");
-    }
-
     private void validateUniqueness(Client entity) {
         checkDuplicate(
                 entity.getBeneficiaryNumber(),
                 repository::existsByBeneficiaryNumber,
-                "beneficiaryNumber",
-                "Número do benefício já cadastrado");
-        checkDuplicate(entity.getCpf(), repository::existsByCpf, "cpf", "CPF já cadastrado");
-        checkDuplicate(entity.getRg(), repository::existsByRg, "rg", "RG já cadastrado");
+                FIELD_BENEFICIARY_NUMBER,
+                MSG_BENEFICIARY_NUMBER_DUPLICADO);
+        checkDuplicate(entity.getCpf(), repository::existsByCpf, "cpf", MSG_CPF_DUPLICADO);
+        checkDuplicate(entity.getRg(), repository::existsByRg, "rg", MSG_RG_DUPLICADO);
         checkDuplicate(
-                entity.getNitPis(), repository::existsByNitPis, "nitPis", "NIT/PIS já cadastrado");
-        checkDuplicate(entity.getCtps(), repository::existsByCtps, "ctps", "CTPS já cadastrado");
+                entity.getNitPis(),
+                repository::existsByNitPis,
+                FIELD_NIT_PIS,
+                MSG_NIT_PIS_DUPLICADO);
+        checkDuplicate(entity.getCtps(), repository::existsByCtps, "ctps", MSG_CTPS_DUPLICADO);
     }
 
     private void validateUniqueness(Client entity, UUID id) {
         checkDuplicate(
                 entity.getBeneficiaryNumber(),
                 value -> repository.existsByBeneficiaryNumberAndIdNot(value, id),
-                "beneficiaryNumber",
-                "Número do benefício já cadastrado");
+                FIELD_BENEFICIARY_NUMBER,
+                MSG_BENEFICIARY_NUMBER_DUPLICADO);
         checkDuplicate(
                 entity.getCpf(),
                 value -> repository.existsByCpfAndIdNot(value, id),
                 "cpf",
-                "CPF já cadastrado");
+                MSG_CPF_DUPLICADO);
         checkDuplicate(
                 entity.getRg(),
                 value -> repository.existsByRgAndIdNot(value, id),
                 "rg",
-                "RG já cadastrado");
+                MSG_RG_DUPLICADO);
         checkDuplicate(
                 entity.getNitPis(),
                 value -> repository.existsByNitPisAndIdNot(value, id),
-                "nitPis",
-                "NIT/PIS já cadastrado");
+                FIELD_NIT_PIS,
+                MSG_NIT_PIS_DUPLICADO);
         checkDuplicate(
                 entity.getCtps(),
                 value -> repository.existsByCtpsAndIdNot(value, id),
                 "ctps",
-                "CTPS já cadastrado");
-    }
-
-    private void validateUniqueness(ClientUpdateRequestDTO dto, UUID id) {
-        checkDuplicate(
-                dto.getBeneficiaryNumber(),
-                value -> repository.existsByBeneficiaryNumberAndIdNot(value, id),
-                "beneficiaryNumber",
-                "Número do benefício já cadastrado");
-        checkDuplicate(
-                dto.getCpf(),
-                value -> repository.existsByCpfAndIdNot(value, id),
-                "cpf",
-                "CPF já cadastrado");
-        checkDuplicate(
-                dto.getRg(),
-                value -> repository.existsByRgAndIdNot(value, id),
-                "rg",
-                "RG já cadastrado");
-        checkDuplicate(
-                dto.getNitPis(),
-                value -> repository.existsByNitPisAndIdNot(value, id),
-                "nitPis",
-                "NIT/PIS já cadastrado");
-        checkDuplicate(
-                dto.getCtps(),
-                value -> repository.existsByCtpsAndIdNot(value, id),
-                "ctps",
-                "CTPS já cadastrado");
+                MSG_CTPS_DUPLICADO);
     }
 
     private void normalizarDocumentosIdentidade(Client entity) {
@@ -565,14 +525,16 @@ public class ClientServiceImpl implements ClientService {
             return null;
         }
         return switch (field) {
-            case "beneficiaryNumber", "cpf", "nitPis", "ctps" ->
+            case FIELD_BENEFICIARY_NUMBER, "cpf", FIELD_NIT_PIS, "ctps" ->
                     DocumentoIdentidade.apenasDigitos(trimmed);
             case "rg" -> DocumentoIdentidade.alfanumericoMaiusculo(trimmed);
             default -> DocumentoIdentidade.aparado(trimmed);
         };
     }
 
-    @Transactional
+    // Chamado só de dentro de create/update/patch, já @Transactional: entra na mesma
+    // transação por propagação, então uma anotação própria aqui seria decorativa - e, pior,
+    // sugeriria (errado) que a chamada por "this" abre transação própria via proxy do Spring.
     protected void recordHistory(Situation previous, Client saved) {
         ClientSituationHistory h = new ClientSituationHistory();
         h.setClient(saved);
@@ -583,7 +545,6 @@ public class ClientServiceImpl implements ClientService {
         historyRepository.save(h);
     }
 
-    @Transactional
     protected void recordRequestStageHistory(
             Client client,
             RequestStage previousStage,
@@ -669,6 +630,29 @@ public class ClientServiceImpl implements ClientService {
         return dto;
     }
 
+    /**
+     * Um campo do PATCH: ausente ({@code raw == null}) não toca o cliente; presente, parseia,
+     * compara com o valor atual e aplica via {@code setter} só se mudou. Devolve se mudou, para o
+     * chamador decidir o que depende disso (histórico, {@link ClientPatchOutcome}).
+     */
+    private static <T extends Enum<T>> boolean applyEnumPatch(
+            String raw,
+            T previous,
+            Consumer<T> setter,
+            String field,
+            Function<String, T> parser,
+            ValidationErrorCode code) {
+        if (raw == null) {
+            return false;
+        }
+        T newValue = parseEnum(raw, field, parser, code);
+        boolean changed = !Objects.equals(previous, newValue);
+        if (changed) {
+            setter.accept(newValue);
+        }
+        return changed;
+    }
+
     private static <T extends Enum<T>> T parseEnum(
             String raw, String field, Function<String, T> parser, ValidationErrorCode code) {
         if (raw == null) {
@@ -680,7 +664,7 @@ public class ClientServiceImpl implements ClientService {
         }
         try {
             return parser.apply(trimmed);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException _) {
             throw new ValidationException(field, code, "Valor inválido para " + field + ": " + raw);
         }
     }

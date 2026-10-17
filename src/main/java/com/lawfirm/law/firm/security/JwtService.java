@@ -15,6 +15,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class JwtService {
 
+    private static final String CLAIM_TENANT = "tenant";
+    private static final String CLAIM_SCOPE = "scope";
+
     private final SecretKey signingKey;
     private final long expirationMillis;
     private final long supportPlatformMillis;
@@ -45,7 +48,7 @@ public class JwtService {
                 .subject(email)
                 .claim("uid", userId)
                 .claim("role", role)
-                .claim("tenant", tenant)
+                .claim(CLAIM_TENANT, tenant)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(expirationMillis)))
                 .signWith(signingKey)
@@ -62,7 +65,7 @@ public class JwtService {
         return Jwts.builder()
                 .subject(email)
                 .claim("uid", supportUserId)
-                .claim("scope", "platform")
+                .claim(CLAIM_SCOPE, "platform")
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(supportPlatformMillis)))
                 .signWith(signingKey)
@@ -80,8 +83,8 @@ public class JwtService {
                 .subject(email)
                 .claim("uid", supportUserId)
                 .claim("role", "ADMIN")
-                .claim("tenant", tenant)
-                .claim("scope", "support-session")
+                .claim(CLAIM_TENANT, tenant)
+                .claim(CLAIM_SCOPE, "support-session")
                 .claim("act", supportUserId)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(supportSessionMillis)))
@@ -91,7 +94,7 @@ public class JwtService {
 
     /** {@code platform}, {@code support-session}, ou {@code null} para token normal de tenant. */
     public String extractScope(String token) {
-        return parseClaims(token).get("scope", String.class);
+        return parseClaims(token).get(CLAIM_SCOPE, String.class);
     }
 
     public String extractRole(String token) {
@@ -120,7 +123,7 @@ public class JwtService {
 
     /** Schema do tenant embutido no token (claim {@code tenant}), ou {@code null} se ausente. */
     public String extractTenant(String token) {
-        return parseClaims(token).get("tenant", String.class);
+        return parseClaims(token).get(CLAIM_TENANT, String.class);
     }
 
     public long getExpirationMillis() {
@@ -135,7 +138,7 @@ public class JwtService {
         try {
             Claims claims = parseClaims(token);
             return claims.getExpiration() == null || claims.getExpiration().after(new Date());
-        } catch (JwtException | IllegalArgumentException ex) {
+        } catch (JwtException | IllegalArgumentException _) {
             return false;
         }
     }

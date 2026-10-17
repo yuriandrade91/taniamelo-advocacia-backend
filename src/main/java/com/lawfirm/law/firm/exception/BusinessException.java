@@ -15,8 +15,15 @@ public class BusinessException extends RuntimeException {
     }
 
     public BusinessException(BusinessErrorCode errorCode, String message) {
-        super(message != null ? message : (errorCode != null ? errorCode.getMessage() : null));
+        super(resolveMessage(message, errorCode));
         this.errorCode = errorCode;
+    }
+
+    private static String resolveMessage(String message, BusinessErrorCode errorCode) {
+        if (message != null) {
+            return message;
+        }
+        return errorCode != null ? errorCode.getMessage() : null;
     }
 
     public BusinessErrorCode getErrorCode() {

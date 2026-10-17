@@ -20,7 +20,7 @@ public class SituationConverter implements AttributeConverter<Situation, String>
         if (dbData == null) return null;
         try {
             return Situation.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown Situation value in DB: {} - returning null", dbData);
             return null;
         }

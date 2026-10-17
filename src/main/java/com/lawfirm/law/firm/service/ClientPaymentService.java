@@ -185,7 +185,7 @@ public class ClientPaymentService {
     private PaymentStatus parsePaymentStatus(String raw) {
         try {
             return PaymentStatus.fromLabel(raw);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             throw new ValidationException(
                     "status",
                     ValidationErrorCode.INVALID_ENUM_VALUE,
@@ -197,7 +197,7 @@ public class ClientPaymentService {
         if (raw == null || raw.isBlank()) return null;
         try {
             return PaymentMethod.fromLabel(raw);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             throw new ValidationException(
                     "paymentMethod",
                     ValidationErrorCode.INVALID_ENUM_VALUE,

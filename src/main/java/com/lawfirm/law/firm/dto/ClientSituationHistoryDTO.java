@@ -55,10 +55,6 @@ public class ClientSituationHistoryDTO {
         return retrocesso;
     }
 
-    public boolean getRetrocesso() {
-        return retrocesso;
-    }
-
     public void setRetrocesso(boolean retrocesso) {
         this.retrocesso = retrocesso;
     }

@@ -118,7 +118,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
             try {
                 String publicId = jwtService.extractTenant(auth.substring(BEARER.length()));
                 return tenantRegistry.schemaFor(publicId).orElse(null);
-            } catch (RuntimeException ignored) {
+            } catch (RuntimeException _) {
                 // token inválido/sem claim: cai no default
             }
         }

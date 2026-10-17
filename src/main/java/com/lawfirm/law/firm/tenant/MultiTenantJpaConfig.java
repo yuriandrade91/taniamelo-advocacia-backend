@@ -1,6 +1,6 @@
 package com.lawfirm.law.firm.tenant;
 
-import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.cfg.MultiTenancySettings;
 import org.hibernate.context.spi.CurrentTenantIdentifierResolver;
 import org.hibernate.engine.jdbc.connections.spi.MultiTenantConnectionProvider;
 import org.springframework.boot.hibernate.autoconfigure.HibernatePropertiesCustomizer;
@@ -29,9 +29,9 @@ public class MultiTenantJpaConfig {
             CurrentTenantIdentifierResolver<String> tenantResolver) {
         return hibernateProperties -> {
             hibernateProperties.put(
-                    AvailableSettings.MULTI_TENANT_CONNECTION_PROVIDER, connectionProvider);
+                    MultiTenancySettings.MULTI_TENANT_CONNECTION_PROVIDER, connectionProvider);
             hibernateProperties.put(
-                    AvailableSettings.MULTI_TENANT_IDENTIFIER_RESOLVER, tenantResolver);
+                    MultiTenancySettings.MULTI_TENANT_IDENTIFIER_RESOLVER, tenantResolver);
         };
     }
 

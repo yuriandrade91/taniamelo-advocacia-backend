@@ -25,10 +25,7 @@ public class ValidationException extends RuntimeException {
 
     public ValidationException(
             String field, ValidationErrorCode validationErrorCode, String message) {
-        super(
-                message != null
-                        ? message
-                        : (validationErrorCode != null ? validationErrorCode.getMessage() : null));
+        super(resolveMessage(message, validationErrorCode));
         this.field = field;
         this.validationErrorCode = validationErrorCode;
     }
@@ -38,13 +35,16 @@ public class ValidationException extends RuntimeException {
             ValidationErrorCode validationErrorCode,
             String message,
             Throwable cause) {
-        super(
-                message != null
-                        ? message
-                        : (validationErrorCode != null ? validationErrorCode.getMessage() : null),
-                cause);
+        super(resolveMessage(message, validationErrorCode), cause);
         this.field = field;
         this.validationErrorCode = validationErrorCode;
+    }
+
+    private static String resolveMessage(String message, ValidationErrorCode validationErrorCode) {
+        if (message != null) {
+            return message;
+        }
+        return validationErrorCode != null ? validationErrorCode.getMessage() : null;
     }
 
     public String getField() {

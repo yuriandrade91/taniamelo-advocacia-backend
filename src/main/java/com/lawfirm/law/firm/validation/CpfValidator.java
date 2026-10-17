@@ -32,7 +32,7 @@ public class CpfValidator implements ConstraintValidator<ValidCPF, String> {
             if (secondCheck >= 10) secondCheck = 0;
 
             return secondCheck == Character.getNumericValue(digits.charAt(10));
-        } catch (NumberFormatException ex) {
+        } catch (NumberFormatException _) {
             return false;
         }
     }

@@ -497,10 +497,12 @@ public class ClientController {
                                 + " e "
                                 + names.get(names.size() - 1);
         boolean allFeminine = !feminine.contains(false);
-        String participle =
-                names.size() == 1
-                        ? (feminine.get(0) ? "atualizada" : "atualizado")
-                        : (allFeminine ? "atualizadas" : "atualizados");
+        String participle;
+        if (names.size() == 1) {
+            participle = Boolean.TRUE.equals(feminine.get(0)) ? "atualizada" : "atualizado";
+        } else {
+            participle = allFeminine ? "atualizadas" : "atualizados";
+        }
         return joined + " " + participle + " com sucesso!";
     }
 

@@ -21,7 +21,7 @@ public class AppointmentModalityConverter
         if (dbData == null) return null;
         try {
             return AppointmentModality.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown AppointmentModality value in DB: {} - returning null", dbData);
             return null;
         }

@@ -15,7 +15,6 @@ import com.lawfirm.law.firm.service.AppointmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -40,10 +39,8 @@ import org.springframework.web.bind.annotation.*;
         name = "Agenda",
         description =
                 "Compromissos do escritório: entrevistas, reuniões, perícias, audiências e prazos")
-@SecurityRequirements({
-    @SecurityRequirement(name = "bearerAuth"),
-    @SecurityRequirement(name = "tenantHeader")
-})
+@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = "tenantHeader")
 @RestController
 @RequestMapping("/api/v1/appointments")
 public class AppointmentController {

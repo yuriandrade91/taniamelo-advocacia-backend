@@ -20,7 +20,7 @@ public class GenderConverter implements AttributeConverter<Gender, String> {
         if (dbData == null) return null;
         try {
             return Gender.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown Gender value in DB: {} - returning null", dbData);
             return null;
         }

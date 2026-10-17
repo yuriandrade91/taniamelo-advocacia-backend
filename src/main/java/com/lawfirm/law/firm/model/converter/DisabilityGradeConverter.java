@@ -20,7 +20,7 @@ public class DisabilityGradeConverter implements AttributeConverter<DisabilityGr
         if (dbData == null) return null;
         try {
             return DisabilityGrade.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown DisabilityGrade value in DB: {} - returning null", dbData);
             return null;
         }

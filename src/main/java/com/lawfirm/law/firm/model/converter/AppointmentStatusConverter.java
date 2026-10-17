@@ -20,7 +20,7 @@ public class AppointmentStatusConverter implements AttributeConverter<Appointmen
         if (dbData == null) return null;
         try {
             return AppointmentStatus.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown AppointmentStatus value in DB: {} - returning null", dbData);
             return null;
         }

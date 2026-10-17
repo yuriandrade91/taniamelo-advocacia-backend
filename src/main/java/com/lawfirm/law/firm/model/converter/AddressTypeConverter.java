@@ -20,7 +20,7 @@ public class AddressTypeConverter implements AttributeConverter<AddressType, Str
         if (dbData == null) return null;
         try {
             return AddressType.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown AddressType value in DB: {} - returning null", dbData);
             return null;
         }

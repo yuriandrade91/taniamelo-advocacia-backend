@@ -20,7 +20,7 @@ public class BenefitTypeConverter implements AttributeConverter<BenefitType, Str
         if (dbData == null) return null;
         try {
             return BenefitType.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown BenefitType value in DB: {} - returning null", dbData);
             return null;
         }

@@ -54,7 +54,7 @@ final class FlywayChecksumRepair {
 
         boolean hasOtherMetadataDrift =
                 Arrays.stream(allMigrations)
-                        .filter(info -> info.isApplied())
+                        .filter(MigrationInfo::isApplied)
                         .anyMatch(info -> !info.isDescriptionMatching() || !info.isTypeMatching());
         if (hasOtherMetadataDrift) {
             throw new IllegalStateException(

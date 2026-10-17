@@ -345,7 +345,7 @@ public class ClientFileService {
         }
         try {
             return DocumentType.fromLabel(raw);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             throw new ValidationException(
                     "documentType",
                     ValidationErrorCode.INVALID_ENUM_VALUE,

@@ -21,7 +21,7 @@ public class RequestStageConverter implements AttributeConverter<RequestStage, S
         if (dbData == null) return null;
         try {
             return RequestStage.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown RequestStage value in DB: {} - returning null", dbData);
             return null;
         }

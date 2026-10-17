@@ -20,7 +20,7 @@ public class ExpenseCategoryConverter implements AttributeConverter<ExpenseCateg
         if (dbData == null) return null;
         try {
             return ExpenseCategory.fromLabel(dbData);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException _) {
             log.warn("Unknown ExpenseCategory value in DB: {} - returning null", dbData);
             return null;
         }
