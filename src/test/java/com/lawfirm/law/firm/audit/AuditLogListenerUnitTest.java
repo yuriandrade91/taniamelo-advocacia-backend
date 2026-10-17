@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -14,6 +15,7 @@ import com.lawfirm.law.firm.security.UserPrincipal;
 import com.lawfirm.law.firm.support.TestFixtures;
 import java.lang.reflect.Field;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,8 +53,8 @@ class AuditLogListenerUnitTest {
 
     @BeforeEach
     void setUp() {
-        originalRepository = readStatic("repository");
-        originalTransactionManager = readStatic("transactionManager");
+        originalRepository = readStaticRef("repositoryRef");
+        originalTransactionManager = readStaticRef("transactionManagerRef");
 
         listener = new AuditLogListener();
         listener.init(repository, transactionManager);
@@ -62,36 +64,35 @@ class AuditLogListenerUnitTest {
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
-        writeStatic("repository", originalRepository);
-        writeStatic("transactionManager", originalTransactionManager);
+        writeStaticRef("repositoryRef", originalRepository);
+        writeStaticRef("transactionManagerRef", originalTransactionManager);
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.clearSynchronization();
         }
     }
 
-    private static Object readStatic(String name) {
-        return withField(
-                name,
-                field -> {
-                    try {
-                        return field.get(null);
-                    } catch (IllegalAccessException e) {
-                        throw new IllegalStateException(e);
-                    }
-                });
+    // AuditLogListener guarda cada dependência num AtomicReference estático (ver S3077/volatile no
+    // javadoc da classe); por isso lemos/gravamos o CONTEÚDO do AtomicReference, não o campo em si.
+    private static Object readStaticRef(String name) {
+        return withField(name, field -> atomicRef(field).get());
     }
 
-    private static void writeStatic(String name, Object value) {
+    private static void writeStaticRef(String name, Object value) {
         withField(
                 name,
                 field -> {
-                    try {
-                        field.set(null, value);
-                        return null;
-                    } catch (IllegalAccessException e) {
-                        throw new IllegalStateException(e);
-                    }
+                    atomicRef(field).set(value);
+                    return null;
                 });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static AtomicReference<Object> atomicRef(Field field) {
+        try {
+            return (AtomicReference<Object>) field.get(null);
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static Object withField(
@@ -134,7 +135,7 @@ class AuditLogListenerUnitTest {
         listener.onRemove(client);
 
         ArgumentCaptor<AuditLog> saved = ArgumentCaptor.forClass(AuditLog.class);
-        verify(repository, org.mockito.Mockito.times(3)).save(saved.capture());
+        verify(repository, times(3)).save(saved.capture());
         assertEquals(AuditAction.CREATE, saved.getAllValues().get(0).getAction());
         assertEquals(AuditAction.UPDATE, saved.getAllValues().get(1).getAction());
         assertEquals(AuditAction.DELETE, saved.getAllValues().get(2).getAction());
@@ -208,8 +209,8 @@ class AuditLogListenerUnitTest {
         // Guarda: se esta classe deixar mocks ou null nos campos estáticos, o
         // AuditLogListenerTest (integração, contexto Spring em cache) passa a gravar zero
         // linhas de auditoria - e falha de forma dependente da ordem de execução.
-        assertSame(repository, readStatic("repository"), "durante o teste, valem os mocks");
-        assertSame(transactionManager, readStatic("transactionManager"));
+        assertSame(repository, readStaticRef("repositoryRef"), "durante o teste, valem os mocks");
+        assertSame(transactionManager, readStaticRef("transactionManagerRef"));
         assertNotNull(listener);
     }
 

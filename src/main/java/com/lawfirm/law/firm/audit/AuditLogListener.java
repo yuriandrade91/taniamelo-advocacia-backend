@@ -5,6 +5,7 @@ import jakarta.persistence.PostPersist;
 import jakarta.persistence.PostRemove;
 import jakarta.persistence.PostUpdate;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -44,13 +45,15 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Component
 public class AuditLogListener {
 
-    private static volatile AuditLogRepository repository;
-    private static volatile PlatformTransactionManager transactionManager;
+    private static final AtomicReference<AuditLogRepository> repositoryRef =
+            new AtomicReference<>();
+    private static final AtomicReference<PlatformTransactionManager> transactionManagerRef =
+            new AtomicReference<>();
 
     @Autowired
     public void init(AuditLogRepository repository, PlatformTransactionManager transactionManager) {
-        AuditLogListener.repository = repository;
-        AuditLogListener.transactionManager = transactionManager;
+        repositoryRef.set(repository);
+        transactionManagerRef.set(transactionManager);
     }
 
     @PostPersist
@@ -75,8 +78,8 @@ public class AuditLogListener {
     }
 
     private void record(Object entity, AuditAction action) {
-        AuditLogRepository repo = repository;
-        PlatformTransactionManager txManager = transactionManager;
+        AuditLogRepository repo = repositoryRef.get();
+        PlatformTransactionManager txManager = transactionManagerRef.get();
         if (repo == null || txManager == null || !(entity instanceof Auditable auditable)) {
             // Dependências ainda não injetadas (ex.: entidade carregada antes do contexto Spring
             // terminar de subir) - não derruba a transação principal por causa da auditoria.

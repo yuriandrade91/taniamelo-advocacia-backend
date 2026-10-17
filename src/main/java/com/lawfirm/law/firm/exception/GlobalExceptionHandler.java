@@ -71,6 +71,10 @@ public class GlobalExceptionHandler {
     private static final Pattern JACKSON_ENUM_TYPE_PATTERN =
             Pattern.compile("Cannot construct instance of `[^`]+\\.([^`.]+)`");
 
+    private static final String VALIDATION_ERROR = "VALIDATION_ERROR";
+
+    private static final String INVALID_VALUE_FOR = "Valor inválido para ";
+
     // ── Bean-validation (@Valid) ──
 
     public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex) {
@@ -93,12 +97,12 @@ public class GlobalExceptionHandler {
                                     String label = FIELD_LABELS.getOrDefault(field, field);
                                     String message =
                                             humanizeMessage(label, fieldError.getDefaultMessage());
-                                    return new ApiError(field, message, "VALIDATION_ERROR");
+                                    return new ApiError(field, message, VALIDATION_ERROR);
                                 })
                         .toList();
         return badRequest(
                 errors.isEmpty()
-                        ? List.of(new ApiError(null, "Validação inválida", "VALIDATION_ERROR"))
+                        ? List.of(new ApiError(null, "Validação inválida", VALIDATION_ERROR))
                         : errors);
     }
 
@@ -113,7 +117,7 @@ public class GlobalExceptionHandler {
                                     String field = leafField(technical);
                                     String label = FIELD_LABELS.getOrDefault(field, field);
                                     String msg = humanizeMessage(label, fe.getDefaultMessage());
-                                    return new ApiError(field, msg, "VALIDATION_ERROR");
+                                    return new ApiError(field, msg, VALIDATION_ERROR);
                                 })
                         .toList();
         return badRequest(errors);
@@ -131,7 +135,7 @@ public class GlobalExceptionHandler {
                                     String field = leafField(path);
                                     String label = FIELD_LABELS.getOrDefault(field, field);
                                     String msg = humanizeMessage(label, cv.getMessage());
-                                    return new ApiError(field, msg, "VALIDATION_ERROR");
+                                    return new ApiError(field, msg, VALIDATION_ERROR);
                                 })
                         .toList();
         return badRequest(errors);
@@ -140,9 +144,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(
             MethodArgumentTypeMismatchException ex) {
-        String field = ex.getName() != null ? ex.getName() : "parameter";
-        String value = ex.getValue() == null ? "nulo" : ex.getValue().toString();
-        String message = "Valor inválido para " + field + ": " + value;
+        String field = ex.getName();
+        Object rawValue = ex.getValue();
+        String value = rawValue == null ? "nulo" : rawValue.toString();
+        String message = INVALID_VALUE_FOR + field + ": " + value;
         return badRequest(List.of(new ApiError(field, message, "INVALID_PARAMETER")));
     }
 
@@ -239,7 +244,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNoResource(NoResourceFoundException ex) {
-        String path = ex.getResourcePath() != null ? ex.getResourcePath() : "rota";
+        String path = ex.getResourcePath();
         return respond(
                 HttpStatus.NOT_FOUND,
                 List.of(new ApiError(null, "Rota não encontrada: " + path, "NOT_FOUND")));
@@ -274,6 +279,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleUnreadable(HttpMessageNotReadableException ex) {
+        Throwable cause = ex.getMostSpecificCause();
         JsonMappingException invalidEnum = findInvalidEnumCause(ex);
         if (invalidEnum != null || hasEnumCreatorFailure(ex)) {
             String field =
@@ -284,7 +290,7 @@ public class GlobalExceptionHandler {
                                     .reduce((first, ignored) -> ignored)
                                     .orElseGet(() -> fieldFromMessage(ex.getMessage()))
                             : fieldFromMessage(ex.getMessage());
-            String message = "Valor inválido para " + (field != null ? field : "campo");
+            String message = INVALID_VALUE_FOR + (field != null ? field : "campo");
             if (invalidEnum instanceof InvalidFormatException invalidFormat) {
                 String value =
                         invalidFormat.getValue() == null
@@ -299,7 +305,6 @@ public class GlobalExceptionHandler {
                                     message,
                                     ValidationErrorCode.INVALID_ENUM_VALUE.getCode())));
         }
-        Throwable cause = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause() : ex;
         String msg = cause.getMessage() != null ? cause.getMessage() : ex.getMessage();
         return badRequest(List.of(new ApiError(null, msg, "INVALID_REQUEST_BODY")));
     }
@@ -455,7 +460,7 @@ public class GlobalExceptionHandler {
             return "Por favor, informe " + label + ".";
         }
         if (msg.contains("invalid") || msg.contains("inválido")) {
-            return "Valor inválido para " + label + ".";
+            return INVALID_VALUE_FOR + label + ".";
         }
         // fallback: return the original message but prefixed politely
         return defaultMsg.substring(0, 1).toUpperCase() + defaultMsg.substring(1);

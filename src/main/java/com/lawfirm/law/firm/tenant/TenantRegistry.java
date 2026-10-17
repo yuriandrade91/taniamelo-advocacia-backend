@@ -2,9 +2,11 @@ package com.lawfirm.law.firm.tenant;
 
 import com.lawfirm.law.firm.model.Tenant;
 import com.lawfirm.law.firm.repository.TenantRepository;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.stereotype.Component;
 
 /**
@@ -20,7 +22,7 @@ import org.springframework.stereotype.Component;
 public class TenantRegistry {
 
     private final TenantRepository tenantRepository;
-    private volatile Map<String, String> publicToSchema;
+    private final AtomicReference<Map<String, String>> publicToSchemaRef = new AtomicReference<>();
 
     public TenantRegistry(TenantRepository tenantRepository) {
         this.tenantRepository = tenantRepository;
@@ -35,17 +37,17 @@ public class TenantRegistry {
     }
 
     public void reload() {
-        this.publicToSchema = load();
+        this.publicToSchemaRef.set(load());
     }
 
     private Map<String, String> cache() {
-        Map<String, String> local = this.publicToSchema;
+        Map<String, String> local = this.publicToSchemaRef.get();
         if (local == null) {
             synchronized (this) {
-                local = this.publicToSchema;
+                local = this.publicToSchemaRef.get();
                 if (local == null) {
                     local = load();
-                    this.publicToSchema = local;
+                    this.publicToSchemaRef.set(local);
                 }
             }
         }
@@ -58,6 +60,6 @@ public class TenantRegistry {
             map.put(t.getId().toString(), t.getSchemaName());
             map.put(t.getSlug(), t.getSchemaName());
         }
-        return map;
+        return Collections.unmodifiableMap(map);
     }
 }

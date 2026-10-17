@@ -68,7 +68,7 @@ public class ClientFileService {
             List<MultipartFile> files,
             List<ClientFileDocumentUploadMetadataDTO> metadata) {
         Client client = findClientOrThrow(clientId);
-        validateBatch(files, metadata == null ? -1 : metadata.size());
+        validateBatch(files, metadata);
 
         List<ClientFileDocumentResponseDTO> result = new ArrayList<>(files.size());
         for (int i = 0; i < files.size(); i++) {
@@ -131,7 +131,7 @@ public class ClientFileService {
             List<MultipartFile> files,
             List<ClientFileSimulationUploadMetadataDTO> metadata) {
         Client client = findClientOrThrow(clientId);
-        validateBatch(files, metadata == null ? -1 : metadata.size());
+        validateBatch(files, metadata);
 
         List<ClientFileSimulationResponseDTO> result = new ArrayList<>(files.size());
         for (int i = 0; i < files.size(); i++) {
@@ -320,12 +320,12 @@ public class ClientFileService {
                                         fileId));
     }
 
-    private void validateBatch(List<MultipartFile> files, int metadataSize) {
+    private void validateBatch(List<MultipartFile> files, List<?> metadata) {
         if (files == null || files.isEmpty()) {
             throw new ValidationException(
                     "files", ValidationErrorCode.REQUIRED_FIELD, "Envie ao menos um arquivo.");
         }
-        if (metadataSize != files.size()) {
+        if (metadata == null || metadata.size() != files.size()) {
             throw new ValidationException(
                     "metadata",
                     ValidationErrorCode.REQUIRED_FIELD,
