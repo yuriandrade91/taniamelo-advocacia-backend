@@ -50,7 +50,7 @@ class CepLookupServiceTest {
                     if (atrasoMs > 0) {
                         try {
                             Thread.sleep(atrasoMs);
-                        } catch (InterruptedException e) {
+                        } catch (InterruptedException _) {
                             Thread.currentThread().interrupt();
                         }
                     }
@@ -108,12 +108,13 @@ class CepLookupServiceTest {
     @DisplayName("CEP fora do formato é 400 e não sai para a rede")
     void invalidCepIsRejectedBeforeNetwork() {
         chamadas.set(0);
+        CepLookupService s = service();
         for (String ruim : List.of("123", "30240-0000", "abcdefgh", "", "  ")) {
             ValidationException ex =
-                    assertThrows(ValidationException.class, () -> service().buscar(ruim, "u1"));
+                    assertThrows(ValidationException.class, () -> s.buscar(ruim, "u1"));
             assertEquals(ValidationErrorCode.INVALID_ZIP_CODE, ex.getValidationErrorCode());
         }
-        assertThrows(ValidationException.class, () -> service().buscar(null, "u1"));
+        assertThrows(ValidationException.class, () -> s.buscar(null, "u1"));
         // O ponto do teste: nenhuma dessas tocou o provedor.
         assertEquals(0, chamadas.get());
     }
@@ -122,7 +123,8 @@ class CepLookupServiceTest {
     @DisplayName("CEP inexistente é 404, não endereço em branco")
     void unknownCepIsNotFound() {
         respostaJson = "{\"erro\": true}";
-        assertThrows(NotFoundException.class, () -> service().buscar("99999999", "u1"));
+        CepLookupService s = service();
+        assertThrows(NotFoundException.class, () -> s.buscar("99999999", "u1"));
     }
 
     @Test
@@ -130,9 +132,9 @@ class CepLookupServiceTest {
     void providerFailureIsWrapped() {
         status = 500;
         respostaJson = "{\"motivo\":\"detalhe interno do provedor\"}";
+        CepLookupService s = service();
 
-        SystemException ex =
-                assertThrows(SystemException.class, () -> service().buscar("30240000", "u1"));
+        SystemException ex = assertThrows(SystemException.class, () -> s.buscar("30240000", "u1"));
         org.junit.jupiter.api.Assertions.assertFalse(
                 String.valueOf(ex.getMessage()).contains("detalhe interno do provedor"),
                 "a mensagem do provedor não pode chegar a quem chamou");
@@ -175,14 +177,13 @@ class CepLookupServiceTest {
             s.buscar("30240000", "u1");
         }
 
-        // CEPs distintos: cada um custa chamada e cota. O limite por minuto é 60.
-        assertThrows(
-                TooManyAttemptsException.class,
-                () -> {
-                    for (int i = 0; i < 200; i++) {
-                        s.buscar(String.format("3024%04d", i), "u1");
-                    }
-                });
+        // CEPs distintos: cada um custa chamada e cota. O limite por minuto é 60; as 60
+        // primeiras ficam fora do assertThrows para isolar qual chamada de fato estoura a cota.
+        for (int i = 0; i < 60; i++) {
+            s.buscar(String.format("3024%04d", i), "u1");
+        }
+        String ceAcimaDoLimite = String.format("3024%04d", 60);
+        assertThrows(TooManyAttemptsException.class, () -> s.buscar(ceAcimaDoLimite, "u1"));
     }
 
     @Test
@@ -193,13 +194,11 @@ class CepLookupServiceTest {
                 {"logradouro":"Rua X","localidade":"BH","uf":"MG"}""";
         CepLookupService s = service();
 
-        assertThrows(
-                TooManyAttemptsException.class,
-                () -> {
-                    for (int i = 0; i < 200; i++) {
-                        s.buscar(String.format("4024%04d", i), "abusador");
-                    }
-                });
+        for (int i = 0; i < 60; i++) {
+            s.buscar(String.format("4024%04d", i), "abusador");
+        }
+        String cepAcimaDoLimite = String.format("4024%04d", 60);
+        assertThrows(TooManyAttemptsException.class, () -> s.buscar(cepAcimaDoLimite, "abusador"));
 
         // O segundo usuário continua atendido.
         assertEquals("Rua X", s.buscar("50240000", "inocente").street());

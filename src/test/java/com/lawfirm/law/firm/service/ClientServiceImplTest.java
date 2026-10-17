@@ -188,9 +188,10 @@ class ClientServiceImplTest {
             entity.setCpf("529.982.247-25");
             when(mapper.toEntity(any())).thenReturn(entity);
             when(repository.existsByCpf("52998224725")).thenReturn(true);
+            var dto = createDto();
 
             ValidationException ex =
-                    assertThrows(ValidationException.class, () -> service.create(createDto()));
+                    assertThrows(ValidationException.class, () -> service.create(dto));
             assertEquals("cpf", ex.getField());
             assertEquals(ValidationErrorCode.DUPLICATE_VALUE, ex.getValidationErrorCode());
             verify(repository, never()).save(any());
@@ -205,11 +206,11 @@ class ClientServiceImplTest {
             entity.setCpf("390.533.447-05");
             when(mapper.toEntity(any())).thenReturn(entity);
             when(repository.existsByCpf("39053344705")).thenReturn(true);
+            var dto = createDto();
 
             assertEquals(
                     "cpf",
-                    assertThrows(ValidationException.class, () -> service.create(createDto()))
-                            .getField());
+                    assertThrows(ValidationException.class, () -> service.create(dto)).getField());
         }
 
         @Test
@@ -277,10 +278,11 @@ class ClientServiceImplTest {
                 caso.preenche().accept(alvo);
                 when(mapper.toEntity(any())).thenReturn(alvo);
                 caso.stub().run();
+                var dto = createDto();
 
                 assertEquals(
                         caso.campo(),
-                        assertThrows(ValidationException.class, () -> service.create(createDto()))
+                        assertThrows(ValidationException.class, () -> service.create(dto))
                                 .getField(),
                         "esperava bloqueio em " + caso.campo());
             }

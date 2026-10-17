@@ -135,7 +135,7 @@ class EntityContractTest {
                             value,
                             entityType.getSimpleName() + "#" + stamp + " deveria ser preenchido");
                 }
-            } catch (NoSuchMethodException ignored) {
+            } catch (NoSuchMethodException _) {
                 // a entidade não tem esse carimbo
             }
         }
@@ -162,7 +162,7 @@ class EntityContractTest {
             try {
                 entityType.getMethod("set" + property, Instant.class).invoke(instance, fixed);
                 anyStampSet = true;
-            } catch (NoSuchMethodException ignored) {
+            } catch (NoSuchMethodException _) {
                 // a entidade não tem esse carimbo
             }
         }
@@ -184,7 +184,7 @@ class EntityContractTest {
                         fixed,
                         getter.invoke(instance),
                         entityType.getSimpleName() + "#" + property + " foi sobrescrito");
-            } catch (NoSuchMethodException ignored) {
+            } catch (NoSuchMethodException _) {
                 // a entidade não tem esse carimbo
             }
         }

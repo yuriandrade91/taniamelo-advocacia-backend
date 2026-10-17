@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-public class ClientControllerTest extends PostgresIntegrationTest {
+class ClientControllerTest extends PostgresIntegrationTest {
 
     @Autowired private WebApplicationContext wac;
 
@@ -35,7 +35,7 @@ public class ClientControllerTest extends PostgresIntegrationTest {
     private ObjectMapper objectMapper;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
@@ -46,7 +46,7 @@ public class ClientControllerTest extends PostgresIntegrationTest {
     }
 
     @AfterEach
-    public void cleanup() {
+    void cleanup() {
         clientRepository.deleteAll();
     }
 
@@ -75,7 +75,7 @@ public class ClientControllerTest extends PostgresIntegrationTest {
     }
 
     @Test
-    public void listFilterByBenefitTypeAndSituation() throws Exception {
+    void listFilterByBenefitTypeAndSituation() throws Exception {
         mockMvc.perform(
                         get("/api/v1/clients")
                                 .param("pageNumber", "1")
@@ -87,7 +87,7 @@ public class ClientControllerTest extends PostgresIntegrationTest {
     }
 
     @Test
-    public void listFilterByInvalidBenefitTypeReturns400WithClearMessage() throws Exception {
+    void listFilterByInvalidBenefitTypeReturns400WithClearMessage() throws Exception {
         mockMvc.perform(get("/api/v1/clients").param("benefitType", "not-a-benefit"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
@@ -96,7 +96,7 @@ public class ClientControllerTest extends PostgresIntegrationTest {
     }
 
     @Test
-    public void listInitiallyEmpty() throws Exception {
+    void listInitiallyEmpty() throws Exception {
         mockMvc.perform(get("/api/v1/clients"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -106,7 +106,7 @@ public class ClientControllerTest extends PostgresIntegrationTest {
     }
 
     @Test
-    public void createClientThenReturnIt() throws Exception {
+    void createClientThenReturnIt() throws Exception {
         ClientCreateRequestDTO dto = new ClientCreateRequestDTO();
         dto.setFullName("Test User");
         dto.setBirthDate(LocalDate.of(1990, 1, 1));

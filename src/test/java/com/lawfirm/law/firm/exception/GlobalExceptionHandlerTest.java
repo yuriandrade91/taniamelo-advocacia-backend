@@ -123,7 +123,9 @@ class GlobalExceptionHandlerTest {
         /** Alvo mínimo só para obter um MethodParameter real. */
         static class Alvo {
             @SuppressWarnings("unused")
-            void upload(List<String> metadata) {}
+            void upload(List<String> metadata) {
+                // nunca invocado: só existe para o teste extrair um MethodParameter real.
+            }
         }
 
         @Test

@@ -752,10 +752,10 @@ class AppointmentServiceTest {
 
             // Sem justificativa E cancelado: a mensagem tem de apontar o estado, senão a
             // pessoa preenche a justificativa e leva o mesmo erro de novo.
+            var dto = requestDto();
             BusinessException ex =
                     assertThrows(
-                            BusinessException.class,
-                            () -> service.update(APPOINTMENT_ID, requestDto()));
+                            BusinessException.class, () -> service.update(APPOINTMENT_ID, dto));
             assertTrue(ex.getMessage().contains("não pode ser editado"));
         }
     }
@@ -1108,7 +1108,7 @@ class AppointmentServiceTest {
             org.junit.jupiter.api.Assertions.assertTrue(
                     service.findConflicts(FUTURE, FUTURE, null).isEmpty());
 
-            org.mockito.Mockito.verify(repository, org.mockito.Mockito.never())
+            verify(repository, never())
                     .findAll(
                             org.mockito.ArgumentMatchers
                                     .<org.springframework.data.jpa.domain.Specification<

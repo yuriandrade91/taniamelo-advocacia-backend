@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.lawfirm.law.firm.dto.ClientDisabilityPeriodRequestDTO;
@@ -23,7 +24,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 @DisplayName("Períodos de deficiência: as regras que o cálculo depende")
 class ClientDisabilityPeriodServiceTest {
@@ -37,8 +37,8 @@ class ClientDisabilityPeriodServiceTest {
 
     @BeforeEach
     void setUp() {
-        repository = Mockito.mock(ClientDisabilityPeriodRepository.class);
-        clientRepository = Mockito.mock(ClientRepository.class);
+        repository = mock(ClientDisabilityPeriodRepository.class);
+        clientRepository = mock(ClientRepository.class);
         service = new ClientDisabilityPeriodService(repository, clientRepository);
 
         client = new Client();
@@ -91,16 +91,9 @@ class ClientDisabilityPeriodServiceTest {
         void refusesTheNonDisabilityBasis() {
             // Gravá-lo faria um intervalo entrar na soma multiplicando por 1 e
             // inflar o total de tempo do cliente.
+            var dto = request("Sem deficiência", LocalDate.of(2000, 1, 1), null);
             ValidationException ex =
-                    assertThrows(
-                            ValidationException.class,
-                            () ->
-                                    service.create(
-                                            CLIENT_ID,
-                                            request(
-                                                    "Sem deficiência",
-                                                    LocalDate.of(2000, 1, 1),
-                                                    null)));
+                    assertThrows(ValidationException.class, () -> service.create(CLIENT_ID, dto));
             assertEquals("grade", ex.getField());
             assertTrue(ex.getMessage().contains("Leve, Moderada ou Grave"));
         }
@@ -108,12 +101,8 @@ class ClientDisabilityPeriodServiceTest {
         @Test
         @DisplayName("grau desconhecido falha alto, não em silêncio")
         void unknownGradeFailsLoud() {
-            assertThrows(
-                    ValidationException.class,
-                    () ->
-                            service.create(
-                                    CLIENT_ID,
-                                    request("Gravíssima", LocalDate.of(2000, 1, 1), null)));
+            var dto = request("Gravíssima", LocalDate.of(2000, 1, 1), null);
+            assertThrows(ValidationException.class, () -> service.create(CLIENT_ID, dto));
         }
     }
 
@@ -124,48 +113,27 @@ class ClientDisabilityPeriodServiceTest {
         @Test
         @DisplayName("início no futuro é recusado")
         void futureStartIsRejected() {
+            var dto = request("Leve", OfficeClock.today().plusDays(1), null);
             ValidationException ex =
-                    assertThrows(
-                            ValidationException.class,
-                            () ->
-                                    service.create(
-                                            CLIENT_ID,
-                                            request(
-                                                    "Leve",
-                                                    OfficeClock.today().plusDays(1),
-                                                    null)));
+                    assertThrows(ValidationException.class, () -> service.create(CLIENT_ID, dto));
             assertEquals("startedOn", ex.getField());
         }
 
         @Test
         @DisplayName("cessação anterior ao início é recusada")
         void endBeforeStartIsRejected() {
+            var dto = request("Leve", LocalDate.of(2000, 6, 1), LocalDate.of(2000, 1, 1));
             ValidationException ex =
-                    assertThrows(
-                            ValidationException.class,
-                            () ->
-                                    service.create(
-                                            CLIENT_ID,
-                                            request(
-                                                    "Leve",
-                                                    LocalDate.of(2000, 6, 1),
-                                                    LocalDate.of(2000, 1, 1))));
+                    assertThrows(ValidationException.class, () -> service.create(CLIENT_ID, dto));
             assertEquals("endedOn", ex.getField());
         }
 
         @Test
         @DisplayName("cessação no futuro é recusada, apontando a opção certa")
         void futureEndIsRejected() {
+            var dto = request("Leve", LocalDate.of(2000, 1, 1), OfficeClock.today().plusYears(1));
             ValidationException ex =
-                    assertThrows(
-                            ValidationException.class,
-                            () ->
-                                    service.create(
-                                            CLIENT_ID,
-                                            request(
-                                                    "Leve",
-                                                    LocalDate.of(2000, 1, 1),
-                                                    OfficeClock.today().plusYears(1))));
+                    assertThrows(ValidationException.class, () -> service.create(CLIENT_ID, dto));
             // A mensagem tem de dizer o que fazer: quem tenta datar a cessação no
             // futuro está querendo dizer "ainda está em curso".
             assertTrue(ex.getMessage().contains("em branco"), ex.getMessage());
@@ -196,16 +164,9 @@ class ClientDisabilityPeriodServiceTest {
                                             LocalDate.of(1990, 1, 1),
                                             LocalDate.of(2009, 12, 31))));
 
+            var dto = request("Leve", LocalDate.of(2000, 1, 1), LocalDate.of(2001, 1, 1));
             ValidationException ex =
-                    assertThrows(
-                            ValidationException.class,
-                            () ->
-                                    service.create(
-                                            CLIENT_ID,
-                                            request(
-                                                    "Leve",
-                                                    LocalDate.of(2000, 1, 1),
-                                                    LocalDate.of(2001, 1, 1))));
+                    assertThrows(ValidationException.class, () -> service.create(CLIENT_ID, dto));
             // Sem nomear o conflitante, quem cadastrou não sabe qual linha olhar.
             assertTrue(ex.getMessage().contains("1990-01-01"), ex.getMessage());
             assertTrue(ex.getMessage().contains("2009-12-31"), ex.getMessage());
@@ -226,11 +187,8 @@ class ClientDisabilityPeriodServiceTest {
             service.create(CLIENT_ID, request("Leve", LocalDate.of(2000, 1, 1), null));
 
             // 1999-12-31 é o último dia do outro: contaria duas vezes.
-            assertThrows(
-                    ValidationException.class,
-                    () ->
-                            service.create(
-                                    CLIENT_ID, request("Leve", LocalDate.of(1999, 12, 31), null)));
+            var dto = request("Leve", LocalDate.of(1999, 12, 31), null);
+            assertThrows(ValidationException.class, () -> service.create(CLIENT_ID, dto));
         }
 
         @Test
@@ -243,11 +201,8 @@ class ClientDisabilityPeriodServiceTest {
                     .thenReturn(
                             List.of(stored(DisabilityGrade.GRAVE, LocalDate.of(1990, 1, 1), null)));
 
-            assertThrows(
-                    ValidationException.class,
-                    () ->
-                            service.create(
-                                    CLIENT_ID, request("Leve", LocalDate.of(2020, 1, 1), null)));
+            var dto = request("Leve", LocalDate.of(2020, 1, 1), null);
+            assertThrows(ValidationException.class, () -> service.create(CLIENT_ID, dto));
         }
     }
 

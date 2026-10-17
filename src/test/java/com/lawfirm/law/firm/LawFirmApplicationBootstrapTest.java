@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,7 @@ class LawFirmApplicationBootstrapTest {
     @Test
     @DisplayName("main delega para o SpringApplication.run com a própria classe")
     void mainDelegatesToSpringApplication() {
-        ConfigurableApplicationContext context = Mockito.mock(ConfigurableApplicationContext.class);
+        ConfigurableApplicationContext context = mock(ConfigurableApplicationContext.class);
 
         try (MockedStatic<SpringApplication> spring = Mockito.mockStatic(SpringApplication.class)) {
             spring.when(

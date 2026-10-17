@@ -496,9 +496,9 @@ class ClientPaymentServiceTest {
         UUID unknown = UUID.randomUUID();
         when(clientRepository.findById(unknown)).thenReturn(Optional.empty());
         ClientPaymentUpdateRequestDTO dto = new ClientPaymentUpdateRequestDTO();
+        PaymentSearchParams params = new PaymentSearchParams();
 
-        assertThrows(
-                NotFoundException.class, () -> service.list(unknown, new PaymentSearchParams()));
+        assertThrows(NotFoundException.class, () -> service.list(unknown, params));
         assertThrows(NotFoundException.class, () -> service.get(unknown, PAYMENT_ID));
         assertThrows(NotFoundException.class, () -> service.update(unknown, PAYMENT_ID, dto));
         assertThrows(NotFoundException.class, () -> service.delete(unknown, PAYMENT_ID));

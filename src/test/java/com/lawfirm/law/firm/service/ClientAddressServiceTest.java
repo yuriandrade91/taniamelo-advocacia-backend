@@ -190,10 +190,9 @@ class ClientAddressServiceTest {
     void createAllOfMissingClientSavesNothing() {
         UUID unknown = UUID.randomUUID();
         when(clientRepository.findById(unknown)).thenReturn(Optional.empty());
+        var dtos = List.of(requestDto(), requestDto());
 
-        assertThrows(
-                NotFoundException.class,
-                () -> service.createAll(unknown, List.of(requestDto(), requestDto())));
+        assertThrows(NotFoundException.class, () -> service.createAll(unknown, dtos));
 
         verify(repository, never()).save(any(ClientAddress.class));
     }

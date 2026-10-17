@@ -222,7 +222,9 @@ class ClientControllerUnitTest {
         }
 
         @Test
-        @DisplayName("usa os defaults de página quando nada é informado")
+        @DisplayName(
+                "usa os defaults de página quando nada é informado"
+                        + " (e notBillable ausente não filtra: chega nulo)")
         void usesDefaultPaging() throws Exception {
             mockMvc.perform(get("/api/v1/clients")).andExpect(status().isOk());
 
@@ -323,17 +325,6 @@ class ClientControllerUnitTest {
                     .listSummary(
                             eq(1), eq(10), isNull(), isNull(), isNull(), isNull(), isNull(),
                             eq(false), isNull(), isNull());
-        }
-
-        @Test
-        @DisplayName("notBillable ausente não filtra (chega nulo)")
-        void notBillableAbsentIsNull() throws Exception {
-            mockMvc.perform(get("/api/v1/clients")).andExpect(status().isOk());
-
-            verify(clientService)
-                    .listSummary(
-                            eq(1), eq(10), isNull(), isNull(), isNull(), isNull(), isNull(),
-                            isNull(), isNull(), isNull());
         }
 
         @Test

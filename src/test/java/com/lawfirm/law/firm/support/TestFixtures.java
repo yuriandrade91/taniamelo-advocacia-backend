@@ -41,7 +41,7 @@ public final class TestFixtures {
                 field.setAccessible(true);
                 field.set(target, value);
                 return;
-            } catch (NoSuchFieldException e) {
+            } catch (NoSuchFieldException _) {
                 type = type.getSuperclass();
             } catch (IllegalAccessException e) {
                 throw new IllegalStateException("Não foi possível setar " + name, e);

@@ -2,7 +2,6 @@ package com.lawfirm.law.firm.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.lawfirm.law.firm.dto.FinanceSummaryDTO;
 import com.lawfirm.law.firm.dto.FinanceTimelinePointDTO;
@@ -72,13 +71,13 @@ class FinanceiroIntegrationTest extends PostgresIntegrationTest {
 
         // O total é redundante de propósito: se um dia não fechar, a regra divergiu.
         assertEquals(0, new BigDecimal("1000.00").compareTo(resumo.getTotalAmount()));
-        assertTrue(
+        assertEquals(
+                0,
                 resumo.getTotalAmount()
-                                .compareTo(
-                                        resumo.getOverdueAmount()
-                                                .add(resumo.getUpcomingAmount())
-                                                .add(resumo.getPaidAmount()))
-                        == 0,
+                        .compareTo(
+                                resumo.getOverdueAmount()
+                                        .add(resumo.getUpcomingAmount())
+                                        .add(resumo.getPaidAmount())),
                 "total precisa ser a soma exata dos três baldes");
     }
 

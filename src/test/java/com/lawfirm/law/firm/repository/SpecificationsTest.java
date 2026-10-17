@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -126,7 +127,7 @@ class SpecificationsTest {
         @DisplayName("busca sem dígitos não monta o predicado de CPF")
         void searchWithoutDigitsSkipsCpf() {
             apply(ClientSpecification.searchTerm("Maria da Silva"), root);
-            verify(cb, org.mockito.Mockito.never()).or(any(Predicate.class), any(Predicate.class));
+            verify(cb, never()).or(any(Predicate.class), any(Predicate.class));
         }
 
         @Test
@@ -137,8 +138,7 @@ class SpecificationsTest {
             // base. Quem procura CPF não digita letra junto.
             for (String termo : new String[] {"Maria 2", "Cliente 42 Silva", "Joao 3o andar"}) {
                 apply(ClientSpecification.searchTerm(termo), root);
-                verify(cb, org.mockito.Mockito.never())
-                        .or(any(Predicate.class), any(Predicate.class));
+                verify(cb, never()).or(any(Predicate.class), any(Predicate.class));
             }
         }
 
@@ -147,8 +147,7 @@ class SpecificationsTest {
         void tooFewDigitsIsNotACpfSearch() {
             for (String termo : new String[] {"2", "42", "1-2"}) {
                 apply(ClientSpecification.searchTerm(termo), root);
-                verify(cb, org.mockito.Mockito.never())
-                        .or(any(Predicate.class), any(Predicate.class));
+                verify(cb, never()).or(any(Predicate.class), any(Predicate.class));
             }
         }
 

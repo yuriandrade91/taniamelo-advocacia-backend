@@ -2,6 +2,7 @@ package com.lawfirm.law.firm.tenant;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -76,6 +77,6 @@ class MultiTenantFlywayMigratorTest {
         MultiTenantFlywayMigrator migrator =
                 new MultiTenantFlywayMigrator(dataSource, properties, false);
         assertNotNull(migrator);
-        verify(dataSource, org.mockito.Mockito.never()).getConnection();
+        verify(dataSource, never()).getConnection();
     }
 }
