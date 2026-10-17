@@ -3,12 +3,14 @@ package com.lawfirm.law.firm.config;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -16,8 +18,11 @@ import org.springframework.web.cors.CorsConfigurationSource;
 @DisplayName("CorsConfig: origens permitidas via app.cors.allowed-origins")
 class CorsConfigTest {
 
+    /** Perfil "test": os testes podem exercitar "*" sem acionar o fail-fast de produção. */
     private CorsConfiguration configFor(String csv) {
-        CorsConfigurationSource source = new CorsConfig(csv).corsConfigurationSource();
+        MockEnvironment testEnv = new MockEnvironment();
+        testEnv.setActiveProfiles("test");
+        CorsConfigurationSource source = new CorsConfig(csv, testEnv).corsConfigurationSource();
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/clients");
         CorsConfiguration config = source.getCorsConfiguration(request);
         assertNotNull(config);
@@ -95,12 +100,22 @@ class CorsConfigTest {
     @Test
     @DisplayName("a configuração vale para qualquer rota")
     void appliesToEveryPath() {
-        CorsConfigurationSource source = new CorsConfig("*").corsConfigurationSource();
+        MockEnvironment testEnv = new MockEnvironment();
+        testEnv.setActiveProfiles("test");
+        CorsConfigurationSource source = new CorsConfig("*", testEnv).corsConfigurationSource();
         assertNotNull(
                 source.getCorsConfiguration(
                         new MockHttpServletRequest("POST", "/api/v1/auth/login")));
         assertNotNull(
                 source.getCorsConfiguration(new MockHttpServletRequest("GET", "/actuator/health")));
         assertTrue(true);
+    }
+
+    @Test
+    @DisplayName("\"*\" fora dos perfis dev/test falha a subida, não expõe a brecha em silêncio")
+    void wildcardOutsideDevAndTestFailsFast() {
+        MockEnvironment prodLike = new MockEnvironment();
+        CorsConfig config = new CorsConfig("*", prodLike);
+        assertThrows(IllegalStateException.class, config::corsConfigurationSource);
     }
 }

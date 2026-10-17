@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
@@ -39,12 +40,25 @@ import org.springframework.stereotype.Component;
 @Component
 public class FinanceQueries {
 
+    /**
+     * Entidades JPA que esta classe sabe montar JPQL para. {@code entidade} nunca vem de entrada do
+     * usuário (ver nota de classe), mas esta lista fecha a porta mesmo que isso mude um dia: um
+     * valor fora dela nunca chega a {@link #em}.
+     */
+    private static final Set<String> ENTIDADES_PERMITIDAS =
+            Set.of("ClientPayment", "OfficeExpense", "OfficeRevenue");
+
+    private static final String ATRASADO = "x.status = :pendente AND x.dueDate < :hoje";
+    private static final String A_VENCER = "x.status = :pendente AND x.dueDate >= :hoje";
+    private static final String PAGO = "x.status = :pago";
+
     @PersistenceContext private EntityManager em;
 
     /**
      * Totais do período.
      *
-     * @param entidade nome JPQL da entidade (constante do service que chama), com alias {@code x}
+     * @param entidade nome JPQL da entidade (constante do service que chama, ver {@link
+     *     #ENTIDADES_PERMITIDAS}), com alias {@code x}
      * @param where predicado adicional já com o alias {@code x}, ou {@code null}
      * @param params parâmetros nomeados usados em {@code where}
      */
@@ -53,19 +67,19 @@ public class FinanceQueries {
 
         String jpql =
                 "SELECT "
-                        + sum("x.status = :pendente AND x.dueDate < :hoje")
+                        + sum(ATRASADO)
                         + ", "
-                        + count("x.status = :pendente AND x.dueDate < :hoje")
+                        + count(ATRASADO)
                         + ", "
-                        + sum("x.status = :pendente AND x.dueDate >= :hoje")
+                        + sum(A_VENCER)
                         + ", "
-                        + count("x.status = :pendente AND x.dueDate >= :hoje")
+                        + count(A_VENCER)
                         + ", "
-                        + sum("x.status = :pago")
+                        + sum(PAGO)
                         + ", "
-                        + count("x.status = :pago")
+                        + count(PAGO)
                         + " FROM "
-                        + entidade
+                        + entidadePermitida(entidade)
                         + " x WHERE 1 = 1"
                         + (where == null || where.isBlank() ? "" : " AND " + where);
 
@@ -112,15 +126,18 @@ public class FinanceQueries {
             // Atrasado e a vencer não existem no regime de caixa: o que foi pago não está nem um
             // nem outro. Zerados aqui em vez de omitidos, para o formato da resposta não mudar
             // conforme o parâmetro — quem consome tipa uma coisa só.
-            jpql.append("0, 0, ").append(sum("x.status = :pago"));
+            jpql.append("0, 0, ").append(sum(PAGO));
         } else {
-            jpql.append(sum("x.status = :pendente AND x.dueDate < :hoje"))
+            jpql.append(sum(ATRASADO))
                     .append(", ")
-                    .append(sum("x.status = :pendente AND x.dueDate >= :hoje"))
+                    .append(sum(A_VENCER))
                     .append(", ")
-                    .append(sum("x.status = :pago"));
+                    .append(sum(PAGO));
         }
-        jpql.append(" FROM ").append(entidade).append(" x WHERE ").append(campoData);
+        jpql.append(" FROM ")
+                .append(entidadePermitida(entidade))
+                .append(" x WHERE ")
+                .append(campoData);
         jpql.append(" BETWEEN :de AND :ate");
         if (porPagamento) {
             jpql.append(" AND x.status = :pago");
@@ -174,6 +191,14 @@ public class FinanceQueries {
             atual = atual.plusMonths(1);
         }
         return meses;
+    }
+
+    /** Garante que {@code entidade} é uma das constantes conhecidas antes de entrar no JPQL. */
+    private static String entidadePermitida(String entidade) {
+        if (!ENTIDADES_PERMITIDAS.contains(entidade)) {
+            throw new IllegalArgumentException("Entidade JPQL não permitida: " + entidade);
+        }
+        return entidade;
     }
 
     private static String sum(String condicao) {

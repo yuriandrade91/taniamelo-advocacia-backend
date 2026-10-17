@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -30,13 +31,22 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class CorsConfig {
 
     private final List<String> allowedOrigins;
+    private final boolean wildcardAllowed;
 
-    public CorsConfig(@Value("${app.cors.allowed-origins:*}") String allowedOriginsCsv) {
+    public CorsConfig(
+            @Value("${app.cors.allowed-origins:*}") String allowedOriginsCsv, Environment env) {
         this.allowedOrigins =
                 Arrays.stream(allowedOriginsCsv.split(","))
                         .map(String::trim)
                         .filter(s -> !s.isEmpty())
                         .toList();
+        // "dev" é a máquina do desenvolvedor; "test" é o contexto do @SpringBootTest, que nunca
+        // recebe tráfego real. Fora dos dois, "*" com allowCredentials=true é só um
+        // esquecimento de configuração.
+        List<String> profilesAbertosAoWildcard = List.of("dev", "test");
+        this.wildcardAllowed =
+                Arrays.stream(env.getActiveProfiles())
+                        .anyMatch(profilesAbertosAoWildcard::contains);
     }
 
     @Bean
@@ -47,6 +57,16 @@ public class CorsConfig {
 
         boolean wildcard = allowedOrigins.isEmpty() || allowedOrigins.contains("*");
         if (wildcard) {
+            // "*" + allowCredentials=true reflete QUALQUER origem e deixa o cookie de refresh
+            // (ver AuthController) acessível a ela — aceitável só em dev, nunca fora dele. Falha
+            // na subida em vez de expor isso silenciosamente se alguém esquecer de configurar
+            // APP_CORS_ALLOWED_ORIGINS fora do perfil "dev".
+            if (!wildcardAllowed) {
+                throw new IllegalStateException(
+                        "app.cors.allowed-origins não pode ser \"*\" fora dos perfis dev/test. "
+                                + "Defina APP_CORS_ALLOWED_ORIGINS com o(s) domínio(s) real(is) do"
+                                + " frontend.");
+            }
             // allowedOriginPatterns aceita "*" mesmo com allowCredentials=true (allowedOrigins
             // não).
             config.setAllowedOriginPatterns(List.of("*"));
