@@ -41,7 +41,10 @@ class RefreshTokenServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new RefreshTokenService(repository, 14);
+        service = new RefreshTokenService(repository, 14, null);
+        // Sem Spring aqui para resolver o proxy @Lazy: rotate() chama self.issue(...), então
+        // "self" precisa ser o próprio service para o teste exercitar o mesmo caminho da produção.
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "self", service);
         when(repository.save(any(RefreshToken.class))).thenAnswer(i -> i.getArgument(0));
     }
 
@@ -89,7 +92,7 @@ class RefreshTokenServiceTest {
         assertEquals(Duration.ofDays(14).toSeconds(), service.getTtlSeconds());
         assertEquals(
                 Duration.ofDays(30).toSeconds(),
-                new RefreshTokenService(repository, 30).getTtlSeconds());
+                new RefreshTokenService(repository, 30, null).getTtlSeconds());
     }
 
     @Test

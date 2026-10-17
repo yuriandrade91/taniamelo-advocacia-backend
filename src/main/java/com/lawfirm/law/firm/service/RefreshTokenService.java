@@ -12,6 +12,7 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,11 +31,20 @@ public class RefreshTokenService {
     private final RefreshTokenRepository repository;
     private final Duration ttl;
 
+    /**
+     * Proxy do próprio bean, para {@link #rotate} chamar {@link #issue} através dele - não via
+     * {@code this}, que pularia o proxy do Spring e a advice de {@code @Transactional}.
+     * {@code @Lazy} evita o ciclo na criação do bean.
+     */
+    private final RefreshTokenService self;
+
     public RefreshTokenService(
             RefreshTokenRepository repository,
-            @Value("${app.jwt.refresh-expiration-days:14}") long refreshExpirationDays) {
+            @Value("${app.jwt.refresh-expiration-days:14}") long refreshExpirationDays,
+            @Lazy RefreshTokenService self) {
         this.repository = repository;
         this.ttl = Duration.ofDays(refreshExpirationDays);
+        this.self = self;
     }
 
     /** Resultado de uma emissão/rotação: token em claro (só aqui) + validade. */
@@ -74,7 +84,7 @@ public class RefreshTokenService {
         current.setRevokedAt(Instant.now());
         repository.save(current);
 
-        Issued next = issue(current.getUserId(), userAgent);
+        Issued next = self.issue(current.getUserId(), userAgent);
         return new Rotation(current.getUserId(), next.rawToken(), next.expiresAt());
     }
 

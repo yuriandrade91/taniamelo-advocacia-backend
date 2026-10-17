@@ -14,6 +14,7 @@ import com.lawfirm.law.firm.security.CurrentUser;
 import com.lawfirm.law.firm.util.PageRequests;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,10 +29,21 @@ public class ClientAddressService {
     private final ClientAddressRepository repository;
     private final ClientRepository clientRepository;
 
+    /**
+     * Proxy do próprio bean, injetado para que {@link #createAll} chame {@link #create} através
+     * dele - não via {@code this}, que pularia o proxy do Spring e a advice de
+     * {@code @Transactional}. {@code @Lazy} evita o ciclo na criação do bean (ele só resolve a
+     * referência no primeiro uso, depois que o próprio bean já existe).
+     */
+    private final ClientAddressService self;
+
     public ClientAddressService(
-            ClientAddressRepository repository, ClientRepository clientRepository) {
+            ClientAddressRepository repository,
+            ClientRepository clientRepository,
+            @Lazy ClientAddressService self) {
         this.repository = repository;
         this.clientRepository = clientRepository;
+        this.self = self;
     }
 
     @Transactional
@@ -70,7 +82,7 @@ public class ClientAddressService {
     public List<ClientAddressResponseDTO> createAll(
             UUID clientId, List<ClientAddressRequestDTO> addresses) {
         findClientOrThrow(clientId);
-        return addresses.stream().map(dto -> create(clientId, dto)).toList();
+        return addresses.stream().map(dto -> self.create(clientId, dto)).toList();
     }
 
     public org.springframework.data.domain.Page<ClientAddressResponseDTO> list(

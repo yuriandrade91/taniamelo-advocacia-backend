@@ -54,7 +54,10 @@ class ClientAddressServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ClientAddressService(repository, clientRepository);
+        service = new ClientAddressService(repository, clientRepository, null);
+        // Sem Spring aqui para resolver o proxy @Lazy: createAll() chama self.create(...), então
+        // "self" precisa ser o próprio service para o teste exercitar o mesmo caminho da produção.
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "self", service);
         when(clientRepository.findById(TestFixtures.CLIENT_ID))
                 .thenReturn(Optional.of(TestFixtures.client()));
         when(repository.save(any(ClientAddress.class))).thenAnswer(i -> i.getArgument(0));
