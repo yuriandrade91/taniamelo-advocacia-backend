@@ -1,0 +1,83 @@
+# SonarQube self-hospedado (opt-in) — alternativa ao SonarCloud, sem conta
+# externa e sem limite de linhas de código no plano grátis. Cobre tanto o
+# backend (via Maven, veja docs/QUALIDADE_SONAR_HOOKS.md) quanto o frontend
+# (taniamelo-advocacia-frontend/sonar-project.properties) — é um servidor só,
+# com um "projeto" Sonar para cada repositório.
+#
+# Sobe com:
+#   docker compose -f docker-compose.sonar.yml up -d
+#
+# NÃO entra na EC2 de dev: a instância tem ~774 MB de RAM livre hoje, bem
+# menos que o mínimo recomendado do SonarQube (~2 GiB só para ele, por causa
+# do Elasticsearch embutido). Fica reservado para rodar localmente, ou para
+# quando desenharmos a instância de produção com recurso dedicado.
+#
+# Recursos: no Docker Desktop, confira em Settings → Resources que a VM tem
+# pelo menos 4 GiB de memória alocados - com menos que isso o SonarQube pode
+# não subir (Elasticsearch recusa iniciar).
+
+services:
+  sonar-db:
+    image: postgres:16-alpine
+    container_name: sonar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sonar
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD:?defina SONAR_DB_PASSWORD no .env}
+    volumes:
+      - sonar-db-data:/var/lib/postgresql/data
+    # Banco PRÓPRIO do SonarQube - não é o mesmo Postgres do app (serviço
+    # "db"/"database-postgress"). Versão fixada em 16, não 17.5 como o app:
+    # o SonarQube costuma demorar a homologar a versão mais nova do Postgres
+    # na sua matriz de compatibilidade, e aqui não existe o mesmo motivo do
+    # app (PostgresContainerConfig) para acompanhar produção.
+    ports:
+      - "127.0.0.1:5433:5432"
+
+  sonarqube:
+    # Versão PINADA, como o resto do projeto faz (postgres:17.5,
+    # grafana:11.4.0, prometheus:v3.1.0). Deliberadamente NÃO se usa
+    # "lts-community": essa tag continua apontando para a linha 9.9 (2023),
+    # que saiu de suporte e - o que importa mais aqui - não analisa bytecode
+    # de Java 25, que é o que este backend compila. Uma release atrás da mais
+    # nova, de propósito: tempo de pegar regressão de release recém-saída.
+    image: sonarqube:26.9.0.129388-community
+    container_name: sonarqube
+    restart: unless-stopped
+    depends_on:
+      - sonar-db
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:?defina SONAR_DB_PASSWORD no .env}
+      # Tetos de heap para caber ao lado do app + observabilidade na VM do
+      # Docker Desktop (3,8 GiB aqui). Sem isto, os três processos do
+      # SonarQube (web, compute engine e o Elasticsearch interno) dimensionam
+      # o heap pela RAM da máquina e estouram a VM. Para ~16k linhas, sobra.
+      SONAR_WEB_JAVAOPTS: -Xmx512m -Xms512m
+      SONAR_CE_JAVAOPTS: -Xmx512m -Xms512m
+      # Elasticsearch embutido (9.x) exige Xms == Xmx (bootstrap check); sem o
+      # -Xms aqui ele herda um heap inicial menor e recusa subir.
+      SONAR_SEARCH_JAVAOPTS: -Xmx512m -Xms512m
+    # Exigido pelo Elasticsearch embutido no SonarQube (ver docs oficiais).
+    ulimits:
+      nofile:
+        soft: 131072
+        hard: 131072
+      nproc: 8192
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-extensions:/opt/sonarqube/extensions
+      - sonarqube-logs:/opt/sonarqube/logs
+    ports:
+      - "9000:9000"
+
+volumes:
+  sonar-db-data:
+  sonarqube-data:
+  sonarqube-extensions:
+  sonarqube-logs:
