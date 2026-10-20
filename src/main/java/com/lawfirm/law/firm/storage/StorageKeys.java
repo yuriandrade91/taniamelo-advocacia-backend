@@ -21,7 +21,17 @@ final class StorageKeys {
 
     private static String normalizeDirectory(String directory) {
         if (directory == null || directory.isBlank()) return "misc";
-        return directory.replace('\\', '/').replaceAll("^/+", "").replaceAll("/+$", "");
+        return trimSlashes(directory.replace('\\', '/'));
+    }
+
+    // Sem regex: "/+$" volta atrás a partir de cada barra e fica quadrático numa sequência longa
+    // de barras que não termina a string.
+    private static String trimSlashes(String path) {
+        int start = 0;
+        int end = path.length();
+        while (start < end && path.charAt(start) == '/') start++;
+        while (end > start && path.charAt(end - 1) == '/') end--;
+        return path.substring(start, end);
     }
 
     private static String extractExtension(String originalFilename) {
