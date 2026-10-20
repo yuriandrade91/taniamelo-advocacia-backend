@@ -86,6 +86,8 @@ services:
     ports:
       # Exposto para você acessar a UI. Abra a porta 3000 no Security Group SÓ
       # para o seu IP - ou, mais seguro, deixe em 127.0.0.1 e use túnel SSH.
+      # HTTPS (Caddy/Let's Encrypt) fica para quando planejarmos a instância
+      # de produção - ver docs/OBSERVABILIDADE.md.
       - "3000:3000"
     depends_on:
       - prometheus

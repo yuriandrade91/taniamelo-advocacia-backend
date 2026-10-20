@@ -64,6 +64,10 @@ ssh -L 3000:localhost:3000 -L 9090:localhost:9090 ec2-user@<host>
 Datasources (Prometheus, Loki, Tempo) e o dashboard **“Law Firm — Endpoints
 (RED)”** já sobem provisionados; não precisa configurar nada na UI.
 
+> **HTTPS (Caddy/Let's Encrypt), hostname público fixo e Elastic IP** ficam
+> para quando planejarmos a instância de produção — não são necessários
+> enquanto o acesso é por IP+porta restrito no Security Group.
+
 ## Segurança
 
 - **Grafana**: senha do admin obrigatória via `GRAFANA_ADMIN_PASSWORD` (o `up`
