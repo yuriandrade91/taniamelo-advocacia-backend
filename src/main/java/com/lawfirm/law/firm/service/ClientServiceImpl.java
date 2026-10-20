@@ -494,9 +494,6 @@ public class ClientServiceImpl implements ClientService {
     }
 
     private void normalizarDocumentosIdentidade(Client entity) {
-        if (entity == null) {
-            return;
-        }
         entity.setCpf(DocumentoIdentidade.apenasDigitos(entity.getCpf()));
         entity.setRg(DocumentoIdentidade.alfanumericoMaiusculo(entity.getRg()));
         entity.setCtps(DocumentoIdentidade.apenasDigitos(entity.getCtps()));
