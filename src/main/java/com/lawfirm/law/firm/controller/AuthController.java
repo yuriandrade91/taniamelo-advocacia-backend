@@ -5,14 +5,12 @@ import com.lawfirm.law.firm.dto.LoginRequestDTO;
 import com.lawfirm.law.firm.dto.LoginResponseDTO;
 import com.lawfirm.law.firm.model.Tenant;
 import com.lawfirm.law.firm.model.User;
-import com.lawfirm.law.firm.repository.TenantRepository;
 import com.lawfirm.law.firm.repository.UserRepository;
-import com.lawfirm.law.firm.security.AccountLockService;
 import com.lawfirm.law.firm.security.JwtService;
-import com.lawfirm.law.firm.security.LoginThrottleService;
+import com.lawfirm.law.firm.security.LoginGuard;
+import com.lawfirm.law.firm.security.RefreshTokenCookie;
 import com.lawfirm.law.firm.service.RefreshTokenService;
-import com.lawfirm.law.firm.tenant.TenancyProperties;
-import com.lawfirm.law.firm.tenant.TenantContext;
+import com.lawfirm.law.firm.tenant.CurrentTenant;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -21,12 +19,9 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -47,42 +42,26 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserRepository userRepository;
-    private final TenantRepository tenantRepository;
     private final RefreshTokenService refreshTokenService;
-    private final TenancyProperties tenancyProperties;
-    private final LoginThrottleService loginThrottle;
-    private final AccountLockService accountLock;
-
-    private final String cookieName;
-    private final String cookiePath;
-    private final boolean cookieSecure;
-    private final String cookieSameSite;
+    private final RefreshTokenCookie refreshCookie;
+    private final CurrentTenant currentTenant;
+    private final LoginGuard loginGuard;
 
     public AuthController(
             AuthenticationManager authenticationManager,
             JwtService jwtService,
             UserRepository userRepository,
-            TenantRepository tenantRepository,
             RefreshTokenService refreshTokenService,
-            TenancyProperties tenancyProperties,
-            LoginThrottleService loginThrottle,
-            AccountLockService accountLock,
-            @Value("${app.auth.refresh-cookie.name:refreshToken}") String cookieName,
-            @Value("${app.auth.refresh-cookie.path:/api/v1/auth}") String cookiePath,
-            @Value("${app.auth.refresh-cookie.secure:false}") boolean cookieSecure,
-            @Value("${app.auth.refresh-cookie.same-site:Lax}") String cookieSameSite) {
+            RefreshTokenCookie refreshCookie,
+            CurrentTenant currentTenant,
+            LoginGuard loginGuard) {
         this.authenticationManager = authenticationManager;
-        this.loginThrottle = loginThrottle;
-        this.accountLock = accountLock;
         this.jwtService = jwtService;
         this.userRepository = userRepository;
-        this.tenantRepository = tenantRepository;
         this.refreshTokenService = refreshTokenService;
-        this.tenancyProperties = tenancyProperties;
-        this.cookieName = cookieName;
-        this.cookiePath = cookiePath;
-        this.cookieSecure = cookieSecure;
-        this.cookieSameSite = cookieSameSite;
+        this.refreshCookie = refreshCookie;
+        this.currentTenant = currentTenant;
+        this.loginGuard = loginGuard;
     }
 
     @Operation(
@@ -161,20 +140,17 @@ public class AuthController {
         String ip = clientIp(httpRequest);
         // As duas checagens antes de verificar a senha: quem já estourou o limite não deve
         // gastar CPU de hashing, que é exatamente o que um ataque quer forçar.
-        loginThrottle.ensureAllowed(ip, request.getLogin());
-        accountLock.ensureNotLocked(request.getLogin());
+        loginGuard.ensureAllowed(ip, request.getLogin());
 
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getLogin(), request.getPassword()));
         } catch (AuthenticationException ex) {
-            loginThrottle.registerFailure(ip, request.getLogin());
-            accountLock.registerFailure(request.getLogin());
+            loginGuard.registerFailure(ip, request.getLogin());
             throw ex;
         }
-        loginThrottle.registerSuccess(request.getLogin());
-        accountLock.registerSuccess(request.getLogin());
+        loginGuard.registerSuccess(request.getLogin());
 
         User user =
                 userRepository
@@ -185,7 +161,7 @@ public class AuthController {
                                         new IllegalStateException(
                                                 "Usuário autenticado não encontrado"));
 
-        Tenant tenant = currentTenant();
+        Tenant tenant = currentTenant.get();
         String access =
                 jwtService.generateToken(
                         user.getId(),
@@ -196,7 +172,11 @@ public class AuthController {
                 refreshTokenService.issue(user.getId(), httpRequest.getHeader("User-Agent"));
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshCookie(refresh.rawToken()).toString())
+                .header(
+                        HttpHeaders.SET_COOKIE,
+                        refreshCookie
+                                .issue(refresh.rawToken(), refreshTokenService.getTtlSeconds())
+                                .toString())
                 .body(ApiResponse.successObject(buildBody(access, user, tenant)));
     }
 
@@ -217,14 +197,14 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponseDTO>> refresh(HttpServletRequest httpRequest) {
         RefreshTokenService.Rotation rotation =
                 refreshTokenService.rotate(
-                        readCookie(httpRequest), httpRequest.getHeader("User-Agent"));
+                        refreshCookie.read(httpRequest), httpRequest.getHeader("User-Agent"));
 
         User user =
                 userRepository
                         .findById(rotation.userId())
                         .orElseThrow(() -> new BadCredentialsException("Usuário não encontrado"));
 
-        Tenant tenant = currentTenant();
+        Tenant tenant = currentTenant.get();
         String access =
                 jwtService.generateToken(
                         user.getId(),
@@ -233,7 +213,11 @@ public class AuthController {
                         tenant.getId().toString());
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshCookie(rotation.rawToken()).toString())
+                .header(
+                        HttpHeaders.SET_COOKIE,
+                        refreshCookie
+                                .issue(rotation.rawToken(), refreshTokenService.getTtlSeconds())
+                                .toString())
                 .body(ApiResponse.successObject(buildBody(access, user, tenant)));
     }
 
@@ -249,9 +233,9 @@ public class AuthController {
     @SecurityRequirement(name = "tenantHeader")
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout(HttpServletRequest httpRequest) {
-        refreshTokenService.revoke(readCookie(httpRequest));
+        refreshTokenService.revoke(refreshCookie.read(httpRequest));
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, clearedCookie().toString())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.cleared().toString())
                 .body(ApiResponse.successObject("Logout efetuado."));
     }
 
@@ -268,49 +252,6 @@ public class AuthController {
         body.setTenantId(tenant.getId().toString());
         body.setTenantSlug(tenant.getSlug());
         return body;
-    }
-
-    /**
-     * Registro do tenant corrente (resolvido pelo TenantResolutionFilter), com id/slug públicos.
-     */
-    private Tenant currentTenant() {
-        String current = TenantContext.get();
-        final String schema = current != null ? current : tenancyProperties.getDefaultSchema();
-        return tenantRepository
-                .findBySchemaName(schema)
-                .orElseThrow(() -> new IllegalStateException("Tenant não encontrado: " + schema));
-    }
-
-    private ResponseCookie refreshCookie(String value) {
-        return ResponseCookie.from(cookieName, value)
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .path(cookiePath)
-                .maxAge(refreshTokenService.getTtlSeconds())
-                .build();
-    }
-
-    private ResponseCookie clearedCookie() {
-        return ResponseCookie.from(cookieName, "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .path(cookiePath)
-                .maxAge(0)
-                .build();
-    }
-
-    private String readCookie(HttpServletRequest request) {
-        if (request.getCookies() == null) {
-            return null;
-        }
-        for (Cookie cookie : request.getCookies()) {
-            if (cookieName.equals(cookie.getName())) {
-                return cookie.getValue();
-            }
-        }
-        return null;
     }
 
     /**

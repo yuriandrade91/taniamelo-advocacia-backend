@@ -16,9 +16,12 @@ import com.lawfirm.law.firm.repository.TenantRepository;
 import com.lawfirm.law.firm.repository.UserRepository;
 import com.lawfirm.law.firm.security.AccountLockService;
 import com.lawfirm.law.firm.security.JwtService;
+import com.lawfirm.law.firm.security.LoginGuard;
 import com.lawfirm.law.firm.security.LoginThrottleService;
+import com.lawfirm.law.firm.security.RefreshTokenCookie;
 import com.lawfirm.law.firm.service.RefreshTokenService;
 import com.lawfirm.law.firm.support.TestFixtures;
+import com.lawfirm.law.firm.tenant.CurrentTenant;
 import com.lawfirm.law.firm.tenant.TenancyProperties;
 import com.lawfirm.law.firm.tenant.TenantContext;
 import jakarta.servlet.http.Cookie;
@@ -64,26 +67,25 @@ class AuthControllerTest {
     private MockMvc mockMvc;
     private TenancyProperties tenancyProperties;
 
+    private AuthController controllerCom(
+            String cookieName, String cookiePath, boolean secure, String sameSite) {
+        return new AuthController(
+                authenticationManager,
+                jwtService,
+                userRepository,
+                refreshTokenService,
+                new RefreshTokenCookie(cookieName, cookiePath, secure, sameSite),
+                new CurrentTenant(tenantRepository, tenancyProperties),
+                new LoginGuard(loginThrottle, accountLock));
+    }
+
     @BeforeEach
     void setUp() {
         tenancyProperties = new TenancyProperties();
         tenancyProperties.setDefaultSchema("tenant_tania");
         tenancyProperties.setSchemas(List.of("tenant_tania", "tenant_demo"));
 
-        AuthController controller =
-                new AuthController(
-                        authenticationManager,
-                        jwtService,
-                        userRepository,
-                        tenantRepository,
-                        refreshTokenService,
-                        tenancyProperties,
-                        loginThrottle,
-                        accountLock,
-                        "refreshToken",
-                        "/api/v1/auth",
-                        false,
-                        "Lax");
+        AuthController controller = controllerCom("refreshToken", "/api/v1/auth", false, "Lax");
 
         mockMvc =
                 MockMvcBuilders.standaloneSetup(controller)
@@ -455,20 +457,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("cookie seguro/SameSite=None é aplicado quando configurado (produção)")
     void secureCookieConfiguration() throws Exception {
-        AuthController secureController =
-                new AuthController(
-                        authenticationManager,
-                        jwtService,
-                        userRepository,
-                        tenantRepository,
-                        refreshTokenService,
-                        tenancyProperties,
-                        loginThrottle,
-                        accountLock,
-                        "rt",
-                        "/api/v1/auth",
-                        true,
-                        "None");
+        AuthController secureController = controllerCom("rt", "/api/v1/auth", true, "None");
         when(refreshTokenService.issue(any(), any()))
                 .thenReturn(new RefreshTokenService.Issued("t", Instant.now()));
 
@@ -491,20 +480,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("o nome do cookie é configurável e o lookup respeita isso")
     void cookieNameIsConfigurable() throws Exception {
-        AuthController custom =
-                new AuthController(
-                        authenticationManager,
-                        jwtService,
-                        userRepository,
-                        tenantRepository,
-                        refreshTokenService,
-                        tenancyProperties,
-                        loginThrottle,
-                        accountLock,
-                        "meu_refresh",
-                        "/api/v1/auth",
-                        false,
-                        "Lax");
+        AuthController custom = controllerCom("meu_refresh", "/api/v1/auth", false, "Lax");
         MockMvc customMvc = MockMvcBuilders.standaloneSetup(custom).build();
 
         customMvc.perform(
