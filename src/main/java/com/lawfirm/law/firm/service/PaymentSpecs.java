@@ -2,8 +2,6 @@ package com.lawfirm.law.firm.service;
 
 import com.lawfirm.law.firm.dto.PaymentSearchParams;
 import com.lawfirm.law.firm.model.ClientPayment;
-import com.lawfirm.law.firm.model.PaymentMethod;
-import com.lawfirm.law.firm.model.PaymentStatus;
 import com.lawfirm.law.firm.repository.FinanceSpecifications;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
@@ -38,22 +36,9 @@ public final class PaymentSpecs {
      * assim não consegue montar a consulta ambígua.
      */
     public static Specification<ClientPayment> of(PaymentSearchParams params) {
-        PeriodBasis.requireSingleRange(
-                params.getDueFrom(), params.getDueTo(), params.getPaidFrom(), params.getPaidTo());
-
         return Specification.allOf(
                 activeOnly(),
-                FinanceSpecifications.<ClientPayment>dueBetween(
-                        params.getDueFrom(), params.getDueTo()),
-                FinanceSpecifications.<ClientPayment>paidBetween(
-                        params.getPaidFrom(), params.getPaidTo()),
-                FinanceSpecifications.<ClientPayment>statusIn(
-                        RequestEnums.list("status", params.getStatus(), PaymentStatus::fromLabel)),
-                FinanceSpecifications.<ClientPayment>methodIn(
-                        RequestEnums.list(
-                                "paymentMethod",
-                                params.getPaymentMethod(),
-                                PaymentMethod::fromLabel)),
+                FinanceFilters.<ClientPayment>common(params),
                 forClient(params.getClientId()),
                 FinanceSpecifications.<ClientPayment>textoEm(
                         params.getSearchTerm(), "description", "client.fullName"),

@@ -61,23 +61,9 @@ public class OfficeRevenueService {
 
     @Transactional(readOnly = true)
     public Page<OfficeRevenueListItemDTO> list(OfficeRevenueSearchParams params) {
-        PeriodBasis.requireSingleRange(
-                params.getDueFrom(), params.getDueTo(), params.getPaidFrom(), params.getPaidTo());
-
         Specification<OfficeRevenue> spec =
                 Specification.allOf(
-                        FinanceSpecifications.<OfficeRevenue>dueBetween(
-                                params.getDueFrom(), params.getDueTo()),
-                        FinanceSpecifications.<OfficeRevenue>paidBetween(
-                                params.getPaidFrom(), params.getPaidTo()),
-                        FinanceSpecifications.<OfficeRevenue>statusIn(
-                                RequestEnums.list(
-                                        "status", params.getStatus(), PaymentStatus::fromLabel)),
-                        FinanceSpecifications.<OfficeRevenue>methodIn(
-                                RequestEnums.list(
-                                        "paymentMethod",
-                                        params.getPaymentMethod(),
-                                        PaymentMethod::fromLabel)),
+                        FinanceFilters.<OfficeRevenue>common(params),
                         doCliente(params.getClientId()),
                         FinanceSpecifications.<OfficeRevenue>textoEm(
                                 params.getSearchTerm(), "description", "client.fullName"),
@@ -112,25 +98,8 @@ public class OfficeRevenueService {
 
     @Transactional(readOnly = true)
     public FinanceSummaryDTO summary(OfficeRevenueSearchParams params) {
-        PeriodBasis.requireSingleRange(
-                params.getDueFrom(), params.getDueTo(), params.getPaidFrom(), params.getPaidTo());
-
         Map<String, Object> valores = new HashMap<>();
-        StringBuilder where = new StringBuilder("1 = 1");
-        String campo =
-                PeriodBasis.isCashBasis(params.getPaidFrom(), params.getPaidTo())
-                        ? "x.paidDate"
-                        : "x.dueDate";
-        LocalDate de = params.getPaidFrom() != null ? params.getPaidFrom() : params.getDueFrom();
-        LocalDate ate = params.getPaidTo() != null ? params.getPaidTo() : params.getDueTo();
-        if (de != null) {
-            where.append(" AND ").append(campo).append(" >= :de");
-            valores.put("de", de);
-        }
-        if (ate != null) {
-            where.append(" AND ").append(campo).append(" <= :ate");
-            valores.put("ate", ate);
-        }
+        StringBuilder where = FinanceFilters.period("1 = 1", params, valores);
         if (params.getClientId() != null) {
             where.append(" AND x.client.id = :clienteId");
             valores.put("clienteId", params.getClientId());

@@ -62,23 +62,9 @@ public class OfficeExpenseService {
 
     @Transactional(readOnly = true)
     public Page<OfficeExpenseListItemDTO> list(OfficeExpenseSearchParams params) {
-        PeriodBasis.requireSingleRange(
-                params.getDueFrom(), params.getDueTo(), params.getPaidFrom(), params.getPaidTo());
-
         Specification<OfficeExpense> spec =
                 Specification.allOf(
-                        FinanceSpecifications.<OfficeExpense>dueBetween(
-                                params.getDueFrom(), params.getDueTo()),
-                        FinanceSpecifications.<OfficeExpense>paidBetween(
-                                params.getPaidFrom(), params.getPaidTo()),
-                        FinanceSpecifications.<OfficeExpense>statusIn(
-                                RequestEnums.list(
-                                        "status", params.getStatus(), PaymentStatus::fromLabel)),
-                        FinanceSpecifications.<OfficeExpense>methodIn(
-                                RequestEnums.list(
-                                        "paymentMethod",
-                                        params.getPaymentMethod(),
-                                        PaymentMethod::fromLabel)),
+                        FinanceFilters.<OfficeExpense>common(params),
                         categoriaEm(params.getCategory()),
                         FinanceSpecifications.<OfficeExpense>textoEm(
                                 params.getSearchTerm(), "description", "supplier"),
@@ -119,11 +105,8 @@ public class OfficeExpenseService {
 
     @Transactional(readOnly = true)
     public FinanceSummaryDTO summary(OfficeExpenseSearchParams params) {
-        PeriodBasis.requireSingleRange(
-                params.getDueFrom(), params.getDueTo(), params.getPaidFrom(), params.getPaidTo());
-
         Map<String, Object> valores = new HashMap<>();
-        String where = recorte(params, valores);
+        String where = FinanceFilters.period("1 = 1", params, valores).toString();
 
         FinanceSummaryDTO resumo = queries.summary(ENTIDADE, where, valores);
 
@@ -154,26 +137,6 @@ public class OfficeExpenseService {
                 categorias == null || categorias.isEmpty()
                         ? null
                         : root.get(FIELD_CATEGORY).in(categorias);
-    }
-
-    /** Monta o predicado de período para o resumo, no recorte que veio na requisição. */
-    private static String recorte(OfficeExpenseSearchParams params, Map<String, Object> valores) {
-        StringBuilder where = new StringBuilder("1 = 1");
-        String campo =
-                PeriodBasis.isCashBasis(params.getPaidFrom(), params.getPaidTo())
-                        ? "x.paidDate"
-                        : "x.dueDate";
-        LocalDate de = params.getPaidFrom() != null ? params.getPaidFrom() : params.getDueFrom();
-        LocalDate ate = params.getPaidTo() != null ? params.getPaidTo() : params.getDueTo();
-        if (de != null) {
-            where.append(" AND ").append(campo).append(" >= :de");
-            valores.put("de", de);
-        }
-        if (ate != null) {
-            where.append(" AND ").append(campo).append(" <= :ate");
-            valores.put("ate", ate);
-        }
-        return where.toString();
     }
 
     private OfficeExpense buscarOuFalhar(UUID id) {

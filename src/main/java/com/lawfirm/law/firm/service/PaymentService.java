@@ -57,25 +57,8 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public FinanceSummaryDTO summary(PaymentSearchParams params) {
-        PeriodBasis.requireSingleRange(
-                params.getDueFrom(), params.getDueTo(), params.getPaidFrom(), params.getPaidTo());
-
         Map<String, Object> valores = new HashMap<>();
-        StringBuilder where = new StringBuilder(SOMENTE_ATIVOS);
-        String campo =
-                PeriodBasis.isCashBasis(params.getPaidFrom(), params.getPaidTo())
-                        ? "x.paidDate"
-                        : "x.dueDate";
-        LocalDate de = params.getPaidFrom() != null ? params.getPaidFrom() : params.getDueFrom();
-        LocalDate ate = params.getPaidTo() != null ? params.getPaidTo() : params.getDueTo();
-        if (de != null) {
-            where.append(" AND ").append(campo).append(" >= :de");
-            valores.put("de", de);
-        }
-        if (ate != null) {
-            where.append(" AND ").append(campo).append(" <= :ate");
-            valores.put("ate", ate);
-        }
+        StringBuilder where = FinanceFilters.period(SOMENTE_ATIVOS, params, valores);
         if (params.getClientId() != null) {
             where.append(" AND x.client.id = :clienteId");
             valores.put("clienteId", params.getClientId());

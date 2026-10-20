@@ -108,7 +108,7 @@ class EntityContractTest {
     void lifecycleCallbacksStampTimestamps(Class<?> entityType) throws Exception {
         Object instance = entityType.getDeclaredConstructor().newInstance();
 
-        for (Method method : entityType.getDeclaredMethods()) {
+        for (Method method : declaredMethodsUpToObject(entityType)) {
             boolean isCallback =
                     method.isAnnotationPresent(jakarta.persistence.PrePersist.class)
                             || method.isAnnotationPresent(jakarta.persistence.PreUpdate.class);
@@ -141,8 +141,20 @@ class EntityContractTest {
         }
     }
 
+    /**
+     * Métodos declarados na classe e nas superclasses: os callbacks podem morar numa
+     * {@code @MappedSuperclass} (ex.: {@link FinanceEntry}).
+     */
+    private static java.util.List<Method> declaredMethodsUpToObject(Class<?> type) {
+        java.util.List<Method> methods = new java.util.ArrayList<>();
+        for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
+            methods.addAll(java.util.Arrays.asList(c.getDeclaredMethods()));
+        }
+        return methods;
+    }
+
     private static boolean hasCallback(Class<?> entityType) {
-        for (Method method : entityType.getDeclaredMethods()) {
+        for (Method method : declaredMethodsUpToObject(entityType)) {
             if (method.isAnnotationPresent(jakarta.persistence.PrePersist.class)) {
                 return true;
             }
@@ -170,7 +182,7 @@ class EntityContractTest {
             return;
         }
 
-        for (Method method : entityType.getDeclaredMethods()) {
+        for (Method method : declaredMethodsUpToObject(entityType)) {
             if (method.isAnnotationPresent(jakarta.persistence.PrePersist.class)) {
                 method.setAccessible(true);
                 method.invoke(instance);
