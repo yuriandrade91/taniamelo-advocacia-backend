@@ -3,6 +3,7 @@ package com.lawfirm.law.firm.service;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
 import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
+import com.lawfirm.law.firm.dto.ClientListFilter;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPersonalDataRequestDTO;
@@ -13,11 +14,6 @@ import com.lawfirm.law.firm.dto.ClientRequestStageHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
 import com.lawfirm.law.firm.dto.UpcomingBirthdayDTO;
-import com.lawfirm.law.firm.model.BenefitType;
-import com.lawfirm.law.firm.model.ClientType;
-import com.lawfirm.law.firm.model.RequestStage;
-import com.lawfirm.law.firm.model.Situation;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,17 +23,7 @@ public interface ClientService {
 
     ClientDetailsDTO create(ClientCreateRequestDTO dto);
 
-    Page<ClientListResponseDTO> listSummary(
-            int pageNumber,
-            int pageSize,
-            String searchTerm,
-            List<BenefitType> benefitTypes,
-            List<Situation> situations,
-            List<RequestStage> requestStages,
-            List<ClientType> clientTypes,
-            Boolean notBillable,
-            Instant createdFrom,
-            Instant createdTo);
+    Page<ClientListResponseDTO> listSummary(int pageNumber, int pageSize, ClientListFilter filter);
 
     /** Clientes excluídos, mais recentes primeiro - a lixeira que torna o restore alcançável. */
     Page<ClientListResponseDTO> listDeleted(int pageNumber, int pageSize);

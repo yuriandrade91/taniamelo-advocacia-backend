@@ -7,6 +7,7 @@ import com.lawfirm.law.firm.audit.AuditLogRepository;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
 import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
+import com.lawfirm.law.firm.dto.ClientListFilter;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientMapper;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
@@ -108,26 +109,18 @@ public class ClientServiceImpl implements ClientService {
     @Override
     @Transactional(readOnly = true)
     public Page<ClientListResponseDTO> listSummary(
-            int pageNumber,
-            int pageSize,
-            String searchTerm,
-            List<BenefitType> benefitTypes,
-            List<Situation> situations,
-            List<RequestStage> requestStages,
-            List<ClientType> clientTypes,
-            Boolean notBillable,
-            Instant createdFrom,
-            Instant createdTo) {
+            int pageNumber, int pageSize, ClientListFilter filter) {
         Specification<Client> spec =
                 ClientSpecification.combine(
                         List.of(
-                                ClientSpecification.searchTerm(searchTerm),
-                                ClientSpecification.benefitIn(benefitTypes),
-                                ClientSpecification.situationIn(situations),
-                                ClientSpecification.requestStageIn(requestStages),
-                                ClientSpecification.clientTypeIn(clientTypes),
-                                ClientSpecification.notBillableIs(notBillable),
-                                ClientSpecification.createdBetween(createdFrom, createdTo)));
+                                ClientSpecification.searchTerm(filter.searchTerm()),
+                                ClientSpecification.benefitIn(filter.benefitTypes()),
+                                ClientSpecification.situationIn(filter.situations()),
+                                ClientSpecification.requestStageIn(filter.requestStages()),
+                                ClientSpecification.clientTypeIn(filter.clientTypes()),
+                                ClientSpecification.notBillableIs(filter.notBillable()),
+                                ClientSpecification.createdBetween(
+                                        filter.createdFrom(), filter.createdTo())));
 
         Pageable pageable =
                 PageRequests.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "updatedAt"));

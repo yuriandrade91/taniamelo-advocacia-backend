@@ -4,6 +4,7 @@ import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
 import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
+import com.lawfirm.law.firm.dto.ClientListFilter;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
 import com.lawfirm.law.firm.dto.ClientPatchResponseDTO;
@@ -175,14 +176,16 @@ public class ClientController {
                 clientService.listSummary(
                         pageNumber,
                         pageSize,
-                        searchTerm,
-                        parseEnumList("benefitType", benefitType, BenefitType::fromLabel),
-                        parseEnumList("situation", situation, Situation::fromLabel),
-                        parseEnumList("requestStage", requestStage, RequestStage::fromLabel),
-                        parseEnumList("clientType", clientType, ClientType::fromLabel),
-                        notBillable,
-                        RequestDates.parseInstant("createdFrom", createdFrom, true),
-                        RequestDates.parseInstant("createdTo", createdTo, false));
+                        new ClientListFilter(
+                                searchTerm,
+                                parseEnumList("benefitType", benefitType, BenefitType::fromLabel),
+                                parseEnumList("situation", situation, Situation::fromLabel),
+                                parseEnumList(
+                                        "requestStage", requestStage, RequestStage::fromLabel),
+                                parseEnumList("clientType", clientType, ClientType::fromLabel),
+                                notBillable,
+                                RequestDates.parseInstant("createdFrom", createdFrom, true),
+                                RequestDates.parseInstant("createdTo", createdTo, false)));
 
         return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
     }
@@ -514,7 +517,7 @@ public class ClientController {
      */
     private static <E extends Enum<E>> List<E> parseEnumList(
             String field, List<String> rawValues, Function<String, E> fromLabel) {
-        if (rawValues == null || rawValues.isEmpty()) return null;
+        if (rawValues == null || rawValues.isEmpty()) return List.of();
         List<E> result = new ArrayList<>();
         for (String raw : rawValues) {
             try {

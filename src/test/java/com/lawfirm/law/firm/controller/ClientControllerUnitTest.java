@@ -2,7 +2,6 @@ package com.lawfirm.law.firm.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,6 +19,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
 import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
+import com.lawfirm.law.firm.dto.ClientListFilter;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientSituationHistoryDTO;
 import com.lawfirm.law.firm.dto.ClientUpdateRequestDTO;
@@ -190,13 +190,6 @@ class ClientControllerUnitTest {
             when(clientService.listSummary(
                             org.mockito.ArgumentMatchers.anyInt(),
                             org.mockito.ArgumentMatchers.anyInt(),
-                            any(),
-                            any(),
-                            any(),
-                            any(),
-                            any(),
-                            any(),
-                            any(),
                             any()))
                     .thenReturn(
                             new PageImpl<>(
@@ -228,10 +221,7 @@ class ClientControllerUnitTest {
         void usesDefaultPaging() throws Exception {
             mockMvc.perform(get("/api/v1/clients")).andExpect(status().isOk());
 
-            verify(clientService)
-                    .listSummary(
-                            eq(1), eq(10), isNull(), isNull(), isNull(), isNull(), isNull(),
-                            isNull(), isNull(), isNull());
+            verify(clientService).listSummary(1, 10, ClientListFilter.none());
         }
 
         @Test
@@ -252,40 +242,29 @@ class ClientControllerUnitTest {
                                     .param("createdTo", "2026-12-31"))
                     .andExpect(status().isOk());
 
-            ArgumentCaptor<List<BenefitType>> benefits = ArgumentCaptor.forClass(List.class);
-            ArgumentCaptor<List<Situation>> situations = ArgumentCaptor.forClass(List.class);
-            ArgumentCaptor<List<ClientType>> clientTypes = ArgumentCaptor.forClass(List.class);
-            ArgumentCaptor<Instant> from = ArgumentCaptor.forClass(Instant.class);
-            ArgumentCaptor<Instant> to = ArgumentCaptor.forClass(Instant.class);
+            ArgumentCaptor<ClientListFilter> captured =
+                    ArgumentCaptor.forClass(ClientListFilter.class);
+            verify(clientService).listSummary(eq(2), eq(5), captured.capture());
+            ClientListFilter filter = captured.getValue();
 
-            verify(clientService)
-                    .listSummary(
-                            eq(2),
-                            eq(5),
-                            eq("maria"),
-                            benefits.capture(),
-                            situations.capture(),
-                            // requestStage não é o foco deste teste; basta não filtrar.
-                            isNull(),
-                            clientTypes.capture(),
-                            eq(true),
-                            from.capture(),
-                            to.capture());
-
+            org.junit.jupiter.api.Assertions.assertEquals("maria", filter.searchTerm());
             org.junit.jupiter.api.Assertions.assertEquals(
                     List.of(BenefitType.APOSENTADORIA_RURAL, BenefitType.APOSENTADORIA_ESPECIAL),
-                    benefits.getValue());
+                    filter.benefitTypes());
             org.junit.jupiter.api.Assertions.assertEquals(
-                    List.of(Situation.ANALISE_DOCUMENTAL), situations.getValue());
+                    List.of(Situation.ANALISE_DOCUMENTAL), filter.situations());
+            // requestStage não foi informado: não filtra.
+            org.junit.jupiter.api.Assertions.assertEquals(List.of(), filter.requestStages());
             // Label e nome da constante no mesmo filtro: os dois precisam resolver,
             // porque o front manda a chave e o Swagger documenta o label.
             org.junit.jupiter.api.Assertions.assertEquals(
-                    List.of(ClientType.VERIFICADO, ClientType.POTENCIAL), clientTypes.getValue());
+                    List.of(ClientType.VERIFICADO, ClientType.POTENCIAL), filter.clientTypes());
+            org.junit.jupiter.api.Assertions.assertEquals(Boolean.TRUE, filter.notBillable());
             // Fuso do escritório (UTC-3), não UTC: "1º de janeiro" é o dia 1º aqui.
             org.junit.jupiter.api.Assertions.assertEquals(
-                    Instant.parse("2026-01-01T03:00:00Z"), from.getValue());
+                    Instant.parse("2026-01-01T03:00:00Z"), filter.createdFrom());
             org.junit.jupiter.api.Assertions.assertEquals(
-                    Instant.parse("2027-01-01T02:59:59.999999999Z"), to.getValue());
+                    Instant.parse("2027-01-01T02:59:59.999999999Z"), filter.createdTo());
         }
 
         @Test
@@ -323,8 +302,9 @@ class ClientControllerUnitTest {
 
             verify(clientService)
                     .listSummary(
-                            eq(1), eq(10), isNull(), isNull(), isNull(), isNull(), isNull(),
-                            eq(false), isNull(), isNull());
+                            1,
+                            10,
+                            new ClientListFilter(null, null, null, null, null, false, null, null));
         }
 
         @Test

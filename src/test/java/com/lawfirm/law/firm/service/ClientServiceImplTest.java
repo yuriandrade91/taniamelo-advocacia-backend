@@ -21,6 +21,7 @@ import com.lawfirm.law.firm.audit.AuditLogRepository;
 import com.lawfirm.law.firm.dto.ClientCreateRequestDTO;
 import com.lawfirm.law.firm.dto.ClientDetailsDTO;
 import com.lawfirm.law.firm.dto.ClientInssPasswordDTO;
+import com.lawfirm.law.firm.dto.ClientListFilter;
 import com.lawfirm.law.firm.dto.ClientListResponseDTO;
 import com.lawfirm.law.firm.dto.ClientMapper;
 import com.lawfirm.law.firm.dto.ClientPatchRequestDTO;
@@ -345,8 +346,7 @@ class ClientServiceImplTest {
         @Test
         @DisplayName("página 1-based vira índice 0-based e ordena por atividade recente")
         void translatesOneBasedPageAndSortsByUpdatedAt() {
-            Page<ClientListResponseDTO> page =
-                    service.listSummary(1, 25, null, null, null, null, null, null, null, null);
+            Page<ClientListResponseDTO> page = service.listSummary(1, 25, ClientListFilter.none());
 
             assertEquals(1, page.getContent().size());
             Pageable pageable = capturePageable();
@@ -364,14 +364,14 @@ class ClientServiceImplTest {
         @Test
         @DisplayName("página 0 ou negativa é normalizada para a primeira")
         void nonPositivePageFallsBackToFirst() {
-            service.listSummary(0, 10, null, null, null, null, null, null, null, null);
+            service.listSummary(0, 10, ClientListFilter.none());
             assertEquals(0, capturePageable().getPageNumber());
         }
 
         @Test
         @DisplayName("tamanho de página inválido cai no default de 10")
         void invalidPageSizeFallsBackToTen() {
-            service.listSummary(1, 0, null, null, null, null, null, null, null, null);
+            service.listSummary(1, 0, ClientListFilter.none());
             assertEquals(10, capturePageable().getPageSize());
         }
 
@@ -382,14 +382,15 @@ class ClientServiceImplTest {
                     service.listSummary(
                             2,
                             5,
-                            "maria",
-                            List.of(BenefitType.APOSENTADORIA_RURAL),
-                            List.of(Situation.ANALISE_DOCUMENTAL),
-                            List.of(RequestStage.EXIGENCIA),
-                            List.of(ClientType.POTENCIAL),
-                            true,
-                            Instant.parse("2026-01-01T00:00:00Z"),
-                            Instant.parse("2026-12-31T00:00:00Z"));
+                            new ClientListFilter(
+                                    "maria",
+                                    List.of(BenefitType.APOSENTADORIA_RURAL),
+                                    List.of(Situation.ANALISE_DOCUMENTAL),
+                                    List.of(RequestStage.EXIGENCIA),
+                                    List.of(ClientType.POTENCIAL),
+                                    true,
+                                    Instant.parse("2026-01-01T00:00:00Z"),
+                                    Instant.parse("2026-12-31T00:00:00Z")));
 
             assertNotNull(page);
             assertEquals(1, capturePageable().getPageNumber());
