@@ -1,0 +1,19 @@
+# Variante de prometheus.yml para o app rodando no HOST (pela IDE), com a stack
+# subida pelo spring-boot-docker-compose. Selecionada por
+# PROMETHEUS_SCRAPE_CONFIG=prometheus.ide.yml no .env - ver docs/OBSERVABILIDADE.md.
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  - job_name: law-firm
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
+        labels:
+          application: law-firm
+          environment: local
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

@@ -21,6 +21,12 @@ services:
     image: postgres:16-alpine
     container_name: sonar-db
     restart: unless-stopped
+    # Subindo junto com o app (SPRING_DOCKER_COMPOSE_FILE no .env), o
+    # spring-boot-docker-compose ignora este serviço: sem isto ele trataria o
+    # Postgres do Sonar como um segundo banco do app (e o boot falharia por
+    # ambiguidade) e esperaria o SonarQube ficar pronto, ~1 min a cada start.
+    labels:
+      org.springframework.boot.ignore: "true"
     environment:
       POSTGRES_DB: sonar
       POSTGRES_USER: sonar
@@ -45,6 +51,8 @@ services:
     image: sonarqube:26.9.0.129388-community
     container_name: sonarqube
     restart: unless-stopped
+    labels:
+      org.springframework.boot.ignore: "true"
     depends_on:
       - sonar-db
     environment:

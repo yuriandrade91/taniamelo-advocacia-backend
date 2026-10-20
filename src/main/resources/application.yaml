@@ -98,11 +98,15 @@ management:
     # suba para 1.0 em dev, ou 0 para desligar. Ver application-dev.yaml.
     sampling:
       probability: ${MANAGEMENT_TRACING_SAMPLING:0.1}
-  otlp:
+  # Chave do Boot 4. A antiga (management.otlp.tracing.endpoint) foi removida e
+  # é ignorada em silêncio - com ela nenhum span saía do app.
+  opentelemetry:
     tracing:
-      # Exporta spans via OTLP para o Tempo (stack de observabilidade no compose).
-      # Sem a stack no ar, deixe MANAGEMENT_TRACING_SAMPLING=0 para não gerar ruído.
-      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://tempo:4318/v1/traces}
+      export:
+        otlp:
+          # Exporta spans via OTLP para o Tempo (stack de observabilidade no compose).
+          # Sem a stack no ar, deixe MANAGEMENT_TRACING_SAMPLING=0 para não gerar ruído.
+          endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://tempo:4318/v1/traces}
   endpoint:
     health:
       show-details: never

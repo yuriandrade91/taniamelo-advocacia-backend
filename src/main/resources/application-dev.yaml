@@ -32,6 +32,14 @@ management:
     # sem Tempo, deixe MANAGEMENT_TRACING_SAMPLING=0 para não gerar ruído no log).
     sampling:
       probability: ${MANAGEMENT_TRACING_SAMPLING:1.0}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          # Em dev o app normalmente roda no host (IDE), e "tempo" só resolve dentro
+          # da rede do compose - o Tempo publica 4318 em 127.0.0.1. No app em
+          # container, docker-compose.observability.yml sobrescreve por env var.
+          endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
 
 logging:
   level:

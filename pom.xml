@@ -113,7 +113,13 @@
 		       (Prometheus faz o scrape). Inclui http_server_requests (RED por endpoint).
 		     - micrometer-tracing-bridge-otel + opentelemetry-exporter-otlp: tracing
 		       distribuído, exportado via OTLP para o Tempo. O traceId/spanId também
-		       entram no MDC dos logs (correlação log<->trace no Grafana). -->
+		       entram no MDC dos logs (correlação log<->trace no Grafana).
+		     - spring-boot-micrometer-tracing-opentelemetry: a autoconfiguração que
+		       LIGA as duas acima. No Boot 4 ela saiu do actuator para módulo próprio;
+		       sem ela as bibliotecas ficam no classpath e nenhum span é exportado.
+		       Não usamos o spring-boot-starter-opentelemetry porque ele traz também
+		       o micrometer-registry-otlp, que empurraria métricas por OTLP - aqui
+		       métrica é PULL do Prometheus. -->
 		<dependency>
 			<groupId>io.micrometer</groupId>
 			<artifactId>micrometer-registry-prometheus</artifactId>
@@ -125,6 +131,10 @@
 		<dependency>
 			<groupId>io.opentelemetry</groupId>
 			<artifactId>opentelemetry-exporter-otlp</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-micrometer-tracing-opentelemetry</artifactId>
 		</dependency>
 
 		<!-- Spring Security + JWT authentication -->

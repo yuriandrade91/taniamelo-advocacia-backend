@@ -1,0 +1,27 @@
+# Variante de prometheus.yml que raspa o servidor de DEV (EC2) a partir da stack
+# local. Selecionada por PROMETHEUS_SCRAPE_CONFIG=prometheus.dev-server.yml no
+# .env - ver docs/OBSERVABILIDADE.md.
+#
+# Só métricas: elas são PULL, então o Prometheus local busca no
+# /actuator/prometheus público do servidor. Traces e logs são PUSH do app de dev
+# para o Tempo/Alloy de lá, e o servidor não alcança esta máquina - não chegam
+# aqui por este caminho.
+#
+# O IP é o público da instância, que MUDA a cada stop/start enquanto não houver
+# Elastic IP (ver docs/OBSERVABILIDADE.md). Se os painéis zerarem, confira aqui.
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  - job_name: law-firm
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["98.82.73.175:8080"]
+        labels:
+          application: law-firm
+          environment: dev
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
