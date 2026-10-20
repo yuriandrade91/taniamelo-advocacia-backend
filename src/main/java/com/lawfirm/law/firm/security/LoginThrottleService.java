@@ -75,18 +75,22 @@ public class LoginThrottleService {
         long esperaLogin = segundosAteLiberar(porLogin, chave(login));
         long espera = Math.max(esperaIp, esperaLogin);
         if (espera > 0) {
-            log.warn(
-                    "Login recusado por excesso de tentativas (ip={}, login={}), liberando em {}s",
-                    ip,
-                    semQuebraDeLinha(login),
-                    espera);
+            if (log.isWarnEnabled()) {
+                log.warn(
+                        "Login recusado por excesso de tentativas (ip={}, login={}),"
+                                + " liberando em {}s",
+                        semQuebraDeLinha(ip),
+                        semQuebraDeLinha(login),
+                        espera);
+            }
             throw new TooManyAttemptsException(espera);
         }
     }
 
     /**
-     * {@code login} vem direto do corpo da requisição - sem isto, um valor com \r\n forjaria linhas
-     * inteiras de log (CRLF/log injection), como se fossem outro evento.
+     * {@code login} vem do corpo da requisição e {@code ip} pode vir de X-Forwarded-For - sem isto,
+     * um valor com \r\n forjaria linhas inteiras de log (CRLF/log injection), como se fossem outro
+     * evento.
      */
     private static String semQuebraDeLinha(String texto) {
         return texto == null ? null : texto.replaceAll("[\r\n]", "_");
