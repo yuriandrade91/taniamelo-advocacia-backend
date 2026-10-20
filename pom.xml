@@ -45,7 +45,16 @@
 		     parent do Boot não gerencia. -->
 		<testcontainers.version>2.0.5</testcontainers.version>
 		<bucket4j.version>8.19.0</bucket4j.version>
-		<sonar.projectKey>taniamelo-advocacia-backend</sonar.projectKey>
+		<!-- Chave COMO O SONARCLOUD A CRIOU no import do GitHub: prefixo da
+		     organização + nome do repositório. Não é escolha estética - com a
+		     chave curta ("taniamelo-advocacia-backend") a análise do CI não
+		     encontra o projeto. Para rodar contra o SonarQube local, sobrescreva
+		     na linha de comando: -Dsonar.projectKey=taniamelo-advocacia-backend -->
+		<sonar.projectKey>yuriandrade91_taniamelo-advocacia-backend</sonar.projectKey>
+		<!-- Nome de exibição FIXADO aqui, não só renomeado na UI do Sonar: sem
+		     esta propriedade o plugin manda o <name> do Maven ("law-firm") a
+		     cada análise e desfaz o rename feito pela interface. -->
+		<sonar.projectName>Tania Melo Advocacia - Backend</sonar.projectName>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
 		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 		<!-- Quality Gate: o build/CI FALHA se o gate reprovar. É o que torna o

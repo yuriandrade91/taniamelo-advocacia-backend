@@ -77,9 +77,13 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
+          # FALHA, não avisa: enquanto isto era "warning + exit 0", o job passava
+          # verde sem analisar nada e o Quality Gate ficou desarmado por omissão -
+          # o secret nunca tinha sido configurado, e nada no pipeline denunciava.
+          # Agora, sem token, o CI reprova e o deploy não dispara.
           if [ -z "$SONAR_TOKEN" ]; then
-            echo "::warning::SONAR_TOKEN ausente - pulando análise Sonar. Configure o secret para ativar o Quality Gate."
-            exit 0
+            echo "::error::SONAR_TOKEN ausente - o Quality Gate não pode ser verificado."
+            exit 1
           fi
           mvn -B clean verify sonar:sonar \
             -Dsonar.token="$SONAR_TOKEN" \
