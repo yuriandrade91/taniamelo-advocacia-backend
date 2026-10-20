@@ -529,7 +529,6 @@ public class AppointmentService {
         return (value == null || value.isBlank()) ? null : value.trim();
     }
 
-    /** Valida que o cliente existe (quando informado) antes de ligar a FK. */
     /**
      * Cliente vinculado, ou {@code null} quando o compromisso usa nome livre. 404 se o id não
      * existe.

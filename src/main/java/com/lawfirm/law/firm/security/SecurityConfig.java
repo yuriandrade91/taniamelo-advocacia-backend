@@ -101,10 +101,8 @@ public class SecurityConfig {
                                         // Resolução pública de tenant por slug (pré-login).
                                         .requestMatchers(HttpMethod.GET, "/api/v1/tenants/resolve")
                                         .permitAll()
-                                        // Docs are public (just the API shape, no business data);
-                                        // the actual
-                                        // operations behind them still require a bearer token to
-                                        // execute.
+                                        // Documentação pública: só o formato da API, sem dado
+                                        // de negócio. As operações em si continuam exigindo token.
                                         .requestMatchers(
                                                 "/api/docs/**",
                                                 "/api/swagger-ui/**",

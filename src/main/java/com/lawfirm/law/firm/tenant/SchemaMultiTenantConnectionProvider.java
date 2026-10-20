@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 public class SchemaMultiTenantConnectionProvider implements MultiTenantConnectionProvider<String> {
 
     private final transient DataSource dataSource;
-    private final TenancyProperties properties;
+    private final transient TenancyProperties properties;
 
     public SchemaMultiTenantConnectionProvider(
             DataSource dataSource, TenancyProperties properties) {

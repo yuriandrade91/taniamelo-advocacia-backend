@@ -2,7 +2,6 @@ package com.lawfirm.law.firm.service;
 
 import com.lawfirm.law.firm.exception.ValidationErrorCode;
 import com.lawfirm.law.firm.exception.ValidationException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -21,11 +20,7 @@ public final class RequestEnums {
     public static <E extends Enum<E>> List<E> list(
             String campo, List<String> brutos, Function<String, E> deRotulo) {
         if (brutos == null || brutos.isEmpty()) return List.of();
-        List<E> resultado = new ArrayList<>();
-        for (String bruto : brutos) {
-            resultado.add(single(campo, bruto, deRotulo));
-        }
-        return resultado;
+        return brutos.stream().map(bruto -> single(campo, bruto, deRotulo)).toList();
     }
 
     public static <E extends Enum<E>> E single(

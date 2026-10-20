@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -13,7 +14,6 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.Mockito;
 import org.springframework.web.multipart.MultipartFile;
 
 @DisplayName("LocalDiskFileStorageService: falhas de infraestrutura viram FileStorageException")
@@ -27,12 +27,11 @@ class LocalDiskFileStorageEdgeCasesTest {
         Path blocker = tempDir.resolve("arquivo-no-lugar-da-pasta");
         Files.writeString(blocker, "sou um arquivo, não uma pasta");
 
+        String impossivel = blocker.resolve("dentro").toString();
         FileStorageException ex =
                 assertThrows(
                         FileStorageException.class,
-                        () ->
-                                new LocalDiskFileStorageService(
-                                        blocker.resolve("dentro").toString()));
+                        () -> new LocalDiskFileStorageService(impossivel));
         assertTrue(ex.getMessage().contains("diretório de storage"));
     }
 
@@ -41,7 +40,7 @@ class LocalDiskFileStorageEdgeCasesTest {
     void writeFailureBecomesFileStorageException() throws IOException {
         LocalDiskFileStorageService storage = new LocalDiskFileStorageService(tempDir.toString());
 
-        MultipartFile file = Mockito.mock(MultipartFile.class);
+        MultipartFile file = mock(MultipartFile.class);
         when(file.isEmpty()).thenReturn(false);
         when(file.getOriginalFilename()).thenReturn("cnis.pdf");
         when(file.getContentType()).thenReturn("application/pdf");

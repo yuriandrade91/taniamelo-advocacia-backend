@@ -58,7 +58,7 @@ public class AuditLogListener {
 
     @PostPersist
     public void onCreate(Object entity) {
-        record(entity, AuditAction.CREATE);
+        registrar(entity, AuditAction.CREATE);
     }
 
     /**
@@ -69,15 +69,15 @@ public class AuditLogListener {
     @PostUpdate
     public void onUpdate(Object entity) {
         AuditAction declarada = AuditIntent.current();
-        record(entity, declarada != null ? declarada : AuditAction.UPDATE);
+        registrar(entity, declarada != null ? declarada : AuditAction.UPDATE);
     }
 
     @PostRemove
     public void onRemove(Object entity) {
-        record(entity, AuditAction.DELETE);
+        registrar(entity, AuditAction.DELETE);
     }
 
-    private void record(Object entity, AuditAction action) {
+    private void registrar(Object entity, AuditAction action) {
         AuditLogRepository repo = repositoryRef.get();
         PlatformTransactionManager txManager = transactionManagerRef.get();
         if (repo == null || txManager == null || !(entity instanceof Auditable auditable)) {

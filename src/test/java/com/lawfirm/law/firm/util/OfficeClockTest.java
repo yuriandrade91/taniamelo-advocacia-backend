@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,7 +26,7 @@ class OfficeClockTest {
     @DisplayName("é America/Sao_Paulo, e isso é uma decisão, não um acidente")
     void zonaEhSaoPaulo() {
         assertEquals("America/Sao_Paulo", OfficeClock.ID);
-        assertEquals(ZoneId.of("America/Sao_Paulo"), OfficeClock.ZONE);
+        assertEquals("America/Sao_Paulo", OfficeClock.ZONE.getId());
     }
 
     @Test

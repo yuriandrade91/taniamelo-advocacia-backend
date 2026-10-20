@@ -3,7 +3,6 @@ package com.lawfirm.law.firm.security;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,8 +39,7 @@ class CustomUserDetailsServiceTest {
         assertEquals(user.getEmail(), details.getUsername());
         assertTrue(details instanceof UserPrincipal);
         assertEquals(user.getId(), ((UserPrincipal) details).getId());
-        verify(userRepository)
-                .findByEmailIgnoreCaseOrUsernameIgnoreCase(eq("dra.tania"), eq("dra.tania"));
+        verify(userRepository).findByEmailIgnoreCaseOrUsernameIgnoreCase("dra.tania", "dra.tania");
     }
 
     @Test

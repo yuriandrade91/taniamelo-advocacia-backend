@@ -3,6 +3,7 @@ package com.lawfirm.law.firm.storage;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -65,7 +66,7 @@ class LocalDiskFileStorageServiceTest {
         String first = storage.store(pdf("igual.pdf"), "docs").storageKey();
         String second = storage.store(pdf("igual.pdf"), "docs").storageKey();
 
-        assertFalse(first.equals(second));
+        assertNotEquals(first, second);
         assertTrue(Files.exists(tempDir.resolve(first)));
         assertTrue(Files.exists(tempDir.resolve(second)));
     }
@@ -151,13 +152,9 @@ class LocalDiskFileStorageServiceTest {
     @DisplayName("arquivo nulo ou vazio é recusado")
     void rejectsNullOrEmptyFile() {
         assertThrows(FileStorageException.class, () -> storage.store(null, "docs"));
-        assertThrows(
-                FileStorageException.class,
-                () ->
-                        storage.store(
-                                new MockMultipartFile(
-                                        "files", "vazio.pdf", "application/pdf", new byte[0]),
-                                "docs"));
+        MockMultipartFile vazio =
+                new MockMultipartFile("files", "vazio.pdf", "application/pdf", new byte[0]);
+        assertThrows(FileStorageException.class, () -> storage.store(vazio, "docs"));
     }
 
     @Test

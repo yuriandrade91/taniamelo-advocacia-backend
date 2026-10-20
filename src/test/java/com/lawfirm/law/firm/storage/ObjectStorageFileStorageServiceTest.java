@@ -2,10 +2,12 @@ package com.lawfirm.law.firm.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -74,10 +76,9 @@ class ObjectStorageFileStorageServiceTest {
     @Test
     @DisplayName("a chave gerada é única por upload")
     void generatesUniqueKeys() {
-        assertFalse(
-                storage.store(pdf("a.pdf"), "docs")
-                        .storageKey()
-                        .equals(storage.store(pdf("a.pdf"), "docs").storageKey()));
+        assertNotEquals(
+                storage.store(pdf("a.pdf"), "docs").storageKey(),
+                storage.store(pdf("a.pdf"), "docs").storageKey());
     }
 
     @Test
@@ -110,18 +111,15 @@ class ObjectStorageFileStorageServiceTest {
     @DisplayName("arquivo nulo ou vazio é recusado antes de chamar o storage")
     void rejectsNullOrEmptyFile() {
         assertThrows(FileStorageException.class, () -> storage.store(null, "docs"));
-        assertThrows(
-                FileStorageException.class,
-                () ->
-                        storage.store(
-                                new MockMultipartFile("f", "a.pdf", "application/pdf", new byte[0]),
-                                "docs"));
+        MockMultipartFile vazio =
+                new MockMultipartFile("f", "a.pdf", "application/pdf", new byte[0]);
+        assertThrows(FileStorageException.class, () -> storage.store(vazio, "docs"));
     }
 
     @Test
     @DisplayName("falha de I/O ao ler o multipart vira FileStorageException")
     void ioFailureBecomesFileStorageException() throws IOException {
-        MultipartFile broken = org.mockito.Mockito.mock(MultipartFile.class);
+        MultipartFile broken = mock(MultipartFile.class);
         when(broken.isEmpty()).thenReturn(false);
         when(broken.getOriginalFilename()).thenReturn("a.pdf");
         when(broken.getContentType()).thenReturn("application/pdf");
@@ -139,7 +137,8 @@ class ObjectStorageFileStorageServiceTest {
                         any(software.amazon.awssdk.core.sync.RequestBody.class)))
                 .thenThrow(S3Exception.builder().message("acesso negado").build());
 
-        assertThrows(FileStorageException.class, () -> storage.store(pdf("a.pdf"), "docs"));
+        MockMultipartFile arquivo = pdf("a.pdf");
+        assertThrows(FileStorageException.class, () -> storage.store(arquivo, "docs"));
     }
 
     private ResponseInputStream<GetObjectResponse> responseWith(String contentType) {

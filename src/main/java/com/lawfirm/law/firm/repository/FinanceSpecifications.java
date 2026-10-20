@@ -128,9 +128,7 @@ public final class FinanceSpecifications {
             jakarta.persistence.criteria.Root<T> root, String campo) {
         if (!campo.contains(".")) return root.get(campo);
         String[] partes = campo.split("\\.", 2);
-        return ((jakarta.persistence.criteria.Join<Object, Object>)
-                        root.join(partes[0], jakarta.persistence.criteria.JoinType.LEFT))
-                .get(partes[1]);
+        return root.join(partes[0], jakarta.persistence.criteria.JoinType.LEFT).get(partes[1]);
     }
 
     private static String semAcento(String valor) {

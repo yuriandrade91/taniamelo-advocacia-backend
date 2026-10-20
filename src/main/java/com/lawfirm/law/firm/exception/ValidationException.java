@@ -9,8 +9,7 @@ public class ValidationException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
-    // fixed validation error code
-    private final String code = "VALIDATION_ERROR";
+    private static final String CODE = "VALIDATION_ERROR";
 
     // field that caused the validation error
     private final String field;
@@ -52,7 +51,7 @@ public class ValidationException extends RuntimeException {
     }
 
     public String getCode() {
-        return code;
+        return CODE;
     }
 
     public ValidationErrorCode getValidationErrorCode() {

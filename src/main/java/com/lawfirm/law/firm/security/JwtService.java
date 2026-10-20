@@ -137,7 +137,8 @@ public class JwtService {
     public boolean isValid(String token) {
         try {
             Claims claims = parseClaims(token);
-            return claims.getExpiration() == null || claims.getExpiration().after(new Date());
+            return claims.getExpiration() == null
+                    || claims.getExpiration().toInstant().isAfter(Instant.now());
         } catch (JwtException | IllegalArgumentException _) {
             return false;
         }
