@@ -6,12 +6,16 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Corpo de POST de uma parcela que o cliente tem a receber. Sempre nasce como PENDENTE.
  *
  * <p>Honorário não entra aqui - é {@code OfficeRevenueRequestDTO}.
  */
+@Getter
+@Setter
 public class ClientPaymentRequestDTO {
 
     @Size(max = 255)
@@ -32,59 +36,11 @@ public class ClientPaymentRequestDTO {
 
     private String notes;
 
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    public Integer getInstallmentNumber() {
-        return installmentNumber;
-    }
-
-    public void setInstallmentNumber(Integer installmentNumber) {
-        this.installmentNumber = installmentNumber;
-    }
-
-    public Integer getInstallmentTotal() {
-        return installmentTotal;
-    }
-
-    public void setInstallmentTotal(Integer installmentTotal) {
-        this.installmentTotal = installmentTotal;
-    }
-
     public LocalDate getDueDate() {
         return dueDate;
     }
 
     public void setDueDate(LocalDate dueDate) {
         this.dueDate = dueDate;
-    }
-
-    public String getPaymentMethod() {
-        return paymentMethod;
-    }
-
-    public void setPaymentMethod(String paymentMethod) {
-        this.paymentMethod = paymentMethod;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
     }
 }

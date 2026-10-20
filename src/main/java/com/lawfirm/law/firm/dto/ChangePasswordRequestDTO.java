@@ -3,6 +3,8 @@ package com.lawfirm.law.firm.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Troca da própria senha.
@@ -15,6 +17,8 @@ import jakarta.validation.constraints.Size;
  * composição produz senha curta e previsível anotada no monitor, e o comprimento é o que de fato
  * pesa.
  */
+@Getter
+@Setter
 public class ChangePasswordRequestDTO {
 
     @Schema(description = "Senha atual, para confirmar que é a pessoa")
@@ -25,20 +29,4 @@ public class ChangePasswordRequestDTO {
     @NotBlank
     @Size(min = 8, max = 100, message = "A nova senha precisa ter ao menos 8 caracteres.")
     private String newPassword;
-
-    public String getCurrentPassword() {
-        return currentPassword;
-    }
-
-    public void setCurrentPassword(String currentPassword) {
-        this.currentPassword = currentPassword;
-    }
-
-    public String getNewPassword() {
-        return newPassword;
-    }
-
-    public void setNewPassword(String newPassword) {
-        this.newPassword = newPassword;
-    }
 }

@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Lançamento de despesa do escritório.
@@ -15,6 +17,8 @@ import java.time.LocalDate;
  * responde 400 nomeando o campo, em vez de virar nulo em silêncio — despesa sem categoria some do
  * gráfico de composição, e ninguém procura o que nunca apareceu.
  */
+@Getter
+@Setter
 public class OfficeExpenseRequestDTO {
 
     @Schema(description = "O que foi pago", example = "Aluguel da sala 302")
@@ -54,76 +58,4 @@ public class OfficeExpenseRequestDTO {
 
     @Size(max = 2000)
     private String notes;
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
-    public String getSupplier() {
-        return supplier;
-    }
-
-    public void setSupplier(String supplier) {
-        this.supplier = supplier;
-    }
-
-    public LocalDate getDueDate() {
-        return dueDate;
-    }
-
-    public void setDueDate(LocalDate dueDate) {
-        this.dueDate = dueDate;
-    }
-
-    public LocalDate getPaidDate() {
-        return paidDate;
-    }
-
-    public void setPaidDate(LocalDate paidDate) {
-        this.paidDate = paidDate;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getPaymentMethod() {
-        return paymentMethod;
-    }
-
-    public void setPaymentMethod(String paymentMethod) {
-        this.paymentMethod = paymentMethod;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
-    }
 }

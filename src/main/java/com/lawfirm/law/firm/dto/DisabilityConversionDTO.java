@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * O tempo de deficiência convertido para uma base, com a conta aberta.
@@ -14,6 +16,8 @@ import java.util.List;
  * resultado, e o total é a soma do que está visível. Devolver só o total obrigaria o escritório a
  * refazer o cálculo à mão para conferir — e aí a tela seria um palpite a mais, não uma ferramenta.
  */
+@Getter
+@Setter
 public class DisabilityConversionDTO {
 
     /** Base para a qual se converteu (normalmente "Sem deficiência"). */
@@ -121,69 +125,5 @@ public class DisabilityConversionDTO {
         public void setConvertedDays(long convertedDays) {
             this.convertedDays = convertedDays;
         }
-    }
-
-    public DisabilityGrade getConvertedTo() {
-        return convertedTo;
-    }
-
-    public void setConvertedTo(DisabilityGrade convertedTo) {
-        this.convertedTo = convertedTo;
-    }
-
-    public int getTargetYears() {
-        return targetYears;
-    }
-
-    public void setTargetYears(int targetYears) {
-        this.targetYears = targetYears;
-    }
-
-    public List<Line> getLines() {
-        return lines;
-    }
-
-    public void setLines(List<Line> lines) {
-        this.lines = lines;
-    }
-
-    public long getTotalDays() {
-        return totalDays;
-    }
-
-    public void setTotalDays(long totalDays) {
-        this.totalDays = totalDays;
-    }
-
-    public int getTotalYears() {
-        return totalYears;
-    }
-
-    public void setTotalYears(int totalYears) {
-        this.totalYears = totalYears;
-    }
-
-    public int getTotalMonths() {
-        return totalMonths;
-    }
-
-    public void setTotalMonths(int totalMonths) {
-        this.totalMonths = totalMonths;
-    }
-
-    public int getTotalRemainingDays() {
-        return totalRemainingDays;
-    }
-
-    public void setTotalRemainingDays(int totalRemainingDays) {
-        this.totalRemainingDays = totalRemainingDays;
-    }
-
-    public String getTotalLabel() {
-        return totalLabel;
-    }
-
-    public void setTotalLabel(String totalLabel) {
-        this.totalLabel = totalLabel;
     }
 }

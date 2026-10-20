@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 /**
@@ -23,6 +25,8 @@ import org.hibernate.annotations.UuidGenerator;
 @Entity
 @Table(name = "client_files")
 @EntityListeners(AuditLogListener.class)
+@Getter
+@Setter
 public class ClientFile implements Auditable {
 
     @Id
@@ -101,149 +105,5 @@ public class ClientFile implements Auditable {
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = Instant.now();
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public Client getClient() {
-        return client;
-    }
-
-    public void setClient(Client client) {
-        this.client = client;
-    }
-
-    public FileKind getKind() {
-        return kind;
-    }
-
-    public void setKind(FileKind kind) {
-        this.kind = kind;
-    }
-
-    public String getOriginalFilename() {
-        return originalFilename;
-    }
-
-    public void setOriginalFilename(String originalFilename) {
-        this.originalFilename = originalFilename;
-    }
-
-    public String getStorageKey() {
-        return storageKey;
-    }
-
-    public void setStorageKey(String storageKey) {
-        this.storageKey = storageKey;
-    }
-
-    public String getMimeType() {
-        return mimeType;
-    }
-
-    public void setMimeType(String mimeType) {
-        this.mimeType = mimeType;
-    }
-
-    public Long getFileSizeBytes() {
-        return fileSizeBytes;
-    }
-
-    public void setFileSizeBytes(Long fileSizeBytes) {
-        this.fileSizeBytes = fileSizeBytes;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
-    }
-
-    public DocumentType getDocumentType() {
-        return documentType;
-    }
-
-    public void setDocumentType(DocumentType documentType) {
-        this.documentType = documentType;
-    }
-
-    public LocalDate getSimulationDate() {
-        return simulationDate;
-    }
-
-    public void setSimulationDate(LocalDate simulationDate) {
-        this.simulationDate = simulationDate;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    public Integer getVinculos() {
-        return vinculos;
-    }
-
-    public void setVinculos(Integer vinculos) {
-        this.vinculos = vinculos;
-    }
-
-    public Boolean getIsPrincipal() {
-        return isPrincipal;
-    }
-
-    public void setIsPrincipal(Boolean isPrincipal) {
-        this.isPrincipal = isPrincipal;
-    }
-
-    public UUID getUploadedBy() {
-        return uploadedBy;
-    }
-
-    public void setUploadedBy(UUID uploadedBy) {
-        this.uploadedBy = uploadedBy;
-    }
-
-    public Instant getUploadedAt() {
-        return uploadedAt;
-    }
-
-    public void setUploadedAt(Instant uploadedAt) {
-        this.uploadedAt = uploadedAt;
-    }
-
-    public UUID getUpdatedBy() {
-        return updatedBy;
-    }
-
-    public void setUpdatedBy(UUID updatedBy) {
-        this.updatedBy = updatedBy;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public Instant getDeletedAt() {
-        return deletedAt;
-    }
-
-    public void setDeletedAt(Instant deletedAt) {
-        this.deletedAt = deletedAt;
     }
 }

@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * O que a pessoa pode mudar nos próprios dados.
@@ -13,6 +15,8 @@ import jakarta.validation.constraints.Size;
  * ela entra — trocá-lo pela tela de perfil derrubaria a própria sessão e as referências de quem
  * administra.
  */
+@Getter
+@Setter
 public class MyProfileUpdateRequestDTO {
 
     @Schema(description = "Nome completo, como aparece na trilha de autoria")
@@ -25,20 +29,4 @@ public class MyProfileUpdateRequestDTO {
     @Email
     @Size(max = 255)
     private String email;
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
 }

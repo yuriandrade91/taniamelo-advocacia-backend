@@ -3,6 +3,8 @@ package com.lawfirm.law.firm.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Totais de um período, nos três baldes que as telas financeiras usam.
@@ -23,6 +25,8 @@ import java.util.List;
  * fechar, a regra divergiu entre duas pontas, e é melhor descobrir por uma soma que não bate do que
  * por um relatório errado.
  */
+@Getter
+@Setter
 public class FinanceSummaryDTO {
 
     @Schema(description = "Soma do que está vencido e não pago")
@@ -51,68 +55,4 @@ public class FinanceSummaryDTO {
                     "Composição do gasto PAGO no período, por categoria. Só em despesas; nulo nas"
                             + " demais rotas.")
     private List<CategoryAmountDTO> byCategory;
-
-    public BigDecimal getOverdueAmount() {
-        return overdueAmount;
-    }
-
-    public void setOverdueAmount(BigDecimal overdueAmount) {
-        this.overdueAmount = overdueAmount;
-    }
-
-    public long getOverdueCount() {
-        return overdueCount;
-    }
-
-    public void setOverdueCount(long overdueCount) {
-        this.overdueCount = overdueCount;
-    }
-
-    public BigDecimal getUpcomingAmount() {
-        return upcomingAmount;
-    }
-
-    public void setUpcomingAmount(BigDecimal upcomingAmount) {
-        this.upcomingAmount = upcomingAmount;
-    }
-
-    public long getUpcomingCount() {
-        return upcomingCount;
-    }
-
-    public void setUpcomingCount(long upcomingCount) {
-        this.upcomingCount = upcomingCount;
-    }
-
-    public BigDecimal getPaidAmount() {
-        return paidAmount;
-    }
-
-    public void setPaidAmount(BigDecimal paidAmount) {
-        this.paidAmount = paidAmount;
-    }
-
-    public long getPaidCount() {
-        return paidCount;
-    }
-
-    public void setPaidCount(long paidCount) {
-        this.paidCount = paidCount;
-    }
-
-    public BigDecimal getTotalAmount() {
-        return totalAmount;
-    }
-
-    public void setTotalAmount(BigDecimal totalAmount) {
-        this.totalAmount = totalAmount;
-    }
-
-    public List<CategoryAmountDTO> getByCategory() {
-        return byCategory;
-    }
-
-    public void setByCategory(List<CategoryAmountDTO> byCategory) {
-        this.byCategory = byCategory;
-    }
 }

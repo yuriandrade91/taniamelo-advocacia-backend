@@ -8,6 +8,8 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 /**
@@ -19,6 +21,7 @@ import org.hibernate.annotations.UuidGenerator;
  */
 @Entity
 @Table(name = "tenants", schema = "public")
+@Getter
 public class Tenant {
 
     @Id
@@ -28,30 +31,39 @@ public class Tenant {
     private UUID id;
 
     @Column(name = "schema_name", nullable = false, unique = true, length = 63)
+    @Setter
     private String schemaName;
 
     @Column(name = "slug", nullable = false, unique = true, length = 60)
+    @Setter
     private String slug;
 
     @Column(name = "razao_social", nullable = false)
+    @Setter
     private String razaoSocial;
 
     @Column(name = "cnpj", nullable = false, unique = true, length = 20)
+    @Setter
     private String cnpj;
 
     @Column(name = "responsavel")
+    @Setter
     private String responsavel;
 
     @Column(name = "email")
+    @Setter
     private String email;
 
     @Column(name = "telefone", length = 20)
+    @Setter
     private String telefone;
 
     @Column(name = "plano", length = 50)
+    @Setter
     private String plano;
 
     @Column(name = "status", nullable = false, length = 20)
+    @Setter
     private String status = "ativo";
 
     @Column(name = "criado_em", nullable = false, updatable = false)
@@ -63,89 +75,5 @@ public class Tenant {
     @PreUpdate
     void onUpdate() {
         this.atualizadoEm = Instant.now();
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public String getSchemaName() {
-        return schemaName;
-    }
-
-    public void setSchemaName(String schemaName) {
-        this.schemaName = schemaName;
-    }
-
-    public String getSlug() {
-        return slug;
-    }
-
-    public void setSlug(String slug) {
-        this.slug = slug;
-    }
-
-    public String getRazaoSocial() {
-        return razaoSocial;
-    }
-
-    public void setRazaoSocial(String razaoSocial) {
-        this.razaoSocial = razaoSocial;
-    }
-
-    public String getCnpj() {
-        return cnpj;
-    }
-
-    public void setCnpj(String cnpj) {
-        this.cnpj = cnpj;
-    }
-
-    public String getResponsavel() {
-        return responsavel;
-    }
-
-    public void setResponsavel(String responsavel) {
-        this.responsavel = responsavel;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getTelefone() {
-        return telefone;
-    }
-
-    public void setTelefone(String telefone) {
-        this.telefone = telefone;
-    }
-
-    public String getPlano() {
-        return plano;
-    }
-
-    public void setPlano(String plano) {
-        this.plano = plano;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public Instant getCriadoEm() {
-        return criadoEm;
-    }
-
-    public Instant getAtualizadoEm() {
-        return atualizadoEm;
     }
 }

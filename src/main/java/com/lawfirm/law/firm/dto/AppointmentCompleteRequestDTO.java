@@ -1,6 +1,8 @@
 package com.lawfirm.law.firm.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Payload da conclusão de um compromisso.
@@ -10,6 +12,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * Mesma forma da confirmação de data no passado na criação e edição: a API recusa uma vez com 422,
  * a tela pergunta, e a segunda chamada vem confirmada.
  */
+@Getter
+@Setter
 public class AppointmentCompleteRequestDTO {
 
     @Schema(
@@ -18,12 +22,4 @@ public class AppointmentCompleteRequestDTO {
                             + "Sem isto, concluir antes da hora devolve 422.",
             example = "false")
     private boolean earlyCompletionAcknowledged;
-
-    public boolean isEarlyCompletionAcknowledged() {
-        return earlyCompletionAcknowledged;
-    }
-
-    public void setEarlyCompletionAcknowledged(boolean earlyCompletionAcknowledged) {
-        this.earlyCompletionAcknowledged = earlyCompletionAcknowledged;
-    }
 }

@@ -1,6 +1,8 @@
 package com.lawfirm.law.firm.dto;
 
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Atualização parcial do cliente (PATCH /clients/{clientId}): situação, etapa no INSS, benefício,
@@ -18,6 +20,7 @@ import jakarta.validation.constraints.Size;
  * suportado. Não faz a edição funcionar - para telefone, nome e os outros campos o recurso é o
  * {@code PUT /clients/{clientId}} - mas para de mentir que funcionou.
  */
+@Setter
 public class ClientPatchRequestDTO {
 
     /**
@@ -45,7 +48,7 @@ public class ClientPatchRequestDTO {
         return camposNaoSuportados.keySet();
     }
 
-    private String situation;
+    @Getter private String situation;
 
     /**
      * Etapa do requerimento no INSS. Entra aqui, e não só no PUT, porque é o campo que mais muda ao
@@ -53,7 +56,7 @@ public class ClientPatchRequestDTO {
      * Obrigar um PUT completo a cada andamento faria a tela reenviar o cadastro inteiro para mexer
      * numa palavra.
      */
-    private String requestStage;
+    @Getter private String requestStage;
 
     /**
      * Por que a etapa no INSS mudou. Obrigatória quando {@code requestStage} leva a exigência,
@@ -61,57 +64,10 @@ public class ClientPatchRequestDTO {
      * sozinha não teria onde ser gravada, e o PATCH não descarta campo em silêncio.
      */
     @Size(max = 1000)
+    @Getter
     private String requestStageJustification;
 
-    private String benefit;
-    private String clientType;
-    private Boolean notBillable;
-
-    public String getSituation() {
-        return situation;
-    }
-
-    public String getRequestStage() {
-        return requestStage;
-    }
-
-    public void setRequestStage(String requestStage) {
-        this.requestStage = requestStage;
-    }
-
-    public String getRequestStageJustification() {
-        return requestStageJustification;
-    }
-
-    public void setRequestStageJustification(String requestStageJustification) {
-        this.requestStageJustification = requestStageJustification;
-    }
-
-    public void setSituation(String situation) {
-        this.situation = situation;
-    }
-
-    public String getBenefit() {
-        return benefit;
-    }
-
-    public void setBenefit(String benefit) {
-        this.benefit = benefit;
-    }
-
-    public String getClientType() {
-        return clientType;
-    }
-
-    public void setClientType(String clientType) {
-        this.clientType = clientType;
-    }
-
-    public Boolean getNotBillable() {
-        return notBillable;
-    }
-
-    public void setNotBillable(Boolean notBillable) {
-        this.notBillable = notBillable;
-    }
+    @Getter private String benefit;
+    @Getter private String clientType;
+    @Getter private Boolean notBillable;
 }

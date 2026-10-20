@@ -10,6 +10,8 @@ import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 @Entity
@@ -22,16 +24,21 @@ public class Client implements Auditable {
     @GeneratedValue
     @UuidGenerator(style = UuidGenerator.Style.RANDOM)
     @Column(name = "id", updatable = false, nullable = false)
+    @Setter
     private UUID id;
 
     @NotBlank
     @Column(name = "full_name", nullable = false)
+    @Getter
+    @Setter
     private String fullName;
 
     // ============================================
     // OBRIGATÓRIOS
     // ============================================
     @Column(name = "birth_date", nullable = false)
+    @Getter
+    @Setter
     private LocalDate birthDate;
 
     @Column(name = "birth_mmdd", insertable = false, updatable = false)
@@ -39,34 +46,50 @@ public class Client implements Auditable {
 
     @NotBlank
     @Column(name = "cpf", nullable = false, unique = true, length = 14)
+    @Getter
+    @Setter
     private String cpf;
 
     @NotBlank
     @Column(name = "mother_name", nullable = false)
+    @Getter
+    @Setter
     private String motherName;
 
     @NotBlank
     @Column(name = "mobile_phone", nullable = false, unique = true, length = 20)
+    @Getter
+    @Setter
     private String mobilePhone;
 
     @NotBlank
     @Convert(converter = CryptoConverter.class)
     @Column(name = "inss_password", nullable = false, length = 255)
+    @Getter
+    @Setter
     private String inssPassword;
 
     @NotNull
     @Column(name = "gender", nullable = false, length = 10)
+    @Getter
+    @Setter
     private Gender gender;
 
     @NotNull
     @Column(name = "situation", length = 100)
+    @Getter
+    @Setter
     private Situation situation;
 
     @NotNull
     @Column(name = "benefit", length = 100)
+    @Getter
+    @Setter
     private BenefitType benefit;
 
     @Column(name = "request_stage", length = 100)
+    @Getter
+    @Setter
     private RequestStage requestStage;
 
     // ============================================
@@ -80,16 +103,24 @@ public class Client implements Auditable {
     // OPCIONAIS
     // ============================================
     @Column(name = "rg", unique = true, length = 20)
+    @Getter
+    @Setter
     private String rg;
 
     @Email
     @Column(name = "email", unique = true, length = 255)
+    @Getter
+    @Setter
     private String email;
 
     @Column(name = "reference_phone", unique = true, length = 20)
+    @Getter
+    @Setter
     private String referencePhone;
 
     @Column(name = "reference_responsible")
+    @Getter
+    @Setter
     private String referenceResponsible;
 
     @Column(name = "marital_status", length = 50)
@@ -97,30 +128,48 @@ public class Client implements Auditable {
             maritalStatus; // Solteiro(a), Casado(a), Separada(a), Divorciado(a), Viúvo(a)
 
     @Column(name = "benefit_number", unique = true, length = 30)
+    @Getter
+    @Setter
     private String beneficiaryNumber;
 
     @Column(name = "nit_pis", unique = true, length = 20)
+    @Getter
+    @Setter
     private String nitPis;
 
     @Column(name = "profession")
+    @Getter
+    @Setter
     private String profession;
 
     @Column(name = "ctps", unique = true, length = 30)
+    @Getter
+    @Setter
     private String ctps;
 
     @Column(name = "ctps_series", unique = true, length = 20)
+    @Getter
+    @Setter
     private String ctpsSeries;
 
     @Column(name = "contribution_years")
+    @Getter
+    @Setter
     private Integer contributionYears;
 
     @Column(name = "contribution_months")
+    @Getter
+    @Setter
     private Integer contributionMonths;
 
     @Column(name = "contribution_days")
+    @Getter
+    @Setter
     private Integer contributionDays;
 
     @Column(name = "contribution_in_months")
+    @Getter
+    @Setter
     private Integer contributionInMonths;
 
     // ============================================
@@ -145,45 +194,73 @@ public class Client implements Auditable {
     // DADOS COMPLEMENTARES DE CADASTRO
     // ============================================
     @Column(name = "rg_issuer", length = 20)
+    @Getter
+    @Setter
     private String rgIssuer;
 
     @Column(name = "rg_issue_date")
+    @Getter
+    @Setter
     private LocalDate rgIssueDate;
 
     @Column(name = "nationality", length = 50)
+    @Getter
+    @Setter
     private String nationality = "Brasileira";
 
     @Column(name = "is_whatsapp", nullable = false)
+    @Getter
+    @Setter
     private Boolean isWhatsapp = true;
 
     @Column(name = "has_disability", nullable = false)
+    @Getter
+    @Setter
     private Boolean hasDisability = false;
 
     @Column(name = "notes", columnDefinition = "TEXT")
+    @Getter
+    @Setter
     private String notes;
 
     @Column(name = "responsible_user_id")
+    @Getter
+    @Setter
     private UUID responsibleUserId;
 
     @Column(name = "client_type", nullable = false, length = 20)
+    @Getter
+    @Setter
     private ClientType clientType = ClientType.POTENCIAL;
 
     @Column(name = "created_at", nullable = false)
+    @Getter
+    @Setter
     private Instant createdAt;
 
     @Column(name = "updated_at")
+    @Getter
+    @Setter
     private Instant updatedAt;
 
     @Column(name = "not_billable", nullable = false)
+    @Getter
+    @Setter
     private Boolean notBillable = false;
 
     @Column(name = "created_by")
+    @Getter
+    @Setter
     private UUID createdBy;
 
     @Column(name = "updated_by")
+    @Getter
+    @Setter
     private UUID updatedBy;
 
     @Column(name = "deleted_at")
+    @Getter
+    @Setter
     private Instant deletedAt;
 
     // Constructors
@@ -212,18 +289,6 @@ public class Client implements Auditable {
         return id;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
     public String getFirstName() {
         String[] nameParts = nameParts();
         return nameParts.length == 0 ? null : nameParts[0];
@@ -240,180 +305,12 @@ public class Client implements Auditable {
                 : fullName.trim().split("\\s+", 2);
     }
 
-    public LocalDate getBirthDate() {
-        return birthDate;
-    }
-
-    public void setBirthDate(LocalDate birthDate) {
-        this.birthDate = birthDate;
-    }
-
     public MaritalStatus getMaritalStatus() {
         return maritalStatus;
     }
 
     public void setMaritalStatus(MaritalStatus maritalStatus) {
         this.maritalStatus = maritalStatus;
-    }
-
-    public String getCpf() {
-        return cpf;
-    }
-
-    public void setCpf(String cpf) {
-        this.cpf = cpf;
-    }
-
-    public String getRg() {
-        return rg;
-    }
-
-    public void setRg(String rg) {
-        this.rg = rg;
-    }
-
-    public String getMotherName() {
-        return motherName;
-    }
-
-    public void setMotherName(String motherName) {
-        this.motherName = motherName;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getMobilePhone() {
-        return mobilePhone;
-    }
-
-    public void setMobilePhone(String mobilePhone) {
-        this.mobilePhone = mobilePhone;
-    }
-
-    public String getReferencePhone() {
-        return referencePhone;
-    }
-
-    public void setReferencePhone(String referencePhone) {
-        this.referencePhone = referencePhone;
-    }
-
-    public String getReferenceResponsible() {
-        return referenceResponsible;
-    }
-
-    public void setReferenceResponsible(String referenceResponsible) {
-        this.referenceResponsible = referenceResponsible;
-    }
-
-    public BenefitType getBenefit() {
-        return benefit;
-    }
-
-    public void setBenefit(BenefitType benefit) {
-        this.benefit = benefit;
-    }
-
-    public Situation getSituation() {
-        return situation;
-    }
-
-    public void setSituation(Situation situation) {
-        this.situation = situation;
-    }
-
-    public RequestStage getRequestStage() {
-        return requestStage;
-    }
-
-    public void setRequestStage(RequestStage requestStage) {
-        this.requestStage = requestStage;
-    }
-
-    public String getBeneficiaryNumber() {
-        return beneficiaryNumber;
-    }
-
-    public void setBeneficiaryNumber(String beneficiaryNumber) {
-        this.beneficiaryNumber = beneficiaryNumber;
-    }
-
-    public String getNitPis() {
-        return nitPis;
-    }
-
-    public void setNitPis(String nitPis) {
-        this.nitPis = nitPis;
-    }
-
-    public String getProfession() {
-        return profession;
-    }
-
-    public void setProfession(String profession) {
-        this.profession = profession;
-    }
-
-    public String getCtps() {
-        return ctps;
-    }
-
-    public void setCtps(String ctps) {
-        this.ctps = ctps;
-    }
-
-    public String getCtpsSeries() {
-        return ctpsSeries;
-    }
-
-    public void setCtpsSeries(String ctpsSeries) {
-        this.ctpsSeries = ctpsSeries;
-    }
-
-    public String getInssPassword() {
-        return inssPassword;
-    }
-
-    public void setInssPassword(String inssPassword) {
-        this.inssPassword = inssPassword;
-    }
-
-    public Integer getContributionYears() {
-        return contributionYears;
-    }
-
-    public void setContributionYears(Integer contributionYears) {
-        this.contributionYears = contributionYears;
-    }
-
-    public Integer getContributionMonths() {
-        return contributionMonths;
-    }
-
-    public void setContributionMonths(Integer contributionMonths) {
-        this.contributionMonths = contributionMonths;
-    }
-
-    public Integer getContributionDays() {
-        return contributionDays;
-    }
-
-    public void setContributionDays(Integer contributionDays) {
-        this.contributionDays = contributionDays;
-    }
-
-    public Integer getContributionInMonths() {
-        return contributionInMonths;
-    }
-
-    public void setContributionInMonths(Integer contributionInMonths) {
-        this.contributionInMonths = contributionInMonths;
     }
 
     public String getStreet() {
@@ -470,125 +367,5 @@ public class Client implements Auditable {
 
     public void setZipCode(String zipCode) {
         this.zipCode = zipCode;
-    }
-
-    public String getRgIssuer() {
-        return rgIssuer;
-    }
-
-    public void setRgIssuer(String rgIssuer) {
-        this.rgIssuer = rgIssuer;
-    }
-
-    public LocalDate getRgIssueDate() {
-        return rgIssueDate;
-    }
-
-    public void setRgIssueDate(LocalDate rgIssueDate) {
-        this.rgIssueDate = rgIssueDate;
-    }
-
-    public String getNationality() {
-        return nationality;
-    }
-
-    public void setNationality(String nationality) {
-        this.nationality = nationality;
-    }
-
-    public Boolean getIsWhatsapp() {
-        return isWhatsapp;
-    }
-
-    public void setIsWhatsapp(Boolean isWhatsapp) {
-        this.isWhatsapp = isWhatsapp;
-    }
-
-    public Boolean getHasDisability() {
-        return hasDisability;
-    }
-
-    public void setHasDisability(Boolean hasDisability) {
-        this.hasDisability = hasDisability;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
-    }
-
-    public UUID getResponsibleUserId() {
-        return responsibleUserId;
-    }
-
-    public void setResponsibleUserId(UUID responsibleUserId) {
-        this.responsibleUserId = responsibleUserId;
-    }
-
-    public ClientType getClientType() {
-        return clientType;
-    }
-
-    public void setClientType(ClientType clientType) {
-        this.clientType = clientType;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public Boolean getNotBillable() {
-        return notBillable;
-    }
-
-    public void setNotBillable(Boolean notBillable) {
-        this.notBillable = notBillable;
-    }
-
-    public UUID getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(UUID createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public UUID getUpdatedBy() {
-        return updatedBy;
-    }
-
-    public void setUpdatedBy(UUID updatedBy) {
-        this.updatedBy = updatedBy;
-    }
-
-    public Instant getDeletedAt() {
-        return deletedAt;
-    }
-
-    public void setDeletedAt(Instant deletedAt) {
-        this.deletedAt = deletedAt;
-    }
-
-    public Gender getGender() {
-        return gender;
-    }
-
-    public void setGender(Gender gender) {
-        this.gender = gender;
     }
 }

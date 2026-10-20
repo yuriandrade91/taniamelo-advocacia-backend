@@ -3,8 +3,12 @@ package com.lawfirm.law.firm.dto;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
 @JsonPropertyOrder({"clientId"})
+@Getter
+@Setter
 public class ClientProfessionalDataResponseDTO {
 
     private UUID clientId;
@@ -35,108 +39,4 @@ public class ClientProfessionalDataResponseDTO {
     private UUID updatedBy;
 
     private Instant updatedAt;
-
-    public UUID getClientId() {
-        return clientId;
-    }
-
-    public void setClientId(UUID clientId) {
-        this.clientId = clientId;
-    }
-
-    public String getProfession() {
-        return profession;
-    }
-
-    public void setProfession(String profession) {
-        this.profession = profession;
-    }
-
-    public String getNitPis() {
-        return nitPis;
-    }
-
-    public void setNitPis(String nitPis) {
-        this.nitPis = nitPis;
-    }
-
-    public String getCtps() {
-        return ctps;
-    }
-
-    public void setCtps(String ctps) {
-        this.ctps = ctps;
-    }
-
-    public String getCtpsSeries() {
-        return ctpsSeries;
-    }
-
-    public void setCtpsSeries(String ctpsSeries) {
-        this.ctpsSeries = ctpsSeries;
-    }
-
-    public Integer getContributionYears() {
-        return contributionYears;
-    }
-
-    public void setContributionYears(Integer contributionYears) {
-        this.contributionYears = contributionYears;
-    }
-
-    public Integer getContributionMonths() {
-        return contributionMonths;
-    }
-
-    public void setContributionMonths(Integer contributionMonths) {
-        this.contributionMonths = contributionMonths;
-    }
-
-    public Integer getContributionDays() {
-        return contributionDays;
-    }
-
-    public void setContributionDays(Integer contributionDays) {
-        this.contributionDays = contributionDays;
-    }
-
-    public String getContributionTime() {
-        return contributionTime;
-    }
-
-    public void setContributionTime(String contributionTime) {
-        this.contributionTime = contributionTime;
-    }
-
-    public Integer getContributionInMonths() {
-        return contributionInMonths;
-    }
-
-    public void setContributionInMonths(Integer contributionInMonths) {
-        this.contributionInMonths = contributionInMonths;
-    }
-
-    public String getBeneficiaryNumber() {
-        return beneficiaryNumber;
-    }
-
-    public void setBeneficiaryNumber(String beneficiaryNumber) {
-        this.beneficiaryNumber = beneficiaryNumber;
-    }
-
-    public UUID getUpdatedBy() {
-        return updatedBy;
-    }
-
-    public void setUpdatedBy(UUID updatedBy) {
-        this.updatedBy = updatedBy;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }

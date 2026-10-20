@@ -8,6 +8,8 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Lançamento de receita do escritório — honorário, parecer avulso, reembolso.
@@ -16,6 +18,8 @@ import java.util.UUID;
  * cliente, e não passa pelo caixa do escritório. O formato é parecido; o dinheiro é de outra
  * pessoa.
  */
+@Getter
+@Setter
 public class OfficeRevenueRequestDTO {
 
     @Schema(
@@ -56,76 +60,4 @@ public class OfficeRevenueRequestDTO {
 
     @Size(max = 2000)
     private String notes;
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    public LocalDate getDueDate() {
-        return dueDate;
-    }
-
-    public void setDueDate(LocalDate dueDate) {
-        this.dueDate = dueDate;
-    }
-
-    public LocalDate getPaidDate() {
-        return paidDate;
-    }
-
-    public void setPaidDate(LocalDate paidDate) {
-        this.paidDate = paidDate;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getPaymentMethod() {
-        return paymentMethod;
-    }
-
-    public void setPaymentMethod(String paymentMethod) {
-        this.paymentMethod = paymentMethod;
-    }
-
-    public UUID getClientId() {
-        return clientId;
-    }
-
-    public void setClientId(UUID clientId) {
-        this.clientId = clientId;
-    }
-
-    public UUID getSourcePaymentId() {
-        return sourcePaymentId;
-    }
-
-    public void setSourcePaymentId(UUID sourcePaymentId) {
-        this.sourcePaymentId = sourcePaymentId;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
-    }
 }

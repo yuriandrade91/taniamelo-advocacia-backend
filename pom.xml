@@ -180,6 +180,16 @@
 			<version>${mapstruct.version}</version>
 		</dependency>
 
+		<!-- Lombok: só @Getter/@Setter, para tirar dos DTOs/entidades os accessors
+		     escritos à mão - eram a maior parte da duplicação apontada pelo Sonar.
+		     Versão gerenciada pelo parent do Boot. Nada de @Data/@EqualsAndHashCode
+		     em entidade JPA (equals/hashCode sobre campos quebra proxies/coleções). -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<scope>provided</scope>
+		</dependency>
+
 		<!-- Jackson explicit dependencies to fix test compile issues -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
@@ -279,7 +289,19 @@
 				<configuration>
 					<source>${java.version}</source>
 					<target>${java.version}</target>
+					<!-- Ordem importa: Lombok gera os accessors antes do MapStruct
+					     procurá-los; o binding faz o MapStruct esperar o Lombok. -->
 					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</path>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok-mapstruct-binding</artifactId>
+							<version>0.2.0</version>
+						</path>
 						<path>
 							<groupId>org.mapstruct</groupId>
 							<artifactId>mapstruct-processor</artifactId>

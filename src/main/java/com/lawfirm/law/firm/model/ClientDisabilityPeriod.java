@@ -16,6 +16,8 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 /**
@@ -33,16 +35,19 @@ import org.hibernate.annotations.UuidGenerator;
 @Entity
 @Table(name = "client_disability_periods")
 @EntityListeners(AuditLogListener.class)
+@Getter
 public class ClientDisabilityPeriod implements Auditable {
 
     @Id
     @GeneratedValue
     @UuidGenerator(style = UuidGenerator.Style.RANDOM)
     @Column(name = "id", updatable = false, nullable = false)
+    @Setter
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
+    @Setter
     private Client client;
 
     /**
@@ -55,13 +60,16 @@ public class ClientDisabilityPeriod implements Auditable {
      * dado — seed, correção manual, importação — virava 500 na leitura.
      */
     @Column(name = "grade", nullable = false, length = 20)
+    @Setter
     private DisabilityGrade grade;
 
     @Column(name = "started_on", nullable = false)
+    @Setter
     private LocalDate startedOn;
 
     /** Nulo = sem data de cessação (deficiência em curso). */
     @Column(name = "ended_on")
+    @Setter
     private LocalDate endedOn;
 
     @Column(name = "created_at", nullable = false)
@@ -71,9 +79,11 @@ public class ClientDisabilityPeriod implements Auditable {
     private Instant updatedAt;
 
     @Column(name = "created_by")
+    @Setter
     private UUID createdBy;
 
     @Column(name = "updated_by")
+    @Setter
     private UUID updatedBy;
 
     @PrePersist
@@ -103,69 +113,5 @@ public class ClientDisabilityPeriod implements Auditable {
      */
     public LocalDate effectiveEnd(LocalDate today) {
         return endedOn != null ? endedOn : today;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public Client getClient() {
-        return client;
-    }
-
-    public void setClient(Client client) {
-        this.client = client;
-    }
-
-    public DisabilityGrade getGrade() {
-        return grade;
-    }
-
-    public void setGrade(DisabilityGrade grade) {
-        this.grade = grade;
-    }
-
-    public LocalDate getStartedOn() {
-        return startedOn;
-    }
-
-    public void setStartedOn(LocalDate startedOn) {
-        this.startedOn = startedOn;
-    }
-
-    public LocalDate getEndedOn() {
-        return endedOn;
-    }
-
-    public void setEndedOn(LocalDate endedOn) {
-        this.endedOn = endedOn;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public UUID getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(UUID createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public UUID getUpdatedBy() {
-        return updatedBy;
-    }
-
-    public void setUpdatedBy(UUID updatedBy) {
-        this.updatedBy = updatedBy;
     }
 }

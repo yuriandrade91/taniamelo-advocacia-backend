@@ -2,6 +2,8 @@ package com.lawfirm.law.firm.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Um mês da série que alimenta os gráficos.
@@ -12,6 +14,8 @@ import java.math.BigDecimal;
  * <p>Com {@code basis=paid}, {@code overdueAmount} e {@code upcomingAmount} vêm zerados por
  * definição: o que foi pago não está atrasado nem a vencer.
  */
+@Getter
+@Setter
 public class FinanceTimelinePointDTO {
 
     @Schema(description = "Mês no formato yyyy-MM", example = "2026-05")
@@ -25,37 +29,5 @@ public class FinanceTimelinePointDTO {
 
     public FinanceTimelinePointDTO(String month) {
         this.month = month;
-    }
-
-    public String getMonth() {
-        return month;
-    }
-
-    public void setMonth(String month) {
-        this.month = month;
-    }
-
-    public BigDecimal getOverdueAmount() {
-        return overdueAmount;
-    }
-
-    public void setOverdueAmount(BigDecimal overdueAmount) {
-        this.overdueAmount = overdueAmount;
-    }
-
-    public BigDecimal getUpcomingAmount() {
-        return upcomingAmount;
-    }
-
-    public void setUpcomingAmount(BigDecimal upcomingAmount) {
-        this.upcomingAmount = upcomingAmount;
-    }
-
-    public BigDecimal getPaidAmount() {
-        return paidAmount;
-    }
-
-    public void setPaidAmount(BigDecimal paidAmount) {
-        this.paidAmount = paidAmount;
     }
 }

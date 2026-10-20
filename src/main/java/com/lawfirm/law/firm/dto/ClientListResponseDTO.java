@@ -7,6 +7,8 @@ import com.lawfirm.law.firm.model.RequestStage;
 import com.lawfirm.law.firm.model.Situation;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
 @JsonPropertyOrder({
     "clientId",
@@ -21,6 +23,8 @@ import java.util.UUID;
     "createdAt",
     "updatedAt"
 })
+@Getter
+@Setter
 public class ClientListResponseDTO {
     private UUID clientId;
     private String fullName;
@@ -52,108 +56,4 @@ public class ClientListResponseDTO {
      * devolve registros com isto preenchido.
      */
     private Instant deletedAt;
-
-    public UUID getClientId() {
-        return clientId;
-    }
-
-    public void setClientId(UUID clientId) {
-        this.clientId = clientId;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getCpf() {
-        return cpf;
-    }
-
-    public void setCpf(String cpf) {
-        this.cpf = cpf;
-    }
-
-    public String getMobilePhone() {
-        return mobilePhone;
-    }
-
-    public void setMobilePhone(String mobilePhone) {
-        this.mobilePhone = mobilePhone;
-    }
-
-    public BenefitType getBenefit() {
-        return benefit;
-    }
-
-    public void setBenefit(BenefitType benefit) {
-        this.benefit = benefit;
-    }
-
-    public Situation getSituation() {
-        return situation;
-    }
-
-    public void setSituation(Situation situation) {
-        this.situation = situation;
-    }
-
-    public RequestStage getRequestStage() {
-        return requestStage;
-    }
-
-    public void setRequestStage(RequestStage requestStage) {
-        this.requestStage = requestStage;
-    }
-
-    public ClientType getClientType() {
-        return clientType;
-    }
-
-    public void setClientType(ClientType clientType) {
-        this.clientType = clientType;
-    }
-
-    public Boolean getNotBillable() {
-        return notBillable;
-    }
-
-    public void setNotBillable(Boolean notBillable) {
-        this.notBillable = notBillable;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public String getBeneficiaryNumber() {
-        return beneficiaryNumber;
-    }
-
-    public void setBeneficiaryNumber(String beneficiaryNumber) {
-        this.beneficiaryNumber = beneficiaryNumber;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public Instant getDeletedAt() {
-        return deletedAt;
-    }
-
-    public void setDeletedAt(Instant deletedAt) {
-        this.deletedAt = deletedAt;
-    }
 }

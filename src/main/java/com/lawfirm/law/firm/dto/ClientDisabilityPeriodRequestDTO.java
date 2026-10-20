@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Corpo de POST/PUT de um intervalo de deficiência.
@@ -12,6 +14,8 @@ import java.time.LocalDate;
  * presente data": não é campo que faltou preencher, é a informação de que não houve cessação. Por
  * isso ele não tem {@code @NotNull} e nem default — quem omite está dizendo algo.
  */
+@Getter
+@Setter
 public class ClientDisabilityPeriodRequestDTO {
 
     @Schema(
@@ -36,28 +40,4 @@ public class ClientDisabilityPeriodRequestDTO {
                             + "esquecido. Só pode haver um intervalo em aberto por cliente.",
             example = "2019-12-31")
     private LocalDate endedOn;
-
-    public String getGrade() {
-        return grade;
-    }
-
-    public void setGrade(String grade) {
-        this.grade = grade;
-    }
-
-    public LocalDate getStartedOn() {
-        return startedOn;
-    }
-
-    public void setStartedOn(LocalDate startedOn) {
-        this.startedOn = startedOn;
-    }
-
-    public LocalDate getEndedOn() {
-        return endedOn;
-    }
-
-    public void setEndedOn(LocalDate endedOn) {
-        this.endedOn = endedOn;
-    }
 }

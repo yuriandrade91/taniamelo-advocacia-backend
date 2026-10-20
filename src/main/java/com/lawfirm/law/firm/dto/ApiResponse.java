@@ -1,7 +1,11 @@
 package com.lawfirm.law.firm.dto;
 
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class ApiResponse<T> {
     private boolean success;
     private Object data; // can be either List<T> or single T
@@ -48,35 +52,11 @@ public class ApiResponse<T> {
         return r;
     }
 
-    public boolean isSuccess() {
-        return success;
-    }
-
-    public void setSuccess(boolean success) {
-        this.success = success;
-    }
-
     public Object getData() {
         return data;
     }
 
     public void setData(Object data) {
         this.data = data;
-    }
-
-    public Pagination getPagination() {
-        return pagination;
-    }
-
-    public void setPagination(Pagination pagination) {
-        this.pagination = pagination;
-    }
-
-    public List<ApiError> getErrors() {
-        return errors;
-    }
-
-    public void setErrors(List<ApiError> errors) {
-        this.errors = errors;
     }
 }

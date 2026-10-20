@@ -9,6 +9,8 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 /**
@@ -19,6 +21,8 @@ import org.hibernate.annotations.UuidGenerator;
  */
 @Entity
 @Table(name = "support_users", schema = "public")
+@Getter
+@Setter
 public class SupportUser {
 
     @Id
@@ -54,61 +58,5 @@ public class SupportUser {
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = Instant.now();
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
-    }
-
-    public Boolean getActive() {
-        return active;
-    }
-
-    public void setActive(Boolean active) {
-        this.active = active;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }

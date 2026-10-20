@@ -4,6 +4,8 @@ import com.lawfirm.law.firm.model.DisabilityGrade;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Um intervalo de deficiência como a tela o lê.
@@ -17,6 +19,8 @@ import java.util.UUID;
  * navegador: às 21h de 31 de janeiro, um navegador em UTC já estaria em fevereiro e devolveria um
  * dia a mais.
  */
+@Getter
+@Setter
 public class ClientDisabilityPeriodResponseDTO {
 
     private UUID id;
@@ -38,52 +42,4 @@ public class ClientDisabilityPeriodResponseDTO {
                             + "o fim de um intervalo em aberto é hoje no fuso do escritório.",
             example = "7305")
     private long days;
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public DisabilityGrade getGrade() {
-        return grade;
-    }
-
-    public void setGrade(DisabilityGrade grade) {
-        this.grade = grade;
-    }
-
-    public LocalDate getStartedOn() {
-        return startedOn;
-    }
-
-    public void setStartedOn(LocalDate startedOn) {
-        this.startedOn = startedOn;
-    }
-
-    public LocalDate getEndedOn() {
-        return endedOn;
-    }
-
-    public void setEndedOn(LocalDate endedOn) {
-        this.endedOn = endedOn;
-    }
-
-    public boolean isOngoing() {
-        return ongoing;
-    }
-
-    public void setOngoing(boolean ongoing) {
-        this.ongoing = ongoing;
-    }
-
-    public long getDays() {
-        return days;
-    }
-
-    public void setDays(long days) {
-        this.days = days;
-    }
 }

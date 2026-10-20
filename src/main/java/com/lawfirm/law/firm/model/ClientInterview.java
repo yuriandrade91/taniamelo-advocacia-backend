@@ -5,6 +5,8 @@ import com.lawfirm.law.firm.audit.Auditable;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 /**
@@ -18,6 +20,8 @@ import org.hibernate.annotations.UuidGenerator;
 @Entity
 @Table(name = "client_interviews")
 @EntityListeners(AuditLogListener.class)
+@Getter
+@Setter
 public class ClientInterview implements Auditable {
 
     @Id
@@ -64,85 +68,5 @@ public class ClientInterview implements Auditable {
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = Instant.now();
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public Client getClient() {
-        return client;
-    }
-
-    public void setClient(Client client) {
-        this.client = client;
-    }
-
-    public Instant getOccurredAt() {
-        return occurredAt;
-    }
-
-    public void setOccurredAt(Instant occurredAt) {
-        this.occurredAt = occurredAt;
-    }
-
-    public Integer getDurationMinutes() {
-        return durationMinutes;
-    }
-
-    public void setDurationMinutes(Integer durationMinutes) {
-        this.durationMinutes = durationMinutes;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public UUID getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(UUID createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public UUID getUpdatedBy() {
-        return updatedBy;
-    }
-
-    public void setUpdatedBy(UUID updatedBy) {
-        this.updatedBy = updatedBy;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public Instant getDeletedAt() {
-        return deletedAt;
-    }
-
-    public void setDeletedAt(Instant deletedAt) {
-        this.deletedAt = deletedAt;
     }
 }

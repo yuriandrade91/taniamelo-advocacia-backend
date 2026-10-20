@@ -10,12 +10,16 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Payload de criação/edição de um compromisso da agenda. {@code startAt} e {@code endAt} são
  * obrigatórios, com {@code endAt} posterior a {@code startAt}. {@code justification} é ignorado na
  * criação e obrigatório na edição (validado no service, pois o mesmo DTO serve os dois fluxos).
  */
+@Getter
+@Setter
 public class AppointmentRequestDTO {
 
     @Size(max = 255)
@@ -72,99 +76,11 @@ public class AppointmentRequestDTO {
         return startAt == null || endAt == null || endAt.isAfter(startAt);
     }
 
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
     public AppointmentType getType() {
         return type;
     }
 
     public void setType(AppointmentType type) {
         this.type = type;
-    }
-
-    public Instant getStartAt() {
-        return startAt;
-    }
-
-    public void setStartAt(Instant startAt) {
-        this.startAt = startAt;
-    }
-
-    public Instant getEndAt() {
-        return endAt;
-    }
-
-    public void setEndAt(Instant endAt) {
-        this.endAt = endAt;
-    }
-
-    public AppointmentModality getModality() {
-        return modality;
-    }
-
-    public void setModality(AppointmentModality modality) {
-        this.modality = modality;
-    }
-
-    public String getLocation() {
-        return location;
-    }
-
-    public void setLocation(String location) {
-        this.location = location;
-    }
-
-    public String getMeetingUrl() {
-        return meetingUrl;
-    }
-
-    public void setMeetingUrl(String meetingUrl) {
-        this.meetingUrl = meetingUrl;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public UUID getClientId() {
-        return clientId;
-    }
-
-    public void setClientId(UUID clientId) {
-        this.clientId = clientId;
-    }
-
-    public String getClientName() {
-        return clientName;
-    }
-
-    public void setClientName(String clientName) {
-        this.clientName = clientName;
-    }
-
-    public String getJustification() {
-        return justification;
-    }
-
-    public void setJustification(String justification) {
-        this.justification = justification;
-    }
-
-    public boolean isPastDateAcknowledged() {
-        return pastDateAcknowledged;
-    }
-
-    public void setPastDateAcknowledged(boolean pastDateAcknowledged) {
-        this.pastDateAcknowledged = pastDateAcknowledged;
     }
 }

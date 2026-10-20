@@ -4,6 +4,8 @@ import com.lawfirm.law.firm.model.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Os próprios dados de quem está autenticado.
@@ -15,6 +17,8 @@ import java.util.UUID;
  * <p>Não traz o hash da senha, nem o estado de bloqueio por tentativas. Papel e situação vêm como
  * leitura: quem muda papel é quem administra, não o próprio usuário.
  */
+@Getter
+@Setter
 public class MyProfileDTO {
 
     private UUID id;
@@ -30,68 +34,4 @@ public class MyProfileDTO {
 
     private Instant createdAt;
     private Instant updatedAt;
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public Role getRole() {
-        return role;
-    }
-
-    public void setRole(Role role) {
-        this.role = role;
-    }
-
-    public boolean isActive() {
-        return active;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }

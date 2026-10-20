@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
 import org.hibernate.annotations.UuidGenerator;
 
 /**
@@ -20,6 +21,7 @@ import org.hibernate.annotations.UuidGenerator;
  */
 @Entity
 @Table(name = "audit_log")
+@Getter
 public class AuditLog {
 
     @Id
@@ -69,37 +71,5 @@ public class AuditLog {
         this.actingSupportUserId = actingSupportUserId;
         this.performedAt = Instant.now();
         this.detail = detail;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public String getEntityName() {
-        return entityName;
-    }
-
-    public UUID getEntityId() {
-        return entityId;
-    }
-
-    public AuditAction getAction() {
-        return action;
-    }
-
-    public UUID getPerformedBy() {
-        return performedBy;
-    }
-
-    public UUID getActingSupportUserId() {
-        return actingSupportUserId;
-    }
-
-    public Instant getPerformedAt() {
-        return performedAt;
-    }
-
-    public String getDetail() {
-        return detail;
     }
 }

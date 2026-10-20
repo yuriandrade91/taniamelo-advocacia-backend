@@ -3,6 +3,8 @@ package com.lawfirm.law.firm.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Filtros e paginação da listagem da agenda, agrupados num único objeto (bind via
@@ -13,6 +15,8 @@ import java.util.UUID;
  * parâmetro na query string, ex.: {@code ?year=2025&year=2026&type=Reunião&type=Audiência}) - um
  * único valor continua funcionando normalmente, pois vira uma lista de um elemento só.
  */
+@Getter
+@Setter
 public class AppointmentSearchParams {
 
     @Schema(description = "Número da página (1-based)", defaultValue = "1")
@@ -48,84 +52,4 @@ public class AppointmentSearchParams {
 
     @Schema(description = "Início até (ISO-8601)")
     private String to;
-
-    public int getPageNumber() {
-        return pageNumber;
-    }
-
-    public void setPageNumber(int pageNumber) {
-        this.pageNumber = pageNumber;
-    }
-
-    public int getPageSize() {
-        return pageSize;
-    }
-
-    public void setPageSize(int pageSize) {
-        this.pageSize = pageSize;
-    }
-
-    public List<Integer> getYear() {
-        return year;
-    }
-
-    public void setYear(List<Integer> year) {
-        this.year = year;
-    }
-
-    public List<Integer> getMonth() {
-        return month;
-    }
-
-    public void setMonth(List<Integer> month) {
-        this.month = month;
-    }
-
-    public List<String> getType() {
-        return type;
-    }
-
-    public void setType(List<String> type) {
-        this.type = type;
-    }
-
-    public List<String> getStatus() {
-        return status;
-    }
-
-    public void setStatus(List<String> status) {
-        this.status = status;
-    }
-
-    public UUID getClientId() {
-        return clientId;
-    }
-
-    public void setClientId(UUID clientId) {
-        this.clientId = clientId;
-    }
-
-    public String getSearchTerm() {
-        return searchTerm;
-    }
-
-    public void setSearchTerm(String searchTerm) {
-        this.searchTerm = searchTerm;
-    }
-
-    public String getFrom() {
-        return from;
-    }
-
-    public void setFrom(String from) {
-        this.from = from;
-    }
-
-    public String getTo() {
-        return to;
-    }
-
-    public void setTo(String to) {
-        this.to = to;
-    }
 }

@@ -1,8 +1,12 @@
 package com.lawfirm.law.firm.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.Setter;
 
 /** Metadados de um documento no upload em lote (uma entrada por arquivo, na mesma ordem). */
+@Getter
+@Setter
 public class ClientFileDocumentUploadMetadataDTO {
 
     @NotBlank private String documentType;
@@ -15,13 +19,5 @@ public class ClientFileDocumentUploadMetadataDTO {
 
     public void setDocumentType(String documentType) {
         this.documentType = documentType;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
     }
 }

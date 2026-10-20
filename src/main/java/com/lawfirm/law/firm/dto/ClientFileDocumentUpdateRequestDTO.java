@@ -1,24 +1,13 @@
 package com.lawfirm.law.firm.dto;
 
+import lombok.Getter;
+import lombok.Setter;
+
 /** Atualização parcial dos metadados de um documento (o arquivo em si não muda). */
+@Getter
+@Setter
 public class ClientFileDocumentUpdateRequestDTO {
 
     private String documentType;
     private String notes;
-
-    public String getDocumentType() {
-        return documentType;
-    }
-
-    public void setDocumentType(String documentType) {
-        this.documentType = documentType;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
-    }
 }

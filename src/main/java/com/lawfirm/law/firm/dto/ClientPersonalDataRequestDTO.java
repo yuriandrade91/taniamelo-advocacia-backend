@@ -10,11 +10,15 @@ import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Aba "Dados pessoais": identidade e contato. Dados profissionais têm endpoint próprio
  * (/professional-data); endereços idem (/addresses).
  */
+@Getter
+@Setter
 public class ClientPersonalDataRequestDTO {
 
     @Size(max = 255)
@@ -72,131 +76,11 @@ public class ClientPersonalDataRequestDTO {
 
     private Boolean hasDisability;
 
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public LocalDate getBirthDate() {
-        return birthDate;
-    }
-
-    public void setBirthDate(LocalDate birthDate) {
-        this.birthDate = birthDate;
-    }
-
-    public String getCpf() {
-        return cpf;
-    }
-
-    public void setCpf(String cpf) {
-        this.cpf = cpf;
-    }
-
-    public String getRg() {
-        return rg;
-    }
-
-    public void setRg(String rg) {
-        this.rg = rg;
-    }
-
-    public String getRgIssuer() {
-        return rgIssuer;
-    }
-
-    public void setRgIssuer(String rgIssuer) {
-        this.rgIssuer = rgIssuer;
-    }
-
-    public LocalDate getRgIssueDate() {
-        return rgIssueDate;
-    }
-
-    public void setRgIssueDate(LocalDate rgIssueDate) {
-        this.rgIssueDate = rgIssueDate;
-    }
-
-    public String getMotherName() {
-        return motherName;
-    }
-
-    public void setMotherName(String motherName) {
-        this.motherName = motherName;
-    }
-
     public Gender getGender() {
         return gender;
     }
 
     public void setGender(Gender gender) {
         this.gender = gender;
-    }
-
-    public MaritalStatus getMaritalStatus() {
-        return maritalStatus;
-    }
-
-    public void setMaritalStatus(MaritalStatus maritalStatus) {
-        this.maritalStatus = maritalStatus;
-    }
-
-    public String getNationality() {
-        return nationality;
-    }
-
-    public void setNationality(String nationality) {
-        this.nationality = nationality;
-    }
-
-    public String getMobilePhone() {
-        return mobilePhone;
-    }
-
-    public void setMobilePhone(String mobilePhone) {
-        this.mobilePhone = mobilePhone;
-    }
-
-    public Boolean getIsWhatsapp() {
-        return isWhatsapp;
-    }
-
-    public void setIsWhatsapp(Boolean isWhatsapp) {
-        this.isWhatsapp = isWhatsapp;
-    }
-
-    public String getReferencePhone() {
-        return referencePhone;
-    }
-
-    public void setReferencePhone(String referencePhone) {
-        this.referencePhone = referencePhone;
-    }
-
-    public String getReferenceResponsible() {
-        return referenceResponsible;
-    }
-
-    public void setReferenceResponsible(String referenceResponsible) {
-        this.referenceResponsible = referenceResponsible;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public Boolean getHasDisability() {
-        return hasDisability;
-    }
-
-    public void setHasDisability(Boolean hasDisability) {
-        this.hasDisability = hasDisability;
     }
 }

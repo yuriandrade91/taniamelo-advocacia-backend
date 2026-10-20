@@ -3,12 +3,16 @@ package com.lawfirm.law.firm.dto;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Aba "Dados profissionais": profissão, vínculos e credenciais previdenciárias. O tempo de
  * contribuição vem em três campos (anos, meses, dias); o total em meses e a frase de exibição são
  * derivados no servidor (contributionInMonths e contributionTime, somente leitura).
  */
+@Getter
+@Setter
 public class ClientProfessionalDataRequestDTO {
 
     @Size(max = 100)
@@ -47,76 +51,4 @@ public class ClientProfessionalDataRequestDTO {
      */
     @Size(max = 255)
     private String inssPassword;
-
-    public String getProfession() {
-        return profession;
-    }
-
-    public void setProfession(String profession) {
-        this.profession = profession;
-    }
-
-    public String getNitPis() {
-        return nitPis;
-    }
-
-    public void setNitPis(String nitPis) {
-        this.nitPis = nitPis;
-    }
-
-    public String getCtps() {
-        return ctps;
-    }
-
-    public void setCtps(String ctps) {
-        this.ctps = ctps;
-    }
-
-    public String getCtpsSeries() {
-        return ctpsSeries;
-    }
-
-    public void setCtpsSeries(String ctpsSeries) {
-        this.ctpsSeries = ctpsSeries;
-    }
-
-    public Integer getContributionYears() {
-        return contributionYears;
-    }
-
-    public void setContributionYears(Integer contributionYears) {
-        this.contributionYears = contributionYears;
-    }
-
-    public Integer getContributionMonths() {
-        return contributionMonths;
-    }
-
-    public void setContributionMonths(Integer contributionMonths) {
-        this.contributionMonths = contributionMonths;
-    }
-
-    public Integer getContributionDays() {
-        return contributionDays;
-    }
-
-    public void setContributionDays(Integer contributionDays) {
-        this.contributionDays = contributionDays;
-    }
-
-    public String getBeneficiaryNumber() {
-        return beneficiaryNumber;
-    }
-
-    public void setBeneficiaryNumber(String beneficiaryNumber) {
-        this.beneficiaryNumber = beneficiaryNumber;
-    }
-
-    public String getInssPassword() {
-        return inssPassword;
-    }
-
-    public void setInssPassword(String inssPassword) {
-        this.inssPassword = inssPassword;
-    }
 }

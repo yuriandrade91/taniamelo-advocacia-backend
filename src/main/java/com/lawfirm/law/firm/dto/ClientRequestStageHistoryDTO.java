@@ -3,6 +3,8 @@ package com.lawfirm.law.firm.dto;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Uma entrada da linha do tempo do requerimento no INSS.
@@ -23,6 +25,8 @@ import java.util.UUID;
  * que faz alguém agir.
  */
 @JsonPropertyOrder({"id"})
+@Getter
+@Setter
 public class ClientRequestStageHistoryDTO {
     private UUID id;
     private String previousStage;
@@ -39,60 +43,4 @@ public class ClientRequestStageHistoryDTO {
      * mudou escreveu.
      */
     private String justification;
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getPreviousStage() {
-        return previousStage;
-    }
-
-    public void setPreviousStage(String previousStage) {
-        this.previousStage = previousStage;
-    }
-
-    public String getCurrentStage() {
-        return currentStage;
-    }
-
-    public void setCurrentStage(String currentStage) {
-        this.currentStage = currentStage;
-    }
-
-    public Instant getChangedAt() {
-        return changedAt;
-    }
-
-    public void setChangedAt(Instant changedAt) {
-        this.changedAt = changedAt;
-    }
-
-    public UUID getChangedByUserId() {
-        return changedByUserId;
-    }
-
-    public void setChangedByUserId(UUID changedByUserId) {
-        this.changedByUserId = changedByUserId;
-    }
-
-    public Long getDiasNaEtapaAnterior() {
-        return diasNaEtapaAnterior;
-    }
-
-    public void setDiasNaEtapaAnterior(Long diasNaEtapaAnterior) {
-        this.diasNaEtapaAnterior = diasNaEtapaAnterior;
-    }
-
-    public String getJustification() {
-        return justification;
-    }
-
-    public void setJustification(String justification) {
-        this.justification = justification;
-    }
 }

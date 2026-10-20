@@ -3,6 +3,8 @@ package com.lawfirm.law.firm.model;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 /**
@@ -18,6 +20,8 @@ import org.hibernate.annotations.UuidGenerator;
  */
 @Entity
 @Table(name = "client_request_stage_history")
+@Getter
+@Setter
 public class ClientRequestStageHistory {
 
     @Id
@@ -52,68 +56,4 @@ public class ClientRequestStageHistory {
      */
     @Column(name = "justification")
     private String justification;
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public Client getClient() {
-        return client;
-    }
-
-    public void setClient(Client client) {
-        this.client = client;
-    }
-
-    public String getPreviousStage() {
-        return previousStage;
-    }
-
-    public void setPreviousStage(String previousStage) {
-        this.previousStage = previousStage;
-    }
-
-    public String getNewStage() {
-        return newStage;
-    }
-
-    public void setNewStage(String newStage) {
-        this.newStage = newStage;
-    }
-
-    public Instant getPreviousStageEnteredAt() {
-        return previousStageEnteredAt;
-    }
-
-    public void setPreviousStageEnteredAt(Instant previousStageEnteredAt) {
-        this.previousStageEnteredAt = previousStageEnteredAt;
-    }
-
-    public Instant getChangedAt() {
-        return changedAt;
-    }
-
-    public void setChangedAt(Instant changedAt) {
-        this.changedAt = changedAt;
-    }
-
-    public UUID getChangedBy() {
-        return changedBy;
-    }
-
-    public void setChangedBy(UUID changedBy) {
-        this.changedBy = changedBy;
-    }
-
-    public String getJustification() {
-        return justification;
-    }
-
-    public void setJustification(String justification) {
-        this.justification = justification;
-    }
 }

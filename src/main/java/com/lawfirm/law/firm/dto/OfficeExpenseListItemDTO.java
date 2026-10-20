@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Uma linha da lista de despesas — só o que a tela mostra na grade.
@@ -24,6 +26,8 @@ import java.util.UUID;
  * createdBy}, {@code createdAt}, {@code updatedBy}, {@code updatedAt}).
  */
 @JsonPropertyOrder({"id"})
+@Getter
+@Setter
 public class OfficeExpenseListItemDTO {
 
     private UUID id;
@@ -37,76 +41,4 @@ public class OfficeExpenseListItemDTO {
 
     @Schema(description = "Pendente e vencido. Calculado no servidor, nunca no navegador.")
     private boolean overdue;
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getSupplier() {
-        return supplier;
-    }
-
-    public void setSupplier(String supplier) {
-        this.supplier = supplier;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
-    public LocalDate getDueDate() {
-        return dueDate;
-    }
-
-    public void setDueDate(LocalDate dueDate) {
-        this.dueDate = dueDate;
-    }
-
-    public LocalDate getPaidDate() {
-        return paidDate;
-    }
-
-    public void setPaidDate(LocalDate paidDate) {
-        this.paidDate = paidDate;
-    }
-
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public boolean isOverdue() {
-        return overdue;
-    }
-
-    public void setOverdue(boolean overdue) {
-        this.overdue = overdue;
-    }
 }

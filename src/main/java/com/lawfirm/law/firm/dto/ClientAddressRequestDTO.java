@@ -2,8 +2,12 @@ package com.lawfirm.law.firm.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
 /** Corpo de POST/PUT de um endereço. Usado tanto para criar quanto para substituir por completo. */
+@Getter
+@Setter
 public class ClientAddressRequestDTO {
 
     private String addressType;
@@ -34,76 +38,4 @@ public class ClientAddressRequestDTO {
 
     /** Se true, esta passa a ser a principal (a anterior é desmarcada automaticamente). */
     private Boolean isPrimary;
-
-    public String getAddressType() {
-        return addressType;
-    }
-
-    public void setAddressType(String addressType) {
-        this.addressType = addressType;
-    }
-
-    public String getStreet() {
-        return street;
-    }
-
-    public void setStreet(String street) {
-        this.street = street;
-    }
-
-    public String getAddressNumber() {
-        return addressNumber;
-    }
-
-    public void setAddressNumber(String addressNumber) {
-        this.addressNumber = addressNumber;
-    }
-
-    public String getComplement() {
-        return complement;
-    }
-
-    public void setComplement(String complement) {
-        this.complement = complement;
-    }
-
-    public String getNeighborhood() {
-        return neighborhood;
-    }
-
-    public void setNeighborhood(String neighborhood) {
-        this.neighborhood = neighborhood;
-    }
-
-    public String getCity() {
-        return city;
-    }
-
-    public void setCity(String city) {
-        this.city = city;
-    }
-
-    public String getState() {
-        return state;
-    }
-
-    public void setState(String state) {
-        this.state = state;
-    }
-
-    public String getZipCode() {
-        return zipCode;
-    }
-
-    public void setZipCode(String zipCode) {
-        this.zipCode = zipCode;
-    }
-
-    public Boolean getIsPrimary() {
-        return isPrimary;
-    }
-
-    public void setIsPrimary(Boolean isPrimary) {
-        this.isPrimary = isPrimary;
-    }
 }

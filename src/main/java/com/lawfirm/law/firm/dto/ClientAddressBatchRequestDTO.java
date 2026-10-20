@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Vários endereços de um cliente em uma requisição só.
@@ -15,18 +17,12 @@ import java.util.List;
  * <p>Limite de 10 é folga sobre o uso real (o cadastro trabalha com três): existe para que um corpo
  * absurdo seja recusado na validação, não na transação.
  */
+@Getter
+@Setter
 public class ClientAddressBatchRequestDTO {
 
     @Valid
     @NotEmpty(message = "Informe ao menos um endereço.")
     @Size(max = 10, message = "No máximo 10 endereços por requisição.")
     private List<ClientAddressRequestDTO> addresses;
-
-    public List<ClientAddressRequestDTO> getAddresses() {
-        return addresses;
-    }
-
-    public void setAddresses(List<ClientAddressRequestDTO> addresses) {
-        this.addresses = addresses;
-    }
 }

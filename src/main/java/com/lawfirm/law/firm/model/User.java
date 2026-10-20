@@ -5,10 +5,14 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 @Entity
 @Table(name = "users")
+@Getter
+@Setter
 public class User {
 
     @Id
@@ -69,93 +73,5 @@ public class User {
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = Instant.now();
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
-    }
-
-    public Role getRole() {
-        return role;
-    }
-
-    public void setRole(Role role) {
-        this.role = role;
-    }
-
-    public Boolean getActive() {
-        return active;
-    }
-
-    public void setActive(Boolean active) {
-        this.active = active;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public Integer getFailedLoginAttempts() {
-        return failedLoginAttempts;
-    }
-
-    public void setFailedLoginAttempts(Integer failedLoginAttempts) {
-        this.failedLoginAttempts = failedLoginAttempts;
-    }
-
-    public Instant getLockedUntil() {
-        return lockedUntil;
-    }
-
-    public void setLockedUntil(Instant lockedUntil) {
-        this.lockedUntil = lockedUntil;
     }
 }

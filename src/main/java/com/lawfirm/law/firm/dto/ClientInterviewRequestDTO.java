@@ -3,8 +3,12 @@ package com.lawfirm.law.firm.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import java.time.Instant;
+import lombok.Getter;
+import lombok.Setter;
 
 /** Payload de criação/atualização de uma entrevista. */
+@Getter
+@Setter
 public class ClientInterviewRequestDTO {
 
     /** Data/hora da entrevista. Se omitida na criação, assume o momento do registro. */
@@ -14,14 +18,6 @@ public class ClientInterviewRequestDTO {
 
     /** Conteúdo do componente rich text (HTML/JSON do editor). */
     @NotBlank private String content;
-
-    public Instant getOccurredAt() {
-        return occurredAt;
-    }
-
-    public void setOccurredAt(Instant occurredAt) {
-        this.occurredAt = occurredAt;
-    }
 
     public Integer getDurationMinutes() {
         return durationMinutes;

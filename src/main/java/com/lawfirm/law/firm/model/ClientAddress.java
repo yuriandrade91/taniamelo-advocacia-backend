@@ -5,11 +5,15 @@ import com.lawfirm.law.firm.audit.Auditable;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 @Entity
 @Table(name = "client_addresses")
 @EntityListeners(AuditLogListener.class)
+@Getter
+@Setter
 public class ClientAddress implements Auditable {
 
     @Id
@@ -74,125 +78,5 @@ public class ClientAddress implements Auditable {
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = Instant.now();
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public Client getClient() {
-        return client;
-    }
-
-    public void setClient(Client client) {
-        this.client = client;
-    }
-
-    public AddressType getAddressType() {
-        return addressType;
-    }
-
-    public void setAddressType(AddressType addressType) {
-        this.addressType = addressType;
-    }
-
-    public String getStreet() {
-        return street;
-    }
-
-    public void setStreet(String street) {
-        this.street = street;
-    }
-
-    public String getAddressNumber() {
-        return addressNumber;
-    }
-
-    public void setAddressNumber(String addressNumber) {
-        this.addressNumber = addressNumber;
-    }
-
-    public String getComplement() {
-        return complement;
-    }
-
-    public void setComplement(String complement) {
-        this.complement = complement;
-    }
-
-    public String getNeighborhood() {
-        return neighborhood;
-    }
-
-    public void setNeighborhood(String neighborhood) {
-        this.neighborhood = neighborhood;
-    }
-
-    public String getCity() {
-        return city;
-    }
-
-    public void setCity(String city) {
-        this.city = city;
-    }
-
-    public String getState() {
-        return state;
-    }
-
-    public void setState(String state) {
-        this.state = state;
-    }
-
-    public String getZipCode() {
-        return zipCode;
-    }
-
-    public void setZipCode(String zipCode) {
-        this.zipCode = zipCode;
-    }
-
-    public Boolean getIsPrimary() {
-        return isPrimary;
-    }
-
-    public void setIsPrimary(Boolean isPrimary) {
-        this.isPrimary = isPrimary;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public UUID getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(UUID createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public UUID getUpdatedBy() {
-        return updatedBy;
-    }
-
-    public void setUpdatedBy(UUID updatedBy) {
-        this.updatedBy = updatedBy;
     }
 }
