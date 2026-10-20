@@ -110,4 +110,49 @@ class JwtServiceTest {
         assertEquals("t1", jwtService.extractTenant(first));
         assertEquals("t2", jwtService.extractTenant(second));
     }
+
+    // ── Tokens de suporte ──
+
+    @Test
+    @DisplayName("token de plataforma: escopo platform, uid do agente e nenhum tenant")
+    void platformTokenHasNoTenant() {
+        UUID agente = UUID.randomUUID();
+        String token = jwtService.generatePlatformToken(agente, "agente@plataforma.dev");
+
+        assertEquals("platform", jwtService.extractScope(token));
+        assertEquals(agente, jwtService.extractUid(token));
+        assertEquals("agente@plataforma.dev", jwtService.extractEmail(token));
+        assertNull(jwtService.extractTenant(token), "sozinho não pode abrir dado de escritório");
+        assertNull(jwtService.extractRole(token));
+        assertNull(jwtService.extractActingSupportId(token));
+        assertTrue(jwtService.isValid(token));
+        assertEquals(60L * 60_000, jwtService.getSupportPlatformMillis());
+    }
+
+    @Test
+    @DisplayName("sessão de suporte: ADMIN no tenant escolhido, com o agente real em act")
+    void supportSessionCarriesActingAgent() {
+        UUID agente = UUID.randomUUID();
+        String token =
+                jwtService.generateSupportSessionToken(agente, "agente@plataforma.dev", "tenant-x");
+
+        assertEquals("support-session", jwtService.extractScope(token));
+        assertEquals("ADMIN", jwtService.extractRole(token));
+        assertEquals("tenant-x", jwtService.extractTenant(token));
+        assertEquals(agente, jwtService.extractUid(token));
+        assertEquals(agente, jwtService.extractActingSupportId(token));
+        assertTrue(jwtService.isValid(token));
+        assertEquals(20L * 60_000, jwtService.getSupportSessionMillis());
+    }
+
+    @Test
+    @DisplayName("token normal de tenant não tem escopo nem ator de suporte")
+    void tenantTokenHasNoScopeNorActor() {
+        String token = jwtService.generateToken(USER_ID, "a@b.com", "STAFF", "tenant-uuid");
+
+        assertNull(jwtService.extractScope(token));
+        assertNull(jwtService.extractActingSupportId(token));
+        assertEquals("STAFF", jwtService.extractRole(token));
+        assertEquals(USER_ID, jwtService.extractUid(token));
+    }
 }

@@ -256,4 +256,104 @@ class JwtAuthenticationFilterTest {
 
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
+
+    // ── Tokens de suporte ──
+
+    private static final java.util.UUID AGENTE =
+            java.util.UUID.fromString("44444444-4444-4444-4444-444444444444");
+
+    private void tokenDePlataforma(String token) {
+        request.addHeader("Authorization", "Bearer " + token);
+        when(jwtService.isValid(token)).thenReturn(true);
+        when(jwtService.extractScope(token)).thenReturn("platform");
+        when(jwtService.extractUid(token)).thenReturn(AGENTE);
+    }
+
+    @Test
+    @DisplayName("token de plataforma em /support autentica com ROLE_PLATFORM, sem tocar o banco")
+    void platformTokenAuthenticatesOnSupportRoutes() throws Exception {
+        tokenDePlataforma("plat");
+        request.setRequestURI("/api/v1/support/sessions");
+
+        filter.doFilterInternal(request, response, new MockFilterChain());
+
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        assertNotNull(auth);
+        assertEquals(AGENTE, auth.getPrincipal());
+        assertEquals("ROLE_PLATFORM", auth.getAuthorities().iterator().next().getAuthority());
+        verify(userDetailsService, never()).loadUserByUsername(anyString());
+    }
+
+    @Test
+    @DisplayName(
+            "token de plataforma fora de /support não autentica: não pode ler dado de escritório")
+    void platformTokenIsIgnoredOutsideSupportRoutes() throws Exception {
+        tokenDePlataforma("plat");
+        request.setRequestURI("/api/v1/clients");
+
+        filter.doFilterInternal(request, response, new MockFilterChain());
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    @DisplayName("token de plataforma sem uid não autentica")
+    void platformTokenWithoutUidIsIgnored() throws Exception {
+        tokenDePlataforma("plat");
+        when(jwtService.extractUid("plat")).thenReturn(null);
+        request.setRequestURI("/api/v1/support/sessions");
+
+        filter.doFilterInternal(request, response, new MockFilterChain());
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    private void sessaoDeSuporte(String token) {
+        request.addHeader("Authorization", "Bearer " + token);
+        when(jwtService.isValid(token)).thenReturn(true);
+        when(jwtService.extractScope(token)).thenReturn("support-session");
+        when(jwtService.extractActingSupportId(token)).thenReturn(AGENTE);
+        when(jwtService.extractRole(token)).thenReturn("ADMIN");
+        when(jwtService.extractEmail(token)).thenReturn("agente@plataforma.dev");
+    }
+
+    @Test
+    @DisplayName("sessão de suporte no escritório certo autentica com principal sintético")
+    void supportSessionAuthenticatesWithSyntheticPrincipal() throws Exception {
+        sessaoDeSuporte("sess");
+        tokenDoMesmoEscritorio("sess");
+
+        filter.doFilterInternal(request, response, new MockFilterChain());
+
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        assertNotNull(auth);
+        UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+        assertEquals(AGENTE, principal.getActingSupportUserId());
+        assertEquals("ROLE_ADMIN", principal.getAuthorities().iterator().next().getAuthority());
+        verify(userDetailsService, never()).loadUserByUsername(anyString());
+    }
+
+    @Test
+    @DisplayName("sessão de suporte de outro escritório não autentica")
+    void supportSessionForAnotherTenantIsIgnored() throws Exception {
+        sessaoDeSuporte("sess");
+        when(jwtService.extractTenant("sess")).thenReturn("tania");
+        when(tenantRegistry.schemaFor("tania")).thenReturn(Optional.of("tenant_tania"));
+
+        filter.doFilterInternal(request, response, new MockFilterChain());
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    @DisplayName("sessão de suporte sem role não autentica")
+    void supportSessionWithoutRoleIsIgnored() throws Exception {
+        sessaoDeSuporte("sess");
+        tokenDoMesmoEscritorio("sess");
+        when(jwtService.extractRole("sess")).thenReturn(null);
+
+        filter.doFilterInternal(request, response, new MockFilterChain());
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
 }
