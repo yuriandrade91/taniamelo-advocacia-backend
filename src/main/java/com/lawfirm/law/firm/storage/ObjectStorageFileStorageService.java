@@ -1,7 +1,6 @@
 package com.lawfirm.law.firm.storage;
 
 import java.io.IOException;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -53,9 +52,7 @@ public class ObjectStorageFileStorageService implements FileStorageService {
             throw new FileStorageException("Arquivo vazio ou ausente");
         }
 
-        String extension = extractExtension(file.getOriginalFilename());
-        String generatedName = UUID.randomUUID() + (extension.isEmpty() ? "" : "." + extension);
-        String storageKey = normalizeDirectory(directory) + "/" + generatedName;
+        String storageKey = StorageKeys.newKey(directory, file.getOriginalFilename());
 
         String mimeType = file.getContentType() != null ? file.getContentType() : DEFAULT_MIME;
 
@@ -107,19 +104,5 @@ public class ObjectStorageFileStorageService implements FileStorageService {
             throw new FileStorageException(
                     "Falha ao remover arquivo do armazenamento de objetos: " + storageKey, e);
         }
-    }
-
-    // ── Helpers (mesma semântica do LocalDiskFileStorageService) ──
-
-    private static String normalizeDirectory(String directory) {
-        if (directory == null || directory.isBlank()) return "misc";
-        return directory.replace('\\', '/').replaceAll("^/+", "").replaceAll("/+$", "");
-    }
-
-    private static String extractExtension(String originalFilename) {
-        if (originalFilename == null) return "";
-        int dot = originalFilename.lastIndexOf('.');
-        if (dot < 0 || dot == originalFilename.length() - 1) return "";
-        return originalFilename.substring(dot + 1).toLowerCase();
     }
 }

@@ -69,5 +69,7 @@ Claude outputs/
 
 # Arquivos enviados pelos clientes no perfil local (app.storage.local.base-path,
 # default ./storage). É dado de execução, e documento de cliente não vai para
-# repositório nenhum — em produção o perfil é s3.
-storage/
+# repositório nenhum — em produção o perfil é s3. Ancorado na raiz ("/"):
+# sem a barra, o padrão também ignorava o pacote Java .../firm/storage/, e
+# arquivo novo ali ficava fora do commit sem aviso.
+/storage/

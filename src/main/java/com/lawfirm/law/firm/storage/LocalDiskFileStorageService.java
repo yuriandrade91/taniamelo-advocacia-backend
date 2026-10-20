@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,9 +45,7 @@ public class LocalDiskFileStorageService implements FileStorageService {
             throw new FileStorageException("Arquivo vazio ou ausente");
         }
 
-        String extension = extractExtension(file.getOriginalFilename());
-        String generatedName = UUID.randomUUID() + (extension.isEmpty() ? "" : "." + extension);
-        String storageKey = normalizeDirectory(directory) + "/" + generatedName;
+        String storageKey = StorageKeys.newKey(directory, file.getOriginalFilename());
 
         Path target = resolveWithinBase(storageKey);
         try {
@@ -94,18 +91,6 @@ public class LocalDiskFileStorageService implements FileStorageService {
             throw new FileStorageException("Chave de storage inválida: " + storageKey);
         }
         return resolved;
-    }
-
-    private static String normalizeDirectory(String directory) {
-        if (directory == null || directory.isBlank()) return "misc";
-        return directory.replace('\\', '/').replaceAll("^/+", "").replaceAll("/+$", "");
-    }
-
-    private static String extractExtension(String originalFilename) {
-        if (originalFilename == null) return "";
-        int dot = originalFilename.lastIndexOf('.');
-        if (dot < 0 || dot == originalFilename.length() - 1) return "";
-        return originalFilename.substring(dot + 1).toLowerCase();
     }
 
     private static String probeMimeType(Path path) {
