@@ -78,10 +78,18 @@ public class LoginThrottleService {
             log.warn(
                     "Login recusado por excesso de tentativas (ip={}, login={}), liberando em {}s",
                     ip,
-                    login,
+                    semQuebraDeLinha(login),
                     espera);
             throw new TooManyAttemptsException(espera);
         }
+    }
+
+    /**
+     * {@code login} vem direto do corpo da requisição - sem isto, um valor com \r\n forjaria linhas
+     * inteiras de log (CRLF/log injection), como se fossem outro evento.
+     */
+    private static String semQuebraDeLinha(String texto) {
+        return texto == null ? null : texto.replaceAll("[\r\n]", "_");
     }
 
     /** Registra uma falha nas duas chaves. Chamado só quando a autenticação não passou. */

@@ -1,10 +1,15 @@
 spring:
   application:
     name: law-firm
+  # Mesmo padrão de application.yaml: credencial por variável de ambiente, com
+  # default só para o Postgres do docker-compose local. Como este arquivo é o
+  # profile usado no deploy real (ver docs/AWS_EC2_ARM64_DEPLOY.md), tê-la fixa
+  # aqui - mesmo sobrescrita pela env var em runtime - é o tipo de coisa que o
+  # scanner de segredos do Sonar aponta com razão: parece credencial real.
   datasource:
-    url: jdbc:postgresql://localhost:5432/system
-    username: postgres
-    password: postgres
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/system}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
   jpa:
     # Flyway is the single source of truth for schema in every profile - Hibernate only
