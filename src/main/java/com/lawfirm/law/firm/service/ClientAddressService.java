@@ -14,7 +14,6 @@ import com.lawfirm.law.firm.security.CurrentUser;
 import com.lawfirm.law.firm.util.PageRequests;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,26 +28,19 @@ public class ClientAddressService {
     private final ClientAddressRepository repository;
     private final ClientRepository clientRepository;
 
-    /**
-     * Proxy do próprio bean, injetado para que {@link #createAll} chame {@link #create} através
-     * dele - não via {@code this}, que pularia o proxy do Spring e a advice de
-     * {@code @Transactional}. {@code @Lazy} evita o ciclo na criação do bean (ele só resolve a
-     * referência no primeiro uso, depois que o próprio bean já existe).
-     */
-    private final ClientAddressService self;
-
     public ClientAddressService(
-            ClientAddressRepository repository,
-            ClientRepository clientRepository,
-            @Lazy ClientAddressService self) {
+            ClientAddressRepository repository, ClientRepository clientRepository) {
         this.repository = repository;
         this.clientRepository = clientRepository;
-        this.self = self;
     }
 
     @Transactional
     public ClientAddressResponseDTO create(UUID clientId, ClientAddressRequestDTO dto) {
-        Client client = findClientOrThrow(clientId);
+        return criar(clientId, findClientOrThrow(clientId), dto);
+    }
+
+    private ClientAddressResponseDTO criar(
+            UUID clientId, Client client, ClientAddressRequestDTO dto) {
 
         ClientAddress entity = new ClientAddress();
         entity.setClient(client);
@@ -71,18 +63,19 @@ public class ClientAddressService {
     /**
      * Grava vários endereços numa transação só - tudo ou nada.
      *
-     * <p>Reusa {@link #create} por endereço em vez de repetir a lógica: a coordenação do principal
-     * (primeiro endereço vira principal, {@code isPrimary=true} desmarca o anterior) é a mesma, e
-     * duplicá-la aqui seria criar uma segunda regra para divergir da primeira. Se mais de um
-     * endereço da lista pedir principal, vale o último - a ordem da lista decide.
+     * <p>Reusa a mesma criação de {@link #create} por endereço em vez de repetir a lógica: a
+     * coordenação do principal (primeiro endereço vira principal, {@code isPrimary=true} desmarca o
+     * anterior) é a mesma, e duplicá-la aqui seria criar uma segunda regra para divergir da
+     * primeira. Se mais de um endereço da lista pedir principal, vale o último - a ordem da lista
+     * decide.
      *
      * @return os endereços criados, na ordem em que foram enviados
      */
     @Transactional
     public List<ClientAddressResponseDTO> createAll(
             UUID clientId, List<ClientAddressRequestDTO> addresses) {
-        findClientOrThrow(clientId);
-        return addresses.stream().map(dto -> self.create(clientId, dto)).toList();
+        Client client = findClientOrThrow(clientId);
+        return addresses.stream().map(dto -> criar(clientId, client, dto)).toList();
     }
 
     public org.springframework.data.domain.Page<ClientAddressResponseDTO> list(
