@@ -59,6 +59,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 @DisplayName("ClientController: contrato HTTP do cadastro de clientes")
 class ClientControllerUnitTest {
 
+    private static final ClientListFilter SEM_FILTRO =
+            new ClientListFilter(null, null, null, null, null, null, null, null);
+
     @Mock private ClientService clientService;
 
     private MockMvc mockMvc;
@@ -221,7 +224,7 @@ class ClientControllerUnitTest {
         void usesDefaultPaging() throws Exception {
             mockMvc.perform(get("/api/v1/clients")).andExpect(status().isOk());
 
-            verify(clientService).listSummary(1, 10, ClientListFilter.none());
+            verify(clientService).listSummary(1, 10, SEM_FILTRO);
         }
 
         @Test

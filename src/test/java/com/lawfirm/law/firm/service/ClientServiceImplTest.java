@@ -77,6 +77,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 @DisplayName("ClientServiceImpl: regras do cadastro de clientes")
 class ClientServiceImplTest {
 
+    private static final ClientListFilter SEM_FILTRO =
+            new ClientListFilter(null, null, null, null, null, null, null, null);
+
     @Mock private ClientRepository repository;
     @Mock private ClientMapper mapper;
     @Mock private ClientSituationHistoryRepository historyRepository;
@@ -346,7 +349,7 @@ class ClientServiceImplTest {
         @Test
         @DisplayName("página 1-based vira índice 0-based e ordena por atividade recente")
         void translatesOneBasedPageAndSortsByUpdatedAt() {
-            Page<ClientListResponseDTO> page = service.listSummary(1, 25, ClientListFilter.none());
+            Page<ClientListResponseDTO> page = service.listSummary(1, 25, SEM_FILTRO);
 
             assertEquals(1, page.getContent().size());
             Pageable pageable = capturePageable();
@@ -364,14 +367,14 @@ class ClientServiceImplTest {
         @Test
         @DisplayName("página 0 ou negativa é normalizada para a primeira")
         void nonPositivePageFallsBackToFirst() {
-            service.listSummary(0, 10, ClientListFilter.none());
+            service.listSummary(0, 10, SEM_FILTRO);
             assertEquals(0, capturePageable().getPageNumber());
         }
 
         @Test
         @DisplayName("tamanho de página inválido cai no default de 10")
         void invalidPageSizeFallsBackToTen() {
-            service.listSummary(1, 0, ClientListFilter.none());
+            service.listSummary(1, 0, SEM_FILTRO);
             assertEquals(10, capturePageable().getPageSize());
         }
 

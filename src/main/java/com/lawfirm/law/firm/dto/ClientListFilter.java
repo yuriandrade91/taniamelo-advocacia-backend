@@ -33,9 +33,4 @@ public record ClientListFilter(
     private static <T> List<T> semNulos(List<T> values) {
         return values == null ? List.of() : values.stream().filter(Objects::nonNull).toList();
     }
-
-    /** Sem filtro nenhum. */
-    public static ClientListFilter none() {
-        return new ClientListFilter(null, null, null, null, null, null, null, null);
-    }
 }
