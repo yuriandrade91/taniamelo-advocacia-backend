@@ -1,0 +1,94 @@
+@startuml 02-componentes
+' Camadas do monolito e a infraestrutura multi-tenant por schema.
+title Tania Melo Advocacia — Componentes do backend
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam packageBackgroundColor #F7F9FC
+skinparam componentBackgroundColor #FFFFFF
+skinparam databaseBackgroundColor #FFFFFF
+
+actor "Frontend" as front
+
+package "Cadeia de filtros (Spring Security)" as chain {
+  component "CORS" as cors
+  component "TenantResolutionFilter\nX-Tenant-Id ou claim do JWT\n→ TenantContext" as tenantFilter
+  component "JwtAuthenticationFilter\nusuário do tenant | sessão de suporte\n| token de plataforma" as jwtFilter
+  component "Autorização\n@RequerAdvogado / @RequerAdmin" as authz
+}
+
+package "controller (HTTP fino, envelope ApiResponse)" as controllers {
+  component "Auth / Tenants / Support" as cAuth
+  component "Clients + sub-recursos\n(personal-data, professional-data, addresses,\ninterviews, files, payments, disability-periods)" as cClients
+  component "Appointments (agenda)" as cAgenda
+  component "Finance\n(payments, expenses, revenues)" as cFinance
+  component "Users / Cep" as cMisc
+}
+
+package "service (regra de negócio, @Transactional)" as services {
+  component "ClientService\nClientDisabilityPeriodService\nDisabilityTimeConversion" as sClient
+  component "AppointmentService" as sAgenda
+  component "PaymentService\nOfficeExpense/RevenueService" as sFinance
+  component "RefreshTokenService\nSupportService" as sAuth
+  component "CepLookupService" as sCep
+}
+
+package "repository (Spring Data JPA + Specifications)" as repos {
+  component "Repositórios por agregado" as rTenant
+  component "TenantRepository\nSupportUserRepository" as rPublic
+}
+
+package "Transversais" as cross {
+  component "GlobalExceptionHandler\n400 / 401 / 404 / 409 / 422 / 500" as errors
+  component "AuditLogListener\n(audit_log após o commit)" as audit
+  component "FileStorageService\nlocal | S3" as storage
+  component "ClientMapper (MapStruct)\nCryptoConverter (AES-GCM)" as mapping
+}
+
+package "tenant (multi-tenancy por schema)" as tenancy {
+  component "TenantRegistry\nUUID/slug → schema" as registry
+  component "SchemaCurrentTenantResolver" as resolver
+  component "SchemaMultiTenantConnectionProvider\nSET search_path" as connProvider
+  component "MultiTenantFlywayMigrator\nshared + cada tenant no boot" as migrator
+}
+
+database "PostgreSQL" as pg {
+  folder "public (control-plane)" as schPublic {
+    component "tenants\nsupport_users" as tPublic
+  }
+  folder "tenant_tania / tenant_demo / ..." as schTenant {
+    component "users, clients, appointments,\npayments, audit_log, ..." as tTenant
+  }
+}
+
+cloud "S3" as s3
+cloud "ViaCEP" as viacep
+
+front --> cors
+cors --> tenantFilter
+tenantFilter --> jwtFilter
+jwtFilter --> authz
+tenantFilter ..> registry : resolve schema
+authz --> controllers
+
+cAuth --> sAuth
+cClients --> sClient
+cAgenda --> sAgenda
+cFinance --> sFinance
+cMisc --> sCep
+
+services --> repos
+services ..> mapping
+sClient ..> storage
+sCep --> viacep
+storage --> s3
+
+rTenant --> connProvider
+connProvider ..> resolver : schema corrente
+connProvider --> schTenant
+rPublic --> schPublic
+migrator --> pg
+repos ..> audit : eventos JPA
+audit --> tTenant
+controllers ..> errors : exceções
+@enduml

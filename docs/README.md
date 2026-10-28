@@ -12,6 +12,8 @@ mantê-los aqui faz quem chega ler o passado achando que é o presente.
 - **`ARQUITETURA.md`** — **referência canônica**: a arquitetura Java ponta a
   ponta (stack, camadas, fluxo de requisição, segurança, persistência, build,
   deploy). Comece por aqui.
+- **`arquitetura/`** — a mesma arquitetura em diagramas PlantUML (deploy,
+  componentes, ciclo da requisição, autenticação), renderizados no plantuml.com.
 - **`ARCHITECTURE.md`** — racional das decisões de API e o caminho de evolução
   (microserviços/multi-tenant). Complementa o de cima com o *porquê*.
 - **`DATA_MODEL.md`** — schema atual (baseline de migrations, PKs em UUID,

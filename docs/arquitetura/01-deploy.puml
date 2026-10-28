@@ -1,0 +1,64 @@
+@startuml 01-deploy
+' Onde cada peça roda e como o código chega à instância.
+' Renderizar: https://www.plantuml.com/plantuml (ou ver docs/arquitetura/README.md)
+title Tania Melo Advocacia — Deploy (instância de desenvolvimento)
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam nodeBackgroundColor #F7F9FC
+skinparam componentBackgroundColor #FFFFFF
+skinparam databaseBackgroundColor #FFFFFF
+
+actor "Equipe do escritório" as user
+actor "Suporte da plataforma" as support
+
+node "Navegador" as browser {
+  component "Frontend (SPA)" as spa
+}
+
+cloud "GitHub" as github {
+  component "Repositório\n(branch develop)" as repo
+  component "Actions: CI\nbuild + testes + Semgrep\n+ build da imagem" as ci
+  component "Actions: Deploy\n(workflow_run após CI verde)" as cd
+}
+
+cloud "SonarCloud" as sonar {
+  component "Análise + Quality Gate\n(código novo)" as gate
+}
+
+cloud "AWS" as aws {
+  node "EC2 ARM64 (Amazon Linux 2023)\nDocker Compose" as ec2 {
+    component "app\nSpring Boot 4.1 / Java 25\n:8080" as app
+    database "db\nPostgreSQL 17\n(127.0.0.1:5432)" as db
+    package "Observabilidade (opt-in)\ndocker-compose.observability.yml" as obs {
+      component "Prometheus" as prom
+      component "Tempo" as tempo
+      component "Loki" as loki
+      component "Alloy" as alloy
+      component "Grafana :3000" as grafana
+    }
+  }
+  storage "S3\n(documentos e simulações)" as s3
+}
+
+cloud "ViaCEP" as viacep
+
+user --> spa
+support --> spa
+spa --> app : HTTPS/HTTP REST /api/v1\nBearer JWT + X-Tenant-Id
+app --> db : JDBC\nsearch_path = schema do tenant
+app --> s3 : AWS SDK v2\n(IAM Role da instância)
+app --> viacep : consulta de CEP
+
+repo --> ci : push
+ci --> gate : mvn verify sonar:sonar
+ci --> cd : sucesso
+cd --> ec2 : SSH (porta 22 aberta só\ndurante o job) + restart-app-docker.sh
+
+prom --> app : scrape /actuator/prometheus
+app --> tempo : spans (OTLP)
+alloy --> loki : logs dos containers
+grafana --> prom
+grafana --> tempo
+grafana --> loki
+@enduml

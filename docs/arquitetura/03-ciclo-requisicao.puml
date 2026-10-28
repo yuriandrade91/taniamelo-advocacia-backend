@@ -1,0 +1,61 @@
+@startuml 03-ciclo-requisicao
+' Uma requisição autenticada, do header ao commit - com o isolamento por tenant.
+title Ciclo de uma requisição autenticada (ex.: PUT /api/v1/clients/{clientId})
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+autonumber
+
+actor "Frontend" as front
+participant "TenantResolutionFilter" as tf
+participant "TenantRegistry" as reg
+participant "JwtAuthenticationFilter" as jwt
+participant "Controller" as ctrl
+participant "Service\n@Transactional" as svc
+participant "Repository" as repo
+participant "ConnectionProvider" as conn
+database "PostgreSQL\n(schema do tenant)" as db
+participant "AuditLogListener" as audit
+participant "GlobalExceptionHandler" as geh
+
+front -> tf : HTTP + Authorization: Bearer\n+ X-Tenant-Id (slug ou UUID)
+tf -> reg : schemaFor(header ou claim "tenant")
+alt tenant informado e desconhecido/inativo
+  reg --> tf : vazio
+  tf --> front : 400 (não cai no escritório default)
+end
+reg --> tf : tenant_x
+tf -> tf : TenantContext.set(tenant_x)
+
+tf -> jwt : segue a cadeia
+jwt -> jwt : valida assinatura/expiração
+jwt -> jwt : tenant do token == tenant da requisição?
+note right of jwt
+  Token de um escritório nunca vale em outro.
+  Sessão de suporte: principal sintético (sem linha em users).
+  Token de plataforma: só em /api/v1/support/**.
+end note
+jwt -> ctrl : SecurityContext preenchido
+
+ctrl -> ctrl : @Valid no corpo, enums por nome ou label
+ctrl -> svc : DTO
+svc -> repo : find / save
+repo -> conn : getConnection(tenant_x)
+conn -> db : SET search_path TO "tenant_x", public
+repo -> db : SQL
+db --> repo : linhas
+svc --> ctrl : DTO de resposta (entidade não vaza)
+
+== commit da transação ==
+svc -> audit : @PostUpdate
+audit -> db : INSERT audit_log (após o commit, transação nova)\nperformed_by | acting_support_user_id
+
+ctrl --> front : 200 ApiResponse { success, data, errors }
+
+== em caso de erro ==
+svc -> geh : exceção de negócio / validação
+geh --> front : 400 / 404 / 409 / 422 no mesmo envelope
+
+tf -> tf : TenantContext.clear() (sempre, no finally)
+conn -> db : release: SET search_path TO public
+@enduml
