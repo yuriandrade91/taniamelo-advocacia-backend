@@ -23,6 +23,8 @@ mantê-los aqui faz quem chega ler o passado achando que é o presente.
   refresh token/cookie (como rodar e testar com 2 tenants). **Implementado.**
 - **`SUPORTE_MULTITENANT.md`** — acesso da equipe de plataforma a qualquer
   escritório (impersonation), com sessão curta e auditada. **Implementado.**
+- **`CADASTRO_DE_TENANT.md`** — plano para cadastrar um escritório novo sem SQL manual
+  (catálogo como fonte única, provisionamento, endpoint de suporte). **Proposto.**
 - **`adr/`** — Architecture Decision Records (uma decisão por arquivo):
   - `ADR-0001-multi-tenant.md` — multi-escritório (implementado como schema-per-tenant).
   - `ADR-0002-refresh-token.md` — refresh token + cookie httpOnly (implementado).
