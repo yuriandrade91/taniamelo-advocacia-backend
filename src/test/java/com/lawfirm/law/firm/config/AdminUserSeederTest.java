@@ -12,7 +12,7 @@ import static org.mockito.Mockito.when;
 import com.lawfirm.law.firm.model.Role;
 import com.lawfirm.law.firm.model.User;
 import com.lawfirm.law.firm.repository.UserRepository;
-import com.lawfirm.law.firm.tenant.TenancyProperties;
+import com.lawfirm.law.firm.tenant.ActiveTenantSchemas;
 import com.lawfirm.law.firm.tenant.TenantContext;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -34,13 +34,11 @@ class AdminUserSeederTest {
 
     @Mock private UserRepository userRepository;
     @Mock private PasswordEncoder passwordEncoder;
-
-    private TenancyProperties properties;
+    @Mock private ActiveTenantSchemas activeSchemas;
 
     @BeforeEach
     void setUp() {
-        properties = new TenancyProperties();
-        properties.setSchemas(List.of("tenant_tania", "tenant_demo"));
+        when(activeSchemas.all()).thenReturn(List.of("tenant_tania", "tenant_demo"));
         when(passwordEncoder.encode(any())).thenReturn("$2a$10$hash");
     }
 
@@ -53,7 +51,7 @@ class AdminUserSeederTest {
         return new AdminUserSeeder(
                 userRepository,
                 passwordEncoder,
-                properties,
+                activeSchemas,
                 "admin@taniamelo.adv.br",
                 "changeme123");
     }
@@ -112,9 +110,9 @@ class AdminUserSeederTest {
     @DisplayName("e-mail sem @ vira o próprio username")
     void emailWithoutAtSignBecomesTheUsername() {
         when(userRepository.count()).thenReturn(0L);
-        properties.setSchemas(List.of("tenant_tania"));
+        when(activeSchemas.all()).thenReturn(List.of("tenant_tania"));
 
-        new AdminUserSeeder(userRepository, passwordEncoder, properties, "raiz", "senha").run();
+        new AdminUserSeeder(userRepository, passwordEncoder, activeSchemas, "raiz", "senha").run();
 
         ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(saved.capture());
@@ -124,7 +122,7 @@ class AdminUserSeederTest {
     @Test
     @DisplayName("nenhum schema configurado significa nada a semear")
     void noSchemasMeansNoWork() {
-        properties.setSchemas(List.of());
+        when(activeSchemas.all()).thenReturn(List.of());
 
         seeder().run();
 

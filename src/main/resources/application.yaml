@@ -140,8 +140,10 @@ app:
     email: ${APP_SUPPORT_EMAIL:suporte@plataforma.adv.br}
     password: ${APP_SUPPORT_PASSWORD:changeme123}
   # Multi-tenancy por schema. Cada tenant = um schema Postgres autocontido.
-  # O identificador do tenant é o próprio nome do schema; o frontend informa via
-  # cabeçalho X-Tenant-Id (necessário no login). Só schemas listados são aceitos.
+  # O frontend informa o tenant (slug ou UUID) via cabeçalho X-Tenant-Id (necessário no
+  # login). Os tenants atendidos vêm do catálogo public.tenants (status 'ativo'); cadastrar
+  # um escritório não exige mexer aqui. "schemas" é só o fallback de quando o catálogo está
+  # ilegível ou vazio (primeira subida).
   tenancy:
     default-schema: ${APP_TENANCY_DEFAULT_SCHEMA:tenant_tania}
     schemas: ${APP_TENANCY_SCHEMAS:tenant_tania,tenant_demo}

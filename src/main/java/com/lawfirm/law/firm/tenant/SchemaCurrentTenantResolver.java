@@ -13,15 +13,18 @@ import org.springframework.stereotype.Component;
 public class SchemaCurrentTenantResolver implements CurrentTenantIdentifierResolver<String> {
 
     private final TenancyProperties properties;
+    private final ActiveTenantSchemas activeSchemas;
 
-    public SchemaCurrentTenantResolver(TenancyProperties properties) {
+    public SchemaCurrentTenantResolver(
+            TenancyProperties properties, ActiveTenantSchemas activeSchemas) {
         this.properties = properties;
+        this.activeSchemas = activeSchemas;
     }
 
     @Override
     public String resolveCurrentTenantIdentifier() {
         String current = TenantContext.get();
-        return (current != null && properties.isKnown(current))
+        return (current != null && activeSchemas.isKnown(current))
                 ? current
                 : properties.getDefaultSchema();
     }

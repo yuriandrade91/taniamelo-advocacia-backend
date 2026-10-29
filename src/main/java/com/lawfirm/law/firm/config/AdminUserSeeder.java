@@ -3,7 +3,7 @@ package com.lawfirm.law.firm.config;
 import com.lawfirm.law.firm.model.Role;
 import com.lawfirm.law.firm.model.User;
 import com.lawfirm.law.firm.repository.UserRepository;
-import com.lawfirm.law.firm.tenant.TenancyProperties;
+import com.lawfirm.law.firm.tenant.ActiveTenantSchemas;
 import com.lawfirm.law.firm.tenant.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,19 +24,19 @@ public class AdminUserSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final TenancyProperties tenancyProperties;
+    private final ActiveTenantSchemas activeSchemas;
     private final String adminEmail;
     private final String adminPassword;
 
     public AdminUserSeeder(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            TenancyProperties tenancyProperties,
+            ActiveTenantSchemas activeSchemas,
             @Value("${app.admin.email:admin@taniamelo.adv.br}") String adminEmail,
             @Value("${app.admin.password:changeme123}") String adminPassword) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.tenancyProperties = tenancyProperties;
+        this.activeSchemas = activeSchemas;
         this.adminEmail = adminEmail;
         this.adminPassword = adminPassword;
     }
@@ -48,7 +48,7 @@ public class AdminUserSeeder implements CommandLineRunner {
      */
     @Override
     public void run(String... args) {
-        for (String schema : tenancyProperties.getSchemas()) {
+        for (String schema : activeSchemas.all()) {
             try {
                 TenantContext.set(schema);
                 seedFor(schema);

@@ -2,8 +2,9 @@ package com.lawfirm.law.firm.tenant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,8 +19,10 @@ class SchemaCurrentTenantResolverTest {
     void setUp() {
         TenancyProperties properties = new TenancyProperties();
         properties.setDefaultSchema("tenant_tania");
-        properties.setSchemas(List.of("tenant_tania", "tenant_demo"));
-        resolver = new SchemaCurrentTenantResolver(properties);
+        ActiveTenantSchemas activeSchemas = mock(ActiveTenantSchemas.class);
+        when(activeSchemas.isKnown("tenant_tania")).thenReturn(true);
+        when(activeSchemas.isKnown("tenant_demo")).thenReturn(true);
+        resolver = new SchemaCurrentTenantResolver(properties, activeSchemas);
     }
 
     @AfterEach
