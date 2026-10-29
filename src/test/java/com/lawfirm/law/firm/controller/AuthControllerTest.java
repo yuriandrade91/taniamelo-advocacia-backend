@@ -26,7 +26,6 @@ import com.lawfirm.law.firm.tenant.TenancyProperties;
 import com.lawfirm.law.firm.tenant.TenantContext;
 import jakarta.servlet.http.Cookie;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
@@ -83,7 +82,6 @@ class AuthControllerTest {
     void setUp() {
         tenancyProperties = new TenancyProperties();
         tenancyProperties.setDefaultSchema("tenant_tania");
-        tenancyProperties.setSchemas(List.of("tenant_tania", "tenant_demo"));
 
         AuthController controller = controllerCom("refreshToken", "/api/v1/auth", false, "Lax");
 

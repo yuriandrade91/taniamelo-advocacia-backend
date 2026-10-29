@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -36,17 +37,14 @@ class ActiveTenantSchemasTest {
     @Mock private Statement statement;
     @Mock private ResultSet resultSet;
 
-    private TenancyProperties properties;
     private ActiveTenantSchemas activeSchemas;
 
     @BeforeEach
     void setUp() throws SQLException {
-        properties = new TenancyProperties();
-        properties.setSchemas(List.of("tenant_tania"));
         when(dataSource.getConnection()).thenReturn(connection);
         when(connection.createStatement()).thenReturn(statement);
         when(statement.executeQuery(anyString())).thenReturn(resultSet);
-        activeSchemas = new ActiveTenantSchemas(dataSource, properties);
+        activeSchemas = new ActiveTenantSchemas(dataSource);
     }
 
     /** Cada consulta ao catálogo recebe um ResultSet novo com estas linhas. */
@@ -68,7 +66,7 @@ class ActiveTenantSchemasTest {
     }
 
     @Test
-    @DisplayName("tenant só no catálogo, fora de app.tenancy.schemas, é reconhecido")
+    @DisplayName("tenant que só existe no catálogo é reconhecido")
     void catalogTenantIsKnownEvenIfNotConfigured() throws SQLException {
         catalogReturns("tenant_demo", "tenant_prados");
 
@@ -118,14 +116,15 @@ class ActiveTenantSchemasTest {
     }
 
     @Test
-    @DisplayName("catálogo ilegível ou vazio cai em app.tenancy.schemas")
-    void fallsBackToConfiguredSchemas() throws SQLException {
-        when(dataSource.getConnection()).thenThrow(new SQLException("sem tabela"));
-        assertEquals(List.of("tenant_tania"), activeSchemas.all());
+    @DisplayName("catálogo ilegível ou vazio significa nenhum tenant, sem lista de reserva")
+    void unreadableOrEmptyCatalogMeansNoTenants() throws SQLException {
+        doThrow(new SQLException("sem tabela")).when(dataSource).getConnection();
+        assertEquals(List.of(), activeSchemas.all());
+        assertFalse(activeSchemas.isKnown("tenant_tania"));
 
         doReturn(connection).when(dataSource).getConnection();
         when(resultSet.next()).thenReturn(false);
         when(statement.executeQuery(anyString())).thenReturn(resultSet);
-        assertEquals(List.of("tenant_tania"), activeSchemas.reload());
+        assertEquals(List.of(), activeSchemas.reload());
     }
 }

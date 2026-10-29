@@ -19,8 +19,9 @@ import org.springframework.stereotype.Component;
  * necessário para montar o {@code EntityManagerFactory}; um repositório JPA aqui fecharia um ciclo
  * (resolver → repositório → EntityManagerFactory → resolver).
  *
- * <p>Catálogo ilegível ou vazio (primeira subida, antes das migrations) cai em {@code
- * app.tenancy.schemas}, como o {@link MultiTenantFlywayMigrator} já faz.
+ * <p>Catálogo ilegível ou vazio significa nenhum tenant conhecido; não há lista de reserva em
+ * configuração. Como um schema desconhecido sempre recarrega antes de ser recusado, o cache se
+ * recupera sozinho quando o catálogo volta.
  */
 @Component
 public class ActiveTenantSchemas {
@@ -28,12 +29,10 @@ public class ActiveTenantSchemas {
     private static final Logger log = LoggerFactory.getLogger(ActiveTenantSchemas.class);
 
     private final DataSource dataSource;
-    private final TenancyProperties properties;
     private final AtomicReference<List<String>> cache = new AtomicReference<>();
 
-    public ActiveTenantSchemas(DataSource dataSource, TenancyProperties properties) {
+    public ActiveTenantSchemas(DataSource dataSource) {
         this.dataSource = dataSource;
-        this.properties = properties;
     }
 
     public List<String> all() {
@@ -71,10 +70,8 @@ public class ActiveTenantSchemas {
                 schemas.add(rs.getString("schema_name"));
             }
         } catch (Exception ex) {
-            log.warn(
-                    "Não foi possível ler public.tenants ({}); usando app.tenancy.schemas.",
-                    ex.getMessage());
+            log.warn("Não foi possível ler public.tenants ({}).", ex.getMessage());
         }
-        return schemas.isEmpty() ? List.copyOf(properties.getSchemas()) : List.copyOf(schemas);
+        return List.copyOf(schemas);
     }
 }

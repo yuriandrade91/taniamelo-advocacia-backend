@@ -1,11 +1,11 @@
 # Cadastro de tenant — plano
 
-**Status: proposto, não implementado.** Hoje um escritório novo é cadastrado à mão.
+**Status: Fase 1 implementada; Fases 2 a 4 propostas.** Um escritório novo ainda é cadastrado à mão.
 Este documento descreve como torná-lo um procedimento único, repetível e sem falha silenciosa.
 
 ## Como é hoje (e por que dói)
 
-Criar um tenant exige manter três coisas em sincronia:
+Antes da Fase 1, criar um tenant exigia manter três coisas em sincronia:
 
 1. a linha em `public.tenants` (catálogo; é ela que faz o Flyway criar e migrar o schema);
 2. a lista `APP_TENANCY_SCHEMAS` (é ela que o `SchemaCurrentTenantResolver` e o `AdminUserSeeder` usam);
@@ -20,15 +20,17 @@ existe — na prática, a sessão foi parar no escritório errado.
 Não dá para resolver só pondo o schema novo no default da lista: num banco novo o catálogo
 ainda não tem a linha, e o `AdminUserSeeder` consultaria `users` de um schema inexistente.
 
-## Fase 1 — o catálogo como única fonte de verdade
+## Fase 1 — o catálogo como única fonte de verdade (feita)
 
-1. `SchemaCurrentTenantResolver` e `TenancyProperties.isKnown` passam a consultar o
-   `TenantRegistry` (tenants `ativo`). `APP_TENANCY_SCHEMAS` vira só fallback de boot, como o
-   `MultiTenantFlywayMigrator` já faz.
-2. `AdminUserSeeder` e `SupportUserSeeder` percorrem os schemas ativos do catálogo que já
-   foram migrados.
-3. Teste: tenant presente no catálogo e ausente da variável resolve para o próprio schema,
-   nunca para o padrão.
+1. `ActiveTenantSchemas` lê os tenants `ativo` do catálogo por JDBC (um repositório JPA fecharia
+   o ciclo resolver → `EntityManagerFactory` → resolver). O `SchemaCurrentTenantResolver` e o
+   `AdminUserSeeder` passam a usá-lo.
+2. `app.tenancy.schemas` / `APP_TENANCY_SCHEMAS` foram **removidos**: não há lista de reserva.
+   Catálogo ilegível ou vazio significa nenhum tenant conhecido.
+3. Teste: tenant só no catálogo resolve para o próprio schema, nunca para o padrão.
+
+Resta estático o `app.tenancy.default-schema` (`tenant_tania`), usado no boot e em requisição
+sem tenant; ver as decisões em aberto.
 
 ## Fase 2 — serviço de provisionamento
 
@@ -69,17 +71,22 @@ ainda não tem a linha, e o `AdminUserSeeder` consultaria `users` de um schema i
    Recomendação: script primeiro, Fase 1 em paralelo.
 3. **Produção.** O provisionamento cria schema com o usuário do banco da aplicação; confirmar
    que ele tem `CREATE` no banco (o Flyway já cria schemas hoje, então provavelmente tem).
-4. **Dados reais do primeiro caso (Prados).** No banco local o tenant foi criado com CNPJ
+4. **`default-schema`.** Segue estático (`tenant_tania`). Em requisição sem tenant ele é o
+   schema atendido em silêncio, que é o modo de falha que o filtro já evita para header errado.
+   Eliminar exige decidir o que o boot (validação do Hibernate) usa e se requisição sem
+   tenant passa a ser 400.
+5. **Dados reais do primeiro caso (Prados).** No banco local o tenant foi criado com CNPJ
    placeholder `00.000.000/0001-01` e e-mails `@prados.adv.br` inventados.
 
 ## Referência: o procedimento manual usado no tenant `prados` (dev local)
 
 1. `INSERT INTO public.tenants (schema_name, slug, razao_social, cnpj, responsavel, status)`
    com `status = 'ativo'`.
-2. Subir o app **sem** o schema novo em `APP_TENANCY_SCHEMAS`: o Flyway cria e migra o
-   schema, e o `AdminUserSeeder` não o toca.
-3. Inserir os usuários em `<schema>.users` por SQL (`role = 'ADMIN'`, hash bcrypt).
-4. Subir de novo com o schema em `APP_TENANCY_SCHEMAS` para usá-lo.
+2. Subir o app: o Flyway cria e migra o schema. O `AdminUserSeeder` percorre o catálogo e,
+   com a tabela `users` vazia, cria o ADMIN padrão (`admin@taniamelo.adv.br`, senha de dev)
+   no schema novo.
+3. Inserir os usuários reais em `<schema>.users` por SQL (`role = 'ADMIN'`, hash bcrypt) e
+   apagar esse ADMIN padrão.
 
 Ver também [MULTI_TENANT_E_AUTH.md](MULTI_TENANT_E_AUTH.md) e
 [SUPORTE_MULTITENANT.md](SUPORTE_MULTITENANT.md).

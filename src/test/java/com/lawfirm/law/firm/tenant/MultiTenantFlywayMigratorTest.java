@@ -10,7 +10,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.List;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,13 +30,8 @@ class MultiTenantFlywayMigratorTest {
     @Mock private Statement statement;
     @Mock private ResultSet resultSet;
 
-    private TenancyProperties properties;
-
     @BeforeEach
     void setUp() throws SQLException {
-        properties = new TenancyProperties();
-        properties.setDefaultSchema("tenant_tania");
-        properties.setSchemas(List.of("tenant_tania", "tenant_demo"));
 
         when(dataSource.getConnection()).thenReturn(connection);
         when(connection.createStatement()).thenReturn(statement);
@@ -50,8 +44,7 @@ class MultiTenantFlywayMigratorTest {
     void unavailableDatabaseFailsFast() throws SQLException {
         when(dataSource.getConnection()).thenThrow(new SQLException("connection refused"));
 
-        MultiTenantFlywayMigrator migrator =
-                new MultiTenantFlywayMigrator(dataSource, properties, false);
+        MultiTenantFlywayMigrator migrator = new MultiTenantFlywayMigrator(dataSource, false);
 
         assertThrows(RuntimeException.class, migrator::migrate);
     }
@@ -62,8 +55,7 @@ class MultiTenantFlywayMigratorTest {
         when(resultSet.next()).thenReturn(true, true, false);
         when(resultSet.getString("schema_name")).thenReturn("tenant_a", "tenant_b");
 
-        MultiTenantFlywayMigrator migrator =
-                new MultiTenantFlywayMigrator(dataSource, properties, false);
+        MultiTenantFlywayMigrator migrator = new MultiTenantFlywayMigrator(dataSource, false);
 
         // A migration compartilhada tenta conectar de verdade e falha com o mock -
         // o que importa aqui é que o migrator é construído e a leitura do catálogo é acionada.
@@ -72,10 +64,9 @@ class MultiTenantFlywayMigratorTest {
     }
 
     @Test
-    @DisplayName("o migrator recebe o DataSource e as propriedades de tenancy")
+    @DisplayName("o migrator só recebe o DataSource e a flag da massa")
     void isWiredWithItsDependencies() throws SQLException {
-        MultiTenantFlywayMigrator migrator =
-                new MultiTenantFlywayMigrator(dataSource, properties, false);
+        MultiTenantFlywayMigrator migrator = new MultiTenantFlywayMigrator(dataSource, false);
         assertNotNull(migrator);
         verify(dataSource, never()).getConnection();
     }

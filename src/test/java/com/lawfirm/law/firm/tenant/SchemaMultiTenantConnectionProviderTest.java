@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.List;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,7 +39,6 @@ class SchemaMultiTenantConnectionProviderTest {
     void setUp() throws SQLException {
         TenancyProperties properties = new TenancyProperties();
         properties.setDefaultSchema("tenant_tania");
-        properties.setSchemas(List.of("tenant_tania", "tenant_demo"));
         provider = new SchemaMultiTenantConnectionProvider(dataSource, properties);
 
         when(dataSource.getConnection()).thenReturn(connection);

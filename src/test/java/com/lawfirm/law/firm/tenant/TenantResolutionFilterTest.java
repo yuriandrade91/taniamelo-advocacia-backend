@@ -16,7 +16,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
@@ -50,7 +49,6 @@ class TenantResolutionFilterTest {
         properties = new TenancyProperties();
         properties.setHeaderName("X-Tenant-Id");
         properties.setDefaultSchema("tenant_tania");
-        properties.setSchemas(List.of("tenant_tania", "tenant_demo"));
         filter = new TenantResolutionFilter(properties, jwtService, tenantRegistry);
         request = new MockHttpServletRequest();
         when(tenantRegistry.schemaFor(anyString())).thenReturn(Optional.empty());

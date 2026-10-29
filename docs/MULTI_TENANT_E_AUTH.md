@@ -49,9 +49,10 @@ tabela de **control-plane** no schema `public` (nunca dentro de um tenant):
 | `criado_em`, `atualizado_em` | auditoria |
 
 É a **fonte de verdade**: o `MultiTenantFlywayMigrator` lê os `schema_name` com
-`status='ativo'` daqui para saber quais schemas criar/migrar (com fallback para
-`app.tenancy.schemas`). Adicionar um escritório = inserir uma linha (via migration
-compartilhada) e reiniciar. A entidade `Tenant`/`TenantRepository` expõe esse
+`status='ativo'` daqui para saber quais schemas criar/migrar, e o `ActiveTenantSchemas`
+usa a mesma tabela para decidir quais schemas o Hibernate atende; não há lista de
+tenants em configuração. Adicionar um escritório = inserir uma linha no catálogo e
+reiniciar (para o Flyway criar o schema). A entidade `Tenant`/`TenantRepository` expõe esse
 catálogo; `GET /api/v1/tenants/current` devolve os dados do escritório da sessão.
 
 > A tabela estende a sua proposta com `schema_name` (essencial para ligar o
@@ -63,10 +64,10 @@ O Flyway automático do Spring está **desligado**; o `MultiTenantFlywayMigrator
 aplica, na subida:
 
 - `db/migration/shared` → schema `public` (extensão `unaccent`).
-- `db/migration/tenant` → em CADA schema de `app.tenancy.schemas` (cria o schema
-  se não existir; histórico Flyway próprio por tenant).
+- `db/migration/tenant` → em CADA schema ativo do catálogo `public.tenants` (cria o
+  schema se não existir; histórico Flyway próprio por tenant).
 
-Ou seja: adicionar um tenant novo = incluir o schema na lista e reiniciar; as
+Ou seja: adicionar um tenant novo = inserir a linha no catálogo e reiniciar; as
 tabelas são criadas automaticamente.
 
 ## 4. Rodar localmente com 2 tenants

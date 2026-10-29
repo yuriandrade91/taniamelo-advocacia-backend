@@ -10,7 +10,6 @@ import com.lawfirm.law.firm.repository.TenantRepository;
 import com.lawfirm.law.firm.support.TestFixtures;
 import com.lawfirm.law.firm.tenant.TenancyProperties;
 import com.lawfirm.law.firm.tenant.TenantContext;
-import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +37,6 @@ class TenantControllerTest {
     void setUp() {
         properties = new TenancyProperties();
         properties.setDefaultSchema("tenant_tania");
-        properties.setSchemas(List.of("tenant_tania", "tenant_demo"));
         mockMvc =
                 MockMvcBuilders.standaloneSetup(new TenantController(tenantRepository, properties))
                         .setControllerAdvice(new GlobalExceptionHandler())

@@ -142,11 +142,9 @@ app:
   # Multi-tenancy por schema. Cada tenant = um schema Postgres autocontido.
   # O frontend informa o tenant (slug ou UUID) via cabeçalho X-Tenant-Id (necessário no
   # login). Os tenants atendidos vêm do catálogo public.tenants (status 'ativo'); cadastrar
-  # um escritório não exige mexer aqui. "schemas" é só o fallback de quando o catálogo está
-  # ilegível ou vazio (primeira subida).
+  # um escritório não exige mexer aqui nem reiniciar a configuração.
   tenancy:
     default-schema: ${APP_TENANCY_DEFAULT_SCHEMA:tenant_tania}
-    schemas: ${APP_TENANCY_SCHEMAS:tenant_tania,tenant_demo}
     header-name: ${APP_TENANCY_HEADER:X-Tenant-Id}
   # Cookie do refresh token. Em produção com front em outro domínio:
   # secure=true e same-site=None. Em dev local (http, mesma origem): Lax/false.

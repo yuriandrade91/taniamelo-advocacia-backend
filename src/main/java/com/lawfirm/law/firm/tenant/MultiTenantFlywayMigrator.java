@@ -34,15 +34,11 @@ public class MultiTenantFlywayMigrator {
     private static final Logger log = LoggerFactory.getLogger(MultiTenantFlywayMigrator.class);
 
     private final DataSource dataSource;
-    private final TenancyProperties properties;
     private final boolean seedDemoData;
 
     public MultiTenantFlywayMigrator(
-            DataSource dataSource,
-            TenancyProperties properties,
-            @Value("${app.seed.demo-data:true}") boolean seedDemoData) {
+            DataSource dataSource, @Value("${app.seed.demo-data:true}") boolean seedDemoData) {
         this.dataSource = dataSource;
-        this.properties = properties;
         this.seedDemoData = seedDemoData;
     }
 
@@ -61,7 +57,7 @@ public class MultiTenantFlywayMigrator {
         log.info("Flyway: migrations compartilhadas aplicadas (schema public).");
 
         // 2. Por tenant: o catálogo public.tenants (semeado na migration compartilhada) é a fonte
-        // de verdade dos schemas ativos; a lista em app.tenancy.schemas é só fallback.
+        // de verdade dos schemas ativos; não há lista em configuração.
         List<String> schemas = activeTenantSchemas();
         for (String schema : schemas) {
             Flyway tenantFlyway =
@@ -92,9 +88,8 @@ public class MultiTenantFlywayMigrator {
     }
 
     /**
-     * Lê os schemas de tenants ativos do catálogo {@code public.tenants}. Se a tabela ainda não
-     * existir ou vier vazia (primeira subida antes do seed, ou erro), cai na lista configurada em
-     * {@code app.tenancy.schemas}.
+     * Lê os schemas de tenants ativos do catálogo {@code public.tenants}. Tabela ilegível ou vazia
+     * significa nenhum tenant a migrar.
      */
     private List<String> activeTenantSchemas() {
         List<String> schemas = new ArrayList<>();
@@ -108,13 +103,7 @@ public class MultiTenantFlywayMigrator {
                 schemas.add(rs.getString("schema_name"));
             }
         } catch (Exception ex) {
-            log.warn(
-                    "Não foi possível ler public.tenants ({}); usando app.tenancy.schemas como"
-                            + " fallback.",
-                    ex.getMessage());
-        }
-        if (schemas.isEmpty()) {
-            return properties.getSchemas();
+            log.warn("Não foi possível ler public.tenants ({}).", ex.getMessage());
         }
         return schemas;
     }
