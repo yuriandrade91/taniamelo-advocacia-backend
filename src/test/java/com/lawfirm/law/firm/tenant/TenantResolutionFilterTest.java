@@ -33,7 +33,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-@DisplayName("TenantResolutionFilter: header X-Tenant-Id, depois a claim do JWT, depois o default")
+@DisplayName("TenantResolutionFilter: header X-Tenant-Id, depois a claim do JWT, senão 400")
 class TenantResolutionFilterTest {
 
     @Mock private JwtService jwtService;
@@ -48,7 +48,6 @@ class TenantResolutionFilterTest {
     void setUp() {
         properties = new TenancyProperties();
         properties.setHeaderName("X-Tenant-Id");
-        properties.setDefaultSchema("tenant_tania");
         filter = new TenantResolutionFilter(properties, jwtService, tenantRegistry);
         request = new MockHttpServletRequest();
         when(tenantRegistry.schemaFor(anyString())).thenReturn(Optional.empty());
@@ -108,7 +107,7 @@ class TenantResolutionFilterTest {
         filter.doFilterInternal(request, response, (req, res) -> chegou.set(true));
 
         // Antes, o header desconhecido era ignorado e a requisição seguia para o
-        // schema default - que é o escritório real. Um erro de digitação no
+        // schema default - que era o escritório real. Um erro de digitação no
         // X-Tenant-Id autenticava na base errada, em silêncio.
         assertEquals(400, response.getStatus());
         assertFalse(chegou.get(), "a requisição não pode seguir com tenant inválido");
@@ -154,9 +153,60 @@ class TenantResolutionFilterTest {
     }
 
     @Test
-    @DisplayName("sem header e sem token, nenhum tenant é definido (o resolver usa o default)")
-    void noHeaderNoToken() throws Exception {
+    @DisplayName("fora de /api/v1, sem header e sem token, segue sem tenant (actuator, Swagger)")
+    void noHeaderNoTokenOutsideTheApi() throws Exception {
+        request.setRequestURI("/actuator/health");
+
         assertNull(tenantSeenByTheChain());
+        assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    @DisplayName("rota de escritório sem header e sem token é RECUSADA com 400 - não há default")
+    void officeRouteWithoutTenantIsRejected() throws Exception {
+        request.setMethod("POST");
+        request.setRequestURI("/api/v1/auth/login");
+
+        AtomicReference<Boolean> chegou = new AtomicReference<>(false);
+        filter.doFilterInternal(request, response, (req, res) -> chegou.set(true));
+
+        // Com o default, este login autenticava contra os usuários da Tania.
+        assertEquals(400, response.getStatus());
+        assertFalse(chegou.get(), "a requisição não pode seguir sem tenant");
+        assertTrue(response.getContentAsString().contains("TENANT_REQUIRED"));
+    }
+
+    @Test
+    @DisplayName("rotas de plataforma e a resolução por slug não exigem tenant")
+    void platformRoutesDoNotRequireTenant() throws Exception {
+        for (String uri : new String[] {"/api/v1/support/login", "/api/v1/tenants/resolve"}) {
+            request.setRequestURI(uri);
+            AtomicReference<Boolean> chegou = new AtomicReference<>(false);
+            filter.doFilterInternal(request, response, (req, res) -> chegou.set(true));
+            assertTrue(chegou.get(), uri);
+        }
+    }
+
+    @Test
+    @DisplayName("preflight OPTIONS não exige tenant - o navegador não manda cabeçalho próprio")
+    void preflightDoesNotRequireTenant() throws Exception {
+        request.setMethod("OPTIONS");
+        request.setRequestURI("/api/v1/clients");
+
+        assertNull(tenantSeenByTheChain());
+        assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    @DisplayName("rota de escritório com Bearer sem tenant segue para a autenticação dar 401")
+    void bearerWithoutTenantReachesAuthentication() throws Exception {
+        request.setRequestURI("/api/v1/clients");
+        request.addHeader("Authorization", "Bearer expirado");
+        when(jwtService.extractTenant("expirado")).thenThrow(new IllegalArgumentException("exp"));
+
+        // O 401 é o que faz o front tentar o refresh; um 400 aqui quebraria esse fluxo.
+        assertNull(tenantSeenByTheChain());
+        assertEquals(200, response.getStatus());
     }
 
     @Test

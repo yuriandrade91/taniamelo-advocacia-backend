@@ -29,8 +29,9 @@ ainda não tem a linha, e o `AdminUserSeeder` consultaria `users` de um schema i
    Catálogo ilegível ou vazio significa nenhum tenant conhecido.
 3. Teste: tenant só no catálogo resolve para o próprio schema, nunca para o padrão.
 
-Resta estático o `app.tenancy.default-schema` (`tenant_tania`), usado no boot e em requisição
-sem tenant; ver as decisões em aberto.
+`app.tenancy.default-schema` também foi **removido**: rota de escritório sem tenant (sem
+`X-Tenant-Id` e sem JWT) dá 400 `TENANT_REQUIRED`, sessão sem tenant aponta para `public` e a
+validação do Hibernate no boot usa o primeiro tenant ativo. Não sobra tenant em configuração.
 
 ## Fase 2 — serviço de provisionamento
 
@@ -71,11 +72,7 @@ sem tenant; ver as decisões em aberto.
    Recomendação: script primeiro, Fase 1 em paralelo.
 3. **Produção.** O provisionamento cria schema com o usuário do banco da aplicação; confirmar
    que ele tem `CREATE` no banco (o Flyway já cria schemas hoje, então provavelmente tem).
-4. **`default-schema`.** Segue estático (`tenant_tania`). Em requisição sem tenant ele é o
-   schema atendido em silêncio, que é o modo de falha que o filtro já evita para header errado.
-   Eliminar exige decidir o que o boot (validação do Hibernate) usa e se requisição sem
-   tenant passa a ser 400.
-5. **Dados reais do primeiro caso (Prados).** No banco local o tenant foi criado com CNPJ
+4. **Dados reais do primeiro caso (Prados).** No banco local o tenant foi criado com CNPJ
    placeholder `00.000.000/0001-01` e e-mails `@prados.adv.br` inventados.
 
 ## Referência: o procedimento manual usado no tenant `prados` (dev local)

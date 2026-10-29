@@ -12,13 +12,13 @@ como rodar/testar com **dois tenants**. Decisão de estratégia: `adr/ADR-0001`
   outro.
 - A extensão `unaccent` fica no schema **public** (compartilhado); as queries de
   cada tenant a alcançam via `search_path = "<tenant>", public`.
-- Identificador do tenant = **nome do schema**. Configurado em `app.tenancy`:
+- Identificador público do tenant = **slug ou UUID** do catálogo `public.tenants`;
+  o nome do schema nunca trafega. Não há tenant em configuração, nem lista nem
+  padrão; `app.tenancy` só define o nome do cabeçalho:
 
 ```yaml
 app:
   tenancy:
-    default-schema: tenant_tania
-    schemas: tenant_tania,tenant_demo
     header-name: X-Tenant-Id
 ```
 
@@ -30,7 +30,16 @@ schema corrente na ordem:
 1. Cabeçalho **`X-Tenant-Id`** (o frontend envia sempre; obrigatório no login,
    quando ainda não há JWT).
 2. Claim **`tenant`** do JWT (requisições autenticadas sem o header).
-3. Nada → cai no `default-schema`.
+3. Nada → **400 `TENANT_REQUIRED`** em rota de escritório. Não existe escritório
+   padrão: com ele, um login sem header autenticava contra os usuários da Tania.
+   Ficam de fora `/api/v1/support/**`, `/api/v1/tenants/resolve`, o que não é
+   `/api/v1` (actuator, Swagger) e o preflight `OPTIONS`. Requisição com Bearer
+   sem tenant resolvível segue para a autenticação responder 401 (o front usa
+   esse 401 para tentar o refresh).
+
+Sem tenant, o Hibernate aponta para `public`, onde não há tabela de escritório: um
+acesso indevido falha alto em vez de ler dado de alguém. Na validação do
+mapeamento no boot, usa o primeiro tenant ativo do catálogo.
 
 O `SchemaMultiTenantConnectionProvider` então ajusta o `search_path` da conexão
 para o schema do tenant; o Hibernate passa a ler/gravar só nele. Nada de

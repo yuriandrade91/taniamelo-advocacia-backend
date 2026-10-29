@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.lawfirm.law.firm.exception.GlobalExceptionHandler;
 import com.lawfirm.law.firm.repository.TenantRepository;
 import com.lawfirm.law.firm.support.TestFixtures;
-import com.lawfirm.law.firm.tenant.TenancyProperties;
 import com.lawfirm.law.firm.tenant.TenantContext;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -31,14 +30,11 @@ class TenantControllerTest {
     @Mock private TenantRepository tenantRepository;
 
     private MockMvc mockMvc;
-    private TenancyProperties properties;
 
     @BeforeEach
     void setUp() {
-        properties = new TenancyProperties();
-        properties.setDefaultSchema("tenant_tania");
         mockMvc =
-                MockMvcBuilders.standaloneSetup(new TenantController(tenantRepository, properties))
+                MockMvcBuilders.standaloneSetup(new TenantController(tenantRepository))
                         .setControllerAdvice(new GlobalExceptionHandler())
                         .build();
     }
@@ -110,13 +106,13 @@ class TenantControllerTest {
     }
 
     @Test
-    @DisplayName("GET /current sem tenant no contexto cai no schema default")
-    void currentFallsBackToDefaultSchema() throws Exception {
+    @DisplayName("GET /current sem tenant no contexto vira 404, sem cair em escritório padrão")
+    void currentWithoutTenantReturns404() throws Exception {
         TenantContext.clear();
         when(tenantRepository.findBySchemaName("tenant_tania"))
                 .thenReturn(Optional.of(TestFixtures.tenant()));
 
-        mockMvc.perform(get("/api/v1/tenants/current")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/tenants/current")).andExpect(status().isNotFound());
     }
 
     @Test

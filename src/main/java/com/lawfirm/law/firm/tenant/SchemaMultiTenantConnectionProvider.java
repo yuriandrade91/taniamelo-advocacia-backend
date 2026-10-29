@@ -3,6 +3,7 @@ package com.lawfirm.law.firm.tenant;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import javax.sql.DataSource;
 import org.hibernate.engine.jdbc.connections.spi.MultiTenantConnectionProvider;
 import org.springframework.stereotype.Component;
@@ -20,22 +21,26 @@ import org.springframework.stereotype.Component;
 public class SchemaMultiTenantConnectionProvider implements MultiTenantConnectionProvider<String> {
 
     private final transient DataSource dataSource;
-    private final transient TenancyProperties properties;
+    private final transient ActiveTenantSchemas activeSchemas;
 
     public SchemaMultiTenantConnectionProvider(
-            DataSource dataSource, TenancyProperties properties) {
+            DataSource dataSource, ActiveTenantSchemas activeSchemas) {
         this.dataSource = dataSource;
-        this.properties = properties;
+        this.activeSchemas = activeSchemas;
     }
 
     /**
-     * Usada pelo Hibernate quando não há tenant corrente (ex.: validação do schema no boot). Aponta
-     * para o schema default: sem isso, a conexão fica com o {@code search_path} padrão do Postgres
-     * ({@code public}), onde nenhuma tabela de tenant existe, e a validação falha para todas elas.
+     * Usada pelo Hibernate fora de qualquer tenant, essencialmente na validação do mapeamento no
+     * boot. Aponta para um tenant ativo do catálogo (todos têm as mesmas tabelas, pois recebem as
+     * mesmas migrations): em {@code public} nenhuma tabela de tenant existe e a validação falharia
+     * para todas elas. Sem tenant no catálogo, fica em {@code public}.
      */
     @Override
     public Connection getAnyConnection() throws SQLException {
-        return withSchema(dataSource.getConnection(), properties.getDefaultSchema());
+        List<String> schemas = activeSchemas.all();
+        String schema =
+                schemas.isEmpty() ? SchemaCurrentTenantResolver.NO_TENANT_SCHEMA : schemas.get(0);
+        return withSchema(dataSource.getConnection(), schema);
     }
 
     @Override

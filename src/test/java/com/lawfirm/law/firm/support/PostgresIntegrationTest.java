@@ -2,6 +2,8 @@ package com.lawfirm.law.firm.support;
 
 import com.lawfirm.law.firm.audit.AuditLogListener;
 import com.lawfirm.law.firm.audit.AuditLogRepository;
+import com.lawfirm.law.firm.tenant.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -43,5 +45,20 @@ public abstract class PostgresIntegrationTest {
     @BeforeEach
     void rebindAuditLogListenerToThisContext() {
         auditLogListener.init(auditLogRepository, transactionManager);
+    }
+
+    /**
+     * Não existe escritório padrão: fora de um tenant, o Hibernate aponta para {@code public}, onde
+     * não há tabela de escritório. Os testes usam repositórios direto (sem passar pelo {@code
+     * TenantResolutionFilter}), então declaram aqui o escritório em que rodam.
+     */
+    @BeforeEach
+    void runInsideTheTaniaTenant() {
+        TenantContext.set("tenant_tania");
+    }
+
+    @AfterEach
+    void leaveTheTenant() {
+        TenantContext.clear();
     }
 }

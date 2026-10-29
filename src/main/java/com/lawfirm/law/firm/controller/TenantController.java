@@ -6,7 +6,6 @@ import com.lawfirm.law.firm.dto.TenantResponseDTO;
 import com.lawfirm.law.firm.exception.NotFoundException;
 import com.lawfirm.law.firm.model.Tenant;
 import com.lawfirm.law.firm.repository.TenantRepository;
-import com.lawfirm.law.firm.tenant.TenancyProperties;
 import com.lawfirm.law.firm.tenant.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -34,12 +33,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class TenantController {
 
     private final TenantRepository tenantRepository;
-    private final TenancyProperties tenancyProperties;
 
-    public TenantController(
-            TenantRepository tenantRepository, TenancyProperties tenancyProperties) {
+    public TenantController(TenantRepository tenantRepository) {
         this.tenantRepository = tenantRepository;
-        this.tenancyProperties = tenancyProperties;
     }
 
     @Operation(
@@ -68,17 +64,12 @@ public class TenantController {
     @SecurityRequirement(name = "tenantHeader")
     @GetMapping("/current")
     public ResponseEntity<ApiResponse<TenantResponseDTO>> current() {
-        String schema = currentSchema();
+        String schema = TenantContext.get();
         Tenant tenant =
                 tenantRepository
                         .findBySchemaName(schema)
                         .orElseThrow(() -> NotFoundException.of("Tenant", schema));
         return ResponseEntity.ok(ApiResponse.successObject(toDTO(tenant)));
-    }
-
-    private String currentSchema() {
-        String current = TenantContext.get();
-        return current != null ? current : tenancyProperties.getDefaultSchema();
     }
 
     private static TenantResponseDTO toDTO(Tenant tenant) {

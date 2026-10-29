@@ -17,12 +17,10 @@ class SchemaCurrentTenantResolverTest {
 
     @BeforeEach
     void setUp() {
-        TenancyProperties properties = new TenancyProperties();
-        properties.setDefaultSchema("tenant_tania");
         ActiveTenantSchemas activeSchemas = mock(ActiveTenantSchemas.class);
         when(activeSchemas.isKnown("tenant_tania")).thenReturn(true);
         when(activeSchemas.isKnown("tenant_demo")).thenReturn(true);
-        resolver = new SchemaCurrentTenantResolver(properties, activeSchemas);
+        resolver = new SchemaCurrentTenantResolver(activeSchemas);
     }
 
     @AfterEach
@@ -31,10 +29,10 @@ class SchemaCurrentTenantResolverTest {
     }
 
     @Test
-    @DisplayName("sem tenant na requisição cai no schema default")
-    void fallsBackToDefault() {
+    @DisplayName("sem tenant na requisição vai para public, nunca para um escritório padrão")
+    void withoutTenantGoesToPublic() {
         TenantContext.clear();
-        assertEquals("tenant_tania", resolver.resolveCurrentTenantIdentifier());
+        assertEquals("public", resolver.resolveCurrentTenantIdentifier());
     }
 
     @Test
@@ -45,17 +43,17 @@ class SchemaCurrentTenantResolverTest {
     }
 
     @Test
-    @DisplayName("schema desconhecido no contexto é descartado em favor do default")
-    void unknownSchemaFallsBackToDefault() {
+    @DisplayName("schema desconhecido no contexto é descartado e vai para public")
+    void unknownSchemaGoesToPublic() {
         TenantContext.set("tenant_invasor");
-        assertEquals("tenant_tania", resolver.resolveCurrentTenantIdentifier());
+        assertEquals("public", resolver.resolveCurrentTenantIdentifier());
     }
 
     @Test
     @DisplayName("tentativa de injeção via contexto não passa")
-    void injectionAttemptFallsBackToDefault() {
+    void injectionAttemptGoesToPublic() {
         TenantContext.set("public; DROP SCHEMA tenant_tania CASCADE");
-        assertEquals("tenant_tania", resolver.resolveCurrentTenantIdentifier());
+        assertEquals("public", resolver.resolveCurrentTenantIdentifier());
     }
 
     @Test

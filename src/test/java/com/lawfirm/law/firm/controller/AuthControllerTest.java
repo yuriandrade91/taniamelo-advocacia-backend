@@ -22,7 +22,6 @@ import com.lawfirm.law.firm.security.RefreshTokenCookie;
 import com.lawfirm.law.firm.service.RefreshTokenService;
 import com.lawfirm.law.firm.support.TestFixtures;
 import com.lawfirm.law.firm.tenant.CurrentTenant;
-import com.lawfirm.law.firm.tenant.TenancyProperties;
 import com.lawfirm.law.firm.tenant.TenantContext;
 import jakarta.servlet.http.Cookie;
 import java.time.Instant;
@@ -64,7 +63,6 @@ class AuthControllerTest {
     private final LoginThrottleService loginThrottle = new LoginThrottleService();
 
     private MockMvc mockMvc;
-    private TenancyProperties tenancyProperties;
 
     private AuthController controllerCom(
             String cookieName, String cookiePath, boolean secure, String sameSite) {
@@ -74,14 +72,14 @@ class AuthControllerTest {
                 userRepository,
                 refreshTokenService,
                 new RefreshTokenCookie(cookieName, cookiePath, secure, sameSite),
-                new CurrentTenant(tenantRepository, tenancyProperties),
+                new CurrentTenant(tenantRepository),
                 new LoginGuard(loginThrottle, accountLock));
     }
 
     @BeforeEach
     void setUp() {
-        tenancyProperties = new TenancyProperties();
-        tenancyProperties.setDefaultSchema("tenant_tania");
+        // Em produção o TenantResolutionFilter define o tenant antes do controller.
+        TenantContext.set("tenant_tania");
 
         AuthController controller = controllerCom("refreshToken", "/api/v1/auth", false, "Lax");
 
@@ -245,17 +243,18 @@ class AuthControllerTest {
         }
 
         @Test
-        @DisplayName("sem tenant no contexto usa o schema default")
-        void fallsBackToDefaultSchema() throws Exception {
+        @DisplayName("sem tenant no contexto não emite token para escritório nenhum")
+        void withoutTenantIssuesNoToken() throws Exception {
             TenantContext.clear();
 
             mockMvc.perform(
                             post("/api/v1/auth/login")
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content("{\"login\":\"a\",\"password\":\"b\"}"))
-                    .andExpect(status().isOk());
+                    .andExpect(status().isInternalServerError());
 
-            verify(tenantRepository).findBySchemaName("tenant_tania");
+            verify(tenantRepository, never()).findBySchemaName(anyString());
+            verify(jwtService, never()).generateToken(any(), anyString(), anyString(), anyString());
         }
 
         @Test

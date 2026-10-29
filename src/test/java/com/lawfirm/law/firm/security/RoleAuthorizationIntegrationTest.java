@@ -44,7 +44,12 @@ class RoleAuthorizationIntegrationTest extends PostgresIntegrationTest {
      */
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.webAppContextSetup(contexto).apply(springSecurity()).build();
+        mockMvc =
+                MockMvcBuilders.webAppContextSetup(contexto)
+                        .apply(springSecurity())
+                        // A cadeia inclui o TenantResolutionFilter: sem tenant, a rota dá 400.
+                        .defaultRequest(get("/").header("X-Tenant-Id", "tania"))
+                        .build();
     }
 
     @Test

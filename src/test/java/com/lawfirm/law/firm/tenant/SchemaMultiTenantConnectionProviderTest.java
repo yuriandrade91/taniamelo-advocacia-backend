@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,13 +34,14 @@ class SchemaMultiTenantConnectionProviderTest {
     @Mock private Connection connection;
     @Mock private Statement statement;
 
+    @Mock private ActiveTenantSchemas activeSchemas;
+
     private SchemaMultiTenantConnectionProvider provider;
 
     @BeforeEach
     void setUp() throws SQLException {
-        TenancyProperties properties = new TenancyProperties();
-        properties.setDefaultSchema("tenant_tania");
-        provider = new SchemaMultiTenantConnectionProvider(dataSource, properties);
+        when(activeSchemas.all()).thenReturn(List.of("tenant_demo", "tenant_tania"));
+        provider = new SchemaMultiTenantConnectionProvider(dataSource, activeSchemas);
 
         when(dataSource.getConnection()).thenReturn(connection);
         when(connection.createStatement()).thenReturn(statement);
@@ -59,10 +61,20 @@ class SchemaMultiTenantConnectionProviderTest {
     }
 
     @Test
-    @DisplayName("getAnyConnection usa o schema default (boot e validação de schema)")
-    void anyConnectionUsesDefaultSchema() throws SQLException {
+    @DisplayName("getAnyConnection usa um tenant ativo do catálogo (validação de schema no boot)")
+    void anyConnectionUsesAnActiveTenant() throws SQLException {
         assertSame(connection, provider.getAnyConnection());
-        assertEquals("SET search_path TO \"tenant_tania\", public", executedSql());
+        assertEquals("SET search_path TO \"tenant_demo\", public", executedSql());
+    }
+
+    @Test
+    @DisplayName("getAnyConnection sem tenant no catálogo fica em public")
+    void anyConnectionWithoutTenantsStaysInPublic() throws SQLException {
+        when(activeSchemas.all()).thenReturn(List.of());
+
+        provider.getAnyConnection();
+
+        assertEquals("SET search_path TO \"public\", public", executedSql());
     }
 
     @Test

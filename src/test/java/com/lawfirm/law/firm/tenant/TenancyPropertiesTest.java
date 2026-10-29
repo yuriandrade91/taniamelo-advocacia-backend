@@ -12,7 +12,6 @@ class TenancyPropertiesTest {
     @DisplayName("defaults sensatos quando nada é configurado")
     void hasSaneDefaults() {
         TenancyProperties properties = new TenancyProperties();
-        assertEquals("tenant_tania", properties.getDefaultSchema());
         assertEquals("X-Tenant-Id", properties.getHeaderName());
     }
 
@@ -20,10 +19,8 @@ class TenancyPropertiesTest {
     @DisplayName("setters de configuração são refletidos")
     void settersApply() {
         TenancyProperties properties = new TenancyProperties();
-        properties.setDefaultSchema("tenant_x");
         properties.setHeaderName("X-Escritorio");
 
-        assertEquals("tenant_x", properties.getDefaultSchema());
         assertEquals("X-Escritorio", properties.getHeaderName());
     }
 }
