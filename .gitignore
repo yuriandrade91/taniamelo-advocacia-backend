@@ -73,3 +73,6 @@ Claude outputs/
 # sem a barra, o padrão também ignorava o pacote Java .../firm/storage/, e
 # arquivo novo ali ficava fora do commit sem aviso.
 /storage/
+
+# Dumps do scripts/backup-db.sh: o banco inteiro, com dado de cliente.
+/backups/

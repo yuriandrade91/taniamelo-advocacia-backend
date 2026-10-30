@@ -161,6 +161,11 @@ um volume único de 8 GiB, sem cópia. Qualquer falha de EBS, erro de `docker co
 Isso está acima de tudo o que a Fase C propõe. Um `pg_dump` diário com retenção e um restore
 testado valem mais que qualquer funcionalidade nova.
 
+> **Atualização 22/10/2026:** `scripts/backup-db.sh` (dump + retenção) e
+> `scripts/restore-db.sh` (restore testado num banco descartável) existem — ver
+> [BACKUP.md](BACKUP.md). Falta agendar na EC2 e mandar o arquivo para fora da
+> instância; enquanto isso, o dump fica no mesmo disco do banco.
+
 ### 2. O volume da instância está subdimensionado
 
 [AWS_EC2_ARM64_DEPLOY.md](AWS_EC2_ARM64_DEPLOY.md) registra "8 GiB gp3 (app + Postgres no mesmo
