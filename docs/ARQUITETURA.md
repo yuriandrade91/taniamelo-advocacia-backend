@@ -199,9 +199,10 @@ gravado no banco. Duas implementações, selecionadas por `app.storage.type`:
 
 - **`LocalDiskFileStorageService`** (`type=local`, padrão) — disco sob
   `app.storage.local.base-path`, com proteção contra path traversal.
-- **`S3FileStorageService`** (`type=s3`) — Amazon S3 (AWS SDK v2); credenciais
-  via `DefaultCredentialsProvider` (IAM Role na EC2, sem chave hardcoded);
-  `S3StorageConfig` só cria o `S3Client` quando `type=s3`.
+- **`ObjectStorageFileStorageService`** (`type=s3`) — protocolo S3 via AWS SDK v2
+  (AWS, ou R2/MinIO com `app.storage.s3.endpoint`); credenciais via
+  `DefaultCredentialsProvider` (IAM Role na EC2, sem chave hardcoded);
+  `ObjectStorageConfig` só cria o `S3Client` quando `type=s3`.
 
 Nenhuma entidade/DTO/service/controller muda ao trocar de disco para S3 — só a
 propriedade de configuração. MIME types aceitos centralizados em
