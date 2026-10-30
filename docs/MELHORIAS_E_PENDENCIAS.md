@@ -132,6 +132,12 @@ daí a asserção do workflow passa a valer e reprova o deploy que não subir co
 `APP_STORAGE_TYPE` não estiver definida. Hoje o pipeline é silencioso precisamente no caso que
 ele existe para pegar.
 
+> **Atualização 29/10/2026:** o `deploy.yml` reprova o deploy sem `APP_STORAGE_TYPE` (ou `s3` sem
+> bucket e região), e a asserção do `/actuator/info` é incondicional. A aplicação recusa subir
+> com storage `local` fora de dev/test e com `s3` sem bucket (`StorageTypeGuard`). A chave de
+> arquivo novo começa pelo schema do tenant. Falta o lado da AWS: definir as variáveis no
+> environment `development` do repositório e conferir bucket e IAM Role.
+
 ### 0-bis. Teste de upload pelos endpoints — e o que ele não prova
 
 Não há teste de ponta a ponta exercitando upload e download pelos endpoints
