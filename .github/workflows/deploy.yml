@@ -22,6 +22,31 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
 
     steps:
+      # Antes de abrir a porta ou tocar na instância. Sem APP_STORAGE_TYPE o
+      # deploy ficava verde sem dizer onde os arquivos dos clientes iam parar,
+      # e a asserção de storage lá embaixo era pulada inteira - foi assim que a
+      # instância ficou em disco local sem ninguém ver.
+      - name: Conferir o destino dos arquivos dos clientes
+        env:
+          APP_STORAGE_TYPE: ${{ vars.APP_STORAGE_TYPE }}
+          APP_STORAGE_S3_BUCKET: ${{ vars.APP_STORAGE_S3_BUCKET }}
+          APP_STORAGE_S3_REGION: ${{ vars.APP_STORAGE_S3_REGION }}
+        run: |
+          case "$APP_STORAGE_TYPE" in
+            s3)
+              if [ -z "$APP_STORAGE_S3_BUCKET" ] || [ -z "$APP_STORAGE_S3_REGION" ]; then
+                echo "::error::APP_STORAGE_TYPE=s3 exige as variáveis APP_STORAGE_S3_BUCKET e APP_STORAGE_S3_REGION no repositório."
+                exit 1
+              fi
+              ;;
+            local) ;;
+            *)
+              echo "::error::Defina a variável APP_STORAGE_TYPE (s3 ou local) no repositório. Valor atual: '$APP_STORAGE_TYPE'."
+              exit 1
+              ;;
+          esac
+          echo "Storage pedido: $APP_STORAGE_TYPE"
+
       - name: Obter IP do runner
         id: ip
         run: echo "ip=$(curl -s https://checkip.amazonaws.com)" >> $GITHUB_OUTPUT
@@ -42,8 +67,7 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         # `vars`, e não `secrets`: nome de bucket e região não são segredo, e
         # escondê-los só dificultaria descobrir por que um deploy foi parar em
-        # disco local. Sem a variável definida no repositório, o deploy não
-        # opina sobre storage e o .env da instância fica como está.
+        # disco local. O primeiro passo já garantiu que elas existem.
         env:
           APP_STORAGE_TYPE: ${{ vars.APP_STORAGE_TYPE }}
           APP_STORAGE_S3_BUCKET: ${{ vars.APP_STORAGE_S3_BUCKET }}
@@ -145,20 +169,19 @@ jobs:
             # só, sem cópia no bucket.
             #
             # Por isso a checagem é do mesmo tipo da versão acima: o pipeline
-            # afirma o que subiu, em vez de confiar que subiu.
-            STORAGE_ESPERADO="${APP_STORAGE_TYPE:-}"
-            if [ -n "$STORAGE_ESPERADO" ]; then
-              STORAGE_RODANDO=$(curl -fsS -m 5 http://localhost:8080/actuator/info \
-                | sed -n 's/.*"storage":{"type":"\([^"]*\)".*/\1/p')
+            # afirma o que subiu, em vez de confiar que subiu. Incondicional:
+            # o primeiro passo do job recusa deploy sem APP_STORAGE_TYPE.
+            STORAGE_ESPERADO="$APP_STORAGE_TYPE"
+            STORAGE_RODANDO=$(curl -fsS -m 5 http://localhost:8080/actuator/info \
+              | sed -n 's/.*"storage":{"type":"\([^"]*\)".*/\1/p')
 
-              if [ "$STORAGE_RODANDO" != "$STORAGE_ESPERADO" ]; then
-                echo "::error::Storage esperado '$STORAGE_ESPERADO', mas a instância subiu com '$STORAGE_RODANDO'."
-                echo "Provável causa: bucket inexistente, região errada, ou a IAM Role da instância sem permissão no bucket."
-                docker compose logs --tail 40 app | grep -i "storage\|s3" || true
-                exit 1
-              fi
-              echo "Storage confirmado: $STORAGE_RODANDO"
+            if [ "$STORAGE_RODANDO" != "$STORAGE_ESPERADO" ]; then
+              echo "::error::Storage esperado '$STORAGE_ESPERADO', mas a instância subiu com '$STORAGE_RODANDO'."
+              echo "Provável causa: bucket inexistente, região errada, ou a IAM Role da instância sem permissão no bucket."
+              docker compose logs --tail 40 app | grep -i "storage\|s3" || true
+              exit 1
             fi
+            echo "Storage confirmado: $STORAGE_RODANDO"
 
             # ── Faxina de disco: só depois de tudo verificado ──
             #
