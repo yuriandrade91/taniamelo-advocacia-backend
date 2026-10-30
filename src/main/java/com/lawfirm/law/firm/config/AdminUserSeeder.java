@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -27,18 +28,21 @@ public class AdminUserSeeder implements CommandLineRunner {
     private final ActiveTenantSchemas activeSchemas;
     private final String adminEmail;
     private final String adminPassword;
+    private final Environment env;
 
     public AdminUserSeeder(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             ActiveTenantSchemas activeSchemas,
             @Value("${app.admin.email:admin@taniamelo.adv.br}") String adminEmail,
-            @Value("${app.admin.password:changeme123}") String adminPassword) {
+            @Value("${app.admin.password:changeme123}") String adminPassword,
+            Environment env) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.activeSchemas = activeSchemas;
         this.adminEmail = adminEmail;
         this.adminPassword = adminPassword;
+        this.env = env;
     }
 
     /**
@@ -62,6 +66,8 @@ public class AdminUserSeeder implements CommandLineRunner {
         if (userRepository.count() > 0) {
             return;
         }
+        SeedPasswords.requireRealPasswordOutsideDev(
+                adminPassword, "APP_ADMIN_PASSWORD", "o ADMIN inicial do schema " + schema, env);
         User admin = new User();
         admin.setFullName("Administrador");
         admin.setEmail(adminEmail);

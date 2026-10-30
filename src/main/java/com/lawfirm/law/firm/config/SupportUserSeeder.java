@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -26,18 +27,22 @@ public class SupportUserSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final String email;
     private final String password;
+    private final Environment env;
 
     public SupportUserSeeder(
             SupportUserRepository supportUserRepository,
             PasswordEncoder passwordEncoder,
             @Value("${app.support.email:suporte@plataforma.adv.br}") String email,
-            @Value("${app.support.password:changeme123}") String password) {
+            @Value("${app.support.password:changeme123}") String password,
+            Environment env) {
         this.supportUserRepository = supportUserRepository;
         this.passwordEncoder = passwordEncoder;
         // Um env var presente porém VAZIO (ex.: compose passando ${APP_SUPPORT_EMAIL:-}) não aciona
         // o default do @Value - o Spring usa a string vazia. Tratamos em branco como ausente.
         this.email = (email == null || email.isBlank()) ? "suporte@plataforma.adv.br" : email;
-        this.password = (password == null || password.isBlank()) ? "changeme123" : password;
+        this.password =
+                (password == null || password.isBlank()) ? SeedPasswords.DEV_DEFAULT : password;
+        this.env = env;
     }
 
     @Override
@@ -45,6 +50,8 @@ public class SupportUserSeeder implements CommandLineRunner {
         if (supportUserRepository.count() > 0) {
             return;
         }
+        SeedPasswords.requireRealPasswordOutsideDev(
+                password, "APP_SUPPORT_PASSWORD", "o agente de suporte inicial", env);
         SupportUser agent = new SupportUser();
         agent.setFullName("Suporte da Plataforma");
         agent.setEmail(email);

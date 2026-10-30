@@ -232,6 +232,13 @@ poderia derrubar a instância atual, dependendo do que está no `.env` dela — 
 para verificar. A decisão é sua, e o caminho seguro é o mesmo que o deploy já usa para storage:
 falhar o boot quando o valor de produção estiver ausente, em vez de cair num default silencioso.
 
+> **Atualização 22/10/2026:** CORS `*` já recusa o boot fora de dev/test
+> (`CorsConfig`), e o deploy recusa o segredo de JWT e a chave de criptografia de
+> dev. Os seeders de admin e de suporte passaram a recusar **criar** usuário com
+> senha vazia ou `changeme123` fora de dev/test (`SeedPasswords`) — o buraco era a
+> variável ausente/vazia, que o deploy não via e caía no default dentro do seeder.
+> Usuário já existente não é afetado.
+
 ### 7. O ROADMAP desinforma
 
 [ROADMAP.md](ROADMAP.md) lista na Fase A, como adiado, aquilo que já existe: autorização por

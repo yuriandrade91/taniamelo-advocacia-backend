@@ -2,6 +2,7 @@ package com.lawfirm.law.firm.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -25,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,12 +50,19 @@ class AdminUserSeederTest {
     }
 
     private AdminUserSeeder seeder() {
+        return seeder("changeme123", "test");
+    }
+
+    private AdminUserSeeder seeder(String password, String profile) {
+        MockEnvironment env = new MockEnvironment();
+        env.setActiveProfiles(profile);
         return new AdminUserSeeder(
                 userRepository,
                 passwordEncoder,
                 activeSchemas,
                 "admin@taniamelo.adv.br",
-                "changeme123");
+                password,
+                env);
     }
 
     @Test
@@ -112,7 +121,10 @@ class AdminUserSeederTest {
         when(userRepository.count()).thenReturn(0L);
         when(activeSchemas.all()).thenReturn(List.of("tenant_tania"));
 
-        new AdminUserSeeder(userRepository, passwordEncoder, activeSchemas, "raiz", "senha").run();
+        MockEnvironment env = new MockEnvironment();
+        env.setActiveProfiles("test");
+        new AdminUserSeeder(userRepository, passwordEncoder, activeSchemas, "raiz", "senha", env)
+                .run();
 
         ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(saved.capture());
@@ -128,5 +140,36 @@ class AdminUserSeederTest {
 
         verify(userRepository, never()).count();
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("fora de dev/test, recusa criar o ADMIN com a senha de exemplo ou vazia")
+    void refusesExamplePasswordOutsideDev() {
+        when(userRepository.count()).thenReturn(0L);
+
+        assertThrows(IllegalStateException.class, () -> seeder("changeme123", "postgres").run());
+        assertThrows(IllegalStateException.class, () -> seeder("", "postgres").run());
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("fora de dev/test, schema já semeado sobe mesmo sem senha definida")
+    void populatedSchemaBootsWithoutPasswordOutsideDev() {
+        when(userRepository.count()).thenReturn(1L);
+
+        seeder("", "postgres").run();
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("fora de dev/test, senha real cria o ADMIN normalmente")
+    void realPasswordSeedsOutsideDev() {
+        when(userRepository.count()).thenReturn(0L);
+
+        seeder("uma-senha-de-verdade", "postgres").run();
+
+        verify(userRepository, times(2)).save(any());
     }
 }
