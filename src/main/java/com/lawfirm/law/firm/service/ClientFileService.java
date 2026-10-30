@@ -23,6 +23,7 @@ import com.lawfirm.law.firm.storage.FileDownload;
 import com.lawfirm.law.firm.storage.FileStorageService;
 import com.lawfirm.law.firm.storage.LoadedFile;
 import com.lawfirm.law.firm.storage.StoredFile;
+import com.lawfirm.law.firm.tenant.TenantContext;
 import com.lawfirm.law.firm.util.PageRequests;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -253,6 +254,18 @@ public class ClientFileService {
                         });
     }
 
+    // Todos os escritórios dividem o mesmo bucket. Sem o schema na frente da chave, não há como
+    // restringir por IAM, exportar ou apagar os arquivos de um escritório só. O schema vem do
+    // tenant da requisição, nunca de uma lista; sem tenant, recusa antes de gravar qualquer objeto.
+    // Chaves já gravadas sem o prefixo continuam válidas: o banco guarda a chave inteira.
+    private static String tenantFolder(String folder) {
+        String schema = TenantContext.get();
+        if (schema == null) {
+            throw new IllegalStateException("Requisição sem tenant");
+        }
+        return schema + "/" + folder;
+    }
+
     private ClientFile findAnyFileOrThrow(UUID clientId, UUID fileId) {
         findClientOrThrow(clientId);
         return repository
@@ -261,7 +274,7 @@ public class ClientFileService {
     }
 
     private ClientFile newFile(Client client, FileKind kind, MultipartFile file, String folder) {
-        StoredFile stored = fileStorageService.store(file, folder);
+        StoredFile stored = fileStorageService.store(file, tenantFolder(folder));
         ClientFile entity = new ClientFile();
         entity.setClient(client);
         entity.setKind(kind);

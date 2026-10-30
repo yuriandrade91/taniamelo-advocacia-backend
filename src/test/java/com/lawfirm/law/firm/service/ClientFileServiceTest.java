@@ -35,6 +35,7 @@ import com.lawfirm.law.firm.storage.FileStorageService;
 import com.lawfirm.law.firm.storage.LoadedFile;
 import com.lawfirm.law.firm.storage.StoredFile;
 import com.lawfirm.law.firm.support.TestFixtures;
+import com.lawfirm.law.firm.tenant.TenantContext;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -64,6 +65,7 @@ import org.springframework.web.multipart.MultipartFile;
 class ClientFileServiceTest {
 
     private static final UUID FILE_ID = UUID.fromString("dddddddd-0000-0000-0000-000000000001");
+    private static final String TENANT = "tenant_qualquer";
 
     @Mock private ClientFileRepository repository;
     @Mock private ClientRepository clientRepository;
@@ -80,11 +82,13 @@ class ClientFileServiceTest {
         when(repository.saveAndFlush(any(ClientFile.class))).thenAnswer(i -> i.getArgument(0));
         when(fileStorageService.store(any(), anyString()))
                 .thenReturn(new StoredFile("clients/x/a.pdf", "application/pdf", 1234L));
+        TenantContext.set(TENANT);
     }
 
     @AfterEach
     void clearContext() {
         SecurityContextHolder.clearContext();
+        TenantContext.clear();
     }
 
     private void authenticate() {
@@ -156,7 +160,22 @@ class ClientFileServiceTest {
             assertEquals(DocumentType.OUTROS, saved.getAllValues().get(1).getDocumentType());
 
             verify(fileStorageService, times(2))
-                    .store(any(), eq("clients/" + TestFixtures.CLIENT_ID + "/documents"));
+                    .store(any(), eq(TENANT + "/clients/" + TestFixtures.CLIENT_ID + "/documents"));
+        }
+
+        @Test
+        @DisplayName("sem tenant na requisição, recusa antes de gravar no storage")
+        void refusesUploadWithoutTenant() {
+            authenticate();
+            TenantContext.clear();
+
+            List<MultipartFile> files = List.of(pdf());
+            List<ClientFileDocumentUploadMetadataDTO> metadata =
+                    List.of(documentMetadata("OUTROS"));
+            assertThrows(
+                    IllegalStateException.class,
+                    () -> service.uploadDocuments(TestFixtures.CLIENT_ID, files, metadata));
+            verify(fileStorageService, never()).store(any(), anyString());
         }
 
         @Test
@@ -477,7 +496,9 @@ class ClientFileServiceTest {
             assertEquals(7, created.get(0).getVinculos());
             assertEquals(LocalDate.of(2026, 6, 1), created.get(0).getSimulationDate());
             verify(fileStorageService)
-                    .store(any(), eq("clients/" + TestFixtures.CLIENT_ID + "/simulations"));
+                    .store(
+                            any(),
+                            eq(TENANT + "/clients/" + TestFixtures.CLIENT_ID + "/simulations"));
         }
 
         @Test
