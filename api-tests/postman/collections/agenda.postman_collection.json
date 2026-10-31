@@ -965,6 +965,186 @@
           ]
         }
       ]
+    },
+    {
+      "name": "4. Feriados",
+      "item": [
+        {
+          "name": "Feriado: data de feriado avisa",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/holiday?date=2026-12-25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "holiday"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-12-25"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"responde sobre a data pedida\", () => pm.expect(d.date).to.eql(\"2026-12-25\"));",
+                  "if (d.verified) {",
+                  "  pm.test(\"é feriado, com nome\", () => { pm.expect(d.holiday).to.eql(true); pm.expect(d.name).to.eql(\"Natal\"); });",
+                  "} else {",
+                  "  pm.test(\"calendário indisponível não afirma nada\", () => pm.expect(d.holiday).to.eql(false));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Feriado: dia comum avisa o que não foi verificado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/holiday?date=2026-12-22",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "holiday"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-12-22"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"não é feriado\", () => pm.expect(d.holiday).to.eql(false));",
+                  "if (d.verified) {",
+                  "  pm.test(\"diz que estaduais e municipais ficam de fora\", () => pm.expect(d.message).to.include(\"estaduais e municipais\"));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Feriado: formato de data inválido devolve 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/holiday?date=25/12/2026",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "holiday"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "25/12/2026"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Feriado: data ausente devolve 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-Id",
+                "value": "{{tenant}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/holiday",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "holiday"
+              ],
+              "query": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

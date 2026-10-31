@@ -21,6 +21,7 @@ import com.lawfirm.law.firm.dto.AppointmentRequestDTO;
 import com.lawfirm.law.firm.dto.AppointmentResponseDTO;
 import com.lawfirm.law.firm.dto.AppointmentSearchParams;
 import com.lawfirm.law.firm.dto.AppointmentSummaryDTO;
+import com.lawfirm.law.firm.dto.HolidayCheckDTO;
 import com.lawfirm.law.firm.exception.BusinessErrorCode;
 import com.lawfirm.law.firm.exception.BusinessException;
 import com.lawfirm.law.firm.exception.GlobalExceptionHandler;
@@ -28,7 +29,9 @@ import com.lawfirm.law.firm.exception.NotFoundException;
 import com.lawfirm.law.firm.model.AppointmentModality;
 import com.lawfirm.law.firm.model.AppointmentType;
 import com.lawfirm.law.firm.service.AppointmentService;
+import com.lawfirm.law.firm.service.HolidayService;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +58,7 @@ class AppointmentControllerTest {
     private static final Instant START = Instant.parse("2099-08-20T14:30:00Z");
 
     @Mock private AppointmentService service;
+    @Mock private HolidayService holidayService;
 
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
@@ -62,7 +66,7 @@ class AppointmentControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc =
-                MockMvcBuilders.standaloneSetup(new AppointmentController(service))
+                MockMvcBuilders.standaloneSetup(new AppointmentController(service, holidayService))
                         .setControllerAdvice(new GlobalExceptionHandler())
                         .build();
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
@@ -371,5 +375,27 @@ class AppointmentControllerTest {
                 .andExpect(jsonPath("$.pagination.totalRecords").value(1));
 
         verify(service).history(ID, 1, 10);
+    }
+
+    @Test
+    @DisplayName("GET /holiday devolve o aviso de feriado no envelope")
+    void holidayReturnsTheCheck() throws Exception {
+        LocalDate date = LocalDate.of(2026, 12, 25);
+        when(holidayService.check(date))
+                .thenReturn(new HolidayCheckDTO(date, true, "Natal", true, "É feriado"));
+
+        mockMvc.perform(get("/api/v1/appointments/holiday").param("date", "2026-12-25"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.holiday").value(true))
+                .andExpect(jsonPath("$.data.name").value("Natal"))
+                .andExpect(jsonPath("$.data.verified").value(true));
+    }
+
+    @Test
+    @DisplayName("GET /holiday recusa data ausente ou em outro formato")
+    void holidayRejectsInvalidDate() throws Exception {
+        mockMvc.perform(get("/api/v1/appointments/holiday")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/v1/appointments/holiday").param("date", "25/12/2026"))
+                .andExpect(status().isBadRequest());
     }
 }

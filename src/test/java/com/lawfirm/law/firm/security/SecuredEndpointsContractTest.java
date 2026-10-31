@@ -151,6 +151,9 @@ class SecuredEndpointsContractTest {
                     Map.entry("ClientController#restore", ADVOGADO),
                     Map.entry("ClientController#listDeleted", ADVOGADO),
                     Map.entry("ClientController#revealInssPassword", ADVOGADO),
+                    // Só reúne o que STAFF já lê aba por aba. O que STAFF não lê fica de fora no
+                    // service: parcelas só para ADMIN e senha do INSS para ninguém.
+                    Map.entry("ClientRecordController#download", ABERTO),
                     Map.entry("ClientPersonalDataController#get", ABERTO),
                     Map.entry("ClientPersonalDataController#update", ABERTO),
                     Map.entry("ClientProfessionalDataController#get", ABERTO),
@@ -201,6 +204,8 @@ class SecuredEndpointsContractTest {
                     Map.entry("AppointmentController#timeline", ABERTO),
                     Map.entry("AppointmentController#conflicts", ABERTO),
                     Map.entry("AppointmentController#history", ABERTO),
+                    // Calendário público, consultado por quem agenda: não expõe dado nenhum.
+                    Map.entry("AppointmentController#holiday", ABERTO),
                     Map.entry("AppointmentController#create", ABERTO),
                     Map.entry("AppointmentController#update", ABERTO),
                     Map.entry("AppointmentController#cancel", ABERTO),

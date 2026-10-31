@@ -1378,6 +1378,111 @@
           ]
         },
         {
+          "name": "A ficha completa sai em PDF para download",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "record"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"vem como PDF\", () => pm.expect(pm.response.headers.get(\"Content-Type\") || \"\").to.include(\"pdf\"));",
+                  "// attachment faz o navegador baixar em vez de abrir na aba; o nome do arquivo leva o do cliente.",
+                  "pm.test(\"é um download (attachment) com nome .pdf\", () => {",
+                  "  const cd = pm.response.headers.get(\"Content-Disposition\") || \"\";",
+                  "  pm.expect(cd).to.include(\"attachment\");",
+                  "  pm.expect(cd).to.match(/\\.pdf/i);",
+                  "});",
+                  "// Cada download é auditado (quem baixou e quando); a senha do INSS não sai em nenhum papel.",
+                  "pm.test(\"o corpo é um PDF de verdade\", () => {",
+                  "  pm.expect(pm.response.responseSize).to.be.above(0);",
+                  "  pm.expect(pm.response.text().slice(0, 5)).to.eql(\"%PDF-\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ficha em PDF de id inexistente devolve 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/11111111-2222-3333-4444-555555555555/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "11111111-2222-3333-4444-555555555555",
+                "record"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ficha em PDF com id malformado não vira 500",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/isto-nao-e-uuid/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "isto-nao-e-uuid",
+                "record"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"erro de cliente, não de servidor\", () => pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Id inexistente devolve 404",
           "request": {
             "method": "GET",
@@ -3421,6 +3526,39 @@
               }
             }
           ]
+        },
+        {
+          "name": "Baixar a ficha do cliente em PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{{clientId}}/record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{{clientId}}",
+                "record"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"é PDF\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\"));",
+                  "pm.test(\"vem como anexo\", () => pm.expect(pm.response.headers.get(\"Content-Disposition\")).to.include(\"attachment\"));"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "Endereços (inclusive em lote), entrevistas, abas de dados e financeiro do cliente."
@@ -4080,6 +4218,157 @@
                   "value": "{{inicio}}"
                 }
               ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Feriado: data de feriado avisa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/holiday?date=2026-12-25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "holiday"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-12-25"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"responde sobre a data pedida\", () => pm.expect(d.date).to.eql(\"2026-12-25\"));",
+                  "if (d.verified) {",
+                  "  pm.test(\"é feriado, com nome\", () => { pm.expect(d.holiday).to.eql(true); pm.expect(d.name).to.eql(\"Natal\"); });",
+                  "} else {",
+                  "  pm.test(\"calendário indisponível não afirma nada\", () => pm.expect(d.holiday).to.eql(false));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Feriado: dia comum avisa o que não foi verificado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/holiday?date=2026-12-22",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "holiday"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-12-22"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test(\"não é feriado\", () => pm.expect(d.holiday).to.eql(false));",
+                  "if (d.verified) {",
+                  "  pm.test(\"diz que estaduais e municipais ficam de fora\", () => pm.expect(d.message).to.include(\"estaduais e municipais\"));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Feriado: formato de data inválido devolve 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/holiday?date=25/12/2026",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "holiday"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "25/12/2026"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Feriado: data ausente devolve 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/holiday",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "holiday"
+              ],
+              "query": []
             }
           },
           "event": [

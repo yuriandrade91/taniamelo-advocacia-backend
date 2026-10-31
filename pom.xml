@@ -45,6 +45,9 @@
 		     parent do Boot não gerencia. -->
 		<testcontainers.version>2.0.5</testcontainers.version>
 		<bucket4j.version>8.19.0</bucket4j.version>
+		<openpdf.version>3.0.5</openpdf.version>
+		<jsoup.version>1.23.2</jsoup.version>
+		<openhtmltopdf.version>1.1.105</openhtmltopdf.version>
 		<!-- Chave COMO O SONARCLOUD A CRIOU no import do GitHub: prefixo da
 		     organização + nome do repositório. Não é escolha estética - com a
 		     chave curta ("taniamelo-advocacia-backend") a análise do CI não
@@ -266,6 +269,29 @@
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>s3</artifactId>
+		</dependency>
+
+		<!-- Geração da ficha do cliente em PDF. Tabela com quebra de página e cabeçalho
+		     repetido já vêm prontos; no PDFBox teriam de ser escritos à mão. -->
+		<dependency>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf</artifactId>
+			<version>${openpdf.version}</version>
+		</dependency>
+
+		<!-- O relato da entrevista é HTML do editor rico: na ficha só passam as marcas da barra,
+		     sem atributo (ver RichText). -->
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>${jsoup.version}</version>
+		</dependency>
+
+		<!-- Ficha em HTML + CSS (comparação com o desenho em OpenPDF). -->
+		<dependency>
+			<groupId>io.github.openhtmltopdf</groupId>
+			<artifactId>openhtmltopdf-pdfbox</artifactId>
+			<version>${openhtmltopdf.version}</version>
 		</dependency>
 
 		<dependency>

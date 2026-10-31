@@ -85,6 +85,8 @@ public class CorsConfig {
         // Sem ele a tela de login só consegue dizer "tente mais tarde", e quem lê
         // isso tenta de novo imediatamente - exatamente o que o freio evita.
         config.addExposedHeader(HttpHeaders.RETRY_AFTER);
+        // Mesmo motivo: sem ele o `fetch` não lê o nome do arquivo e o download sai sem nome.
+        config.addExposedHeader(HttpHeaders.CONTENT_DISPOSITION);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

@@ -21,6 +21,14 @@ public final class CurrentUser {
         return null;
     }
 
+    /** Se o usuário autenticado tem o papel, para quem recorta dados em vez de recusar a rota. */
+    public static boolean hasRole(String role) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null
+                && auth.getAuthorities().stream()
+                        .anyMatch(authority -> ("ROLE_" + role).equals(authority.getAuthority()));
+    }
+
     /**
      * Id do agente de suporte quando a requisição é uma sessão de suporte (impersonation), ou null.
      * A auditoria usa isto para atribuir a ação a quem de fato a executou.

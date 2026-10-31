@@ -9,9 +9,11 @@ import com.lawfirm.law.firm.dto.AppointmentResponseDTO;
 import com.lawfirm.law.firm.dto.AppointmentSearchParams;
 import com.lawfirm.law.firm.dto.AppointmentSummaryDTO;
 import com.lawfirm.law.firm.dto.AppointmentTimelinePointDTO;
+import com.lawfirm.law.firm.dto.HolidayCheckDTO;
 import com.lawfirm.law.firm.dto.Pagination;
 import com.lawfirm.law.firm.security.RequerAdvogado;
 import com.lawfirm.law.firm.service.AppointmentService;
+import com.lawfirm.law.firm.service.HolidayService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -46,9 +48,11 @@ import org.springframework.web.bind.annotation.*;
 public class AppointmentController {
 
     private final AppointmentService service;
+    private final HolidayService holidayService;
 
-    public AppointmentController(AppointmentService service) {
+    public AppointmentController(AppointmentService service, HolidayService holidayService) {
         this.service = service;
+        this.holidayService = holidayService;
     }
 
     @Operation(summary = "Criar compromisso", description = "Nasce com status Agendado.")
@@ -170,6 +174,34 @@ public class AppointmentController {
                     UUID excludeId) {
         return ResponseEntity.ok(
                 ApiResponse.successList(service.findConflicts(startAt, endAt, excludeId)));
+    }
+
+    @Operation(
+            summary = "Verificar se a data é feriado",
+            description =
+                    """
+                    Para a tela chamar ao escolher a data do compromisso e mostrar `message`.
+
+                    **Avisa, não bloqueia:** nem `POST` nem `PUT` recusam data de feriado.
+
+                    **Cobre só o calendário nacional.** Feriados estaduais e municipais não são \
+                    verificados, então `holiday=false` não garante dia útil no local do compromisso.
+
+                    Calendário indisponível ou ano fora de 1900-2199 devolve **200** com \
+                    `verified=false`: não é erro, mas também não significa que a data está livre. \
+                    Nesse caso `message` já traz o texto para um toast (com o calendário fora do ar, \
+                    pede para tentar mais tarde).
+
+                    Data no formato `yyyy-MM-dd`, sem hora: quem diz o dia é a agenda do escritório, \
+                    e um instante em UTC poderia cair no dia seguinte. Formato inválido devolve 400.
+                    """)
+    @GetMapping("/holiday")
+    public ResponseEntity<ApiResponse<HolidayCheckDTO>> holiday(
+            @Parameter(description = "Data a verificar", example = "2026-12-25")
+                    @RequestParam
+                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                    LocalDate date) {
+        return ResponseEntity.ok(ApiResponse.successObject(holidayService.check(date)));
     }
 
     @Operation(summary = "Detalhe de um compromisso")
