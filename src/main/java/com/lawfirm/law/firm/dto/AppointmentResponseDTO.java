@@ -1,11 +1,13 @@
 package com.lawfirm.law.firm.dto;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 
 /** Representação de um compromisso da agenda. Enums saem como label PT-BR (String). */
+@JsonPropertyOrder({"id"})
 @Getter
 @Setter
 public class AppointmentResponseDTO {

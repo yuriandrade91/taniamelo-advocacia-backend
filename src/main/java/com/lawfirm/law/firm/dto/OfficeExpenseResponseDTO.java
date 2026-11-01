@@ -1,5 +1,6 @@
 package com.lawfirm.law.firm.dto;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -9,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /** Despesa do escritório como a tela da Carteira a lê. Enums saem pelo rótulo PT-BR. */
+@JsonPropertyOrder({"id"})
 @Getter
 @Setter
 public class OfficeExpenseResponseDTO {

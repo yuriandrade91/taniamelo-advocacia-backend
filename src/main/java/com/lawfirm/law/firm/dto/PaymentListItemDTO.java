@@ -1,5 +1,6 @@
 package com.lawfirm.law.firm.dto;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -28,6 +29,7 @@ import lombok.Setter;
  * receita do escritório é {@code OfficeRevenue}. As duas têm quase o mesmo formato, e confundi-las
  * já fez a Carteira mostrar o dinheiro dos clientes como faturamento.
  */
+@JsonPropertyOrder({"id"})
 @Getter
 @Setter
 public class PaymentListItemDTO {

@@ -1,5 +1,6 @@
 package com.lawfirm.law.firm.dto;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.lawfirm.law.firm.model.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -17,6 +18,7 @@ import lombok.Setter;
  * <p>Não traz o hash da senha, nem o estado de bloqueio por tentativas. Papel e situação vêm como
  * leitura: quem muda papel é quem administra, não o próprio usuário.
  */
+@JsonPropertyOrder({"id"})
 @Getter
 @Setter
 public class MyProfileDTO {

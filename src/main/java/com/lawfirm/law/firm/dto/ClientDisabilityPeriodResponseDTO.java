@@ -1,5 +1,6 @@
 package com.lawfirm.law.firm.dto;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.lawfirm.law.firm.model.DisabilityGrade;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
@@ -19,6 +20,7 @@ import lombok.Setter;
  * navegador: às 21h de 31 de janeiro, um navegador em UTC já estaria em fevereiro e devolveria um
  * dia a mais.
  */
+@JsonPropertyOrder({"id"})
 @Getter
 @Setter
 public class ClientDisabilityPeriodResponseDTO {
