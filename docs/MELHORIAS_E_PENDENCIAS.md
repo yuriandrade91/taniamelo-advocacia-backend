@@ -95,6 +95,42 @@ o total do projeto subiu de 90,1% para 90,5% de linhas e de 82,0% para 82,3% de 
 
 ---
 
+## Revisão de 01/11/2026
+
+Cada defeito abaixo foi reproduzido por teste contra Postgres real antes da correção.
+
+| Defeito corrigido | Efeito antes da correção |
+| --- | --- |
+| `GET /clients/{clientId}/personal-data` devolvia `inssPassword` | Qualquer papel lia a senha em texto claro, sem auditoria |
+| `revealInssPassword` em transação `readOnly` | O registro de quem viu a senha nunca chegava ao banco |
+| `rotate` revogava e lançava exceção na mesma transação | O rollback desfazia a revogação: token roubado seguia renovando |
+| Aba profissional sem normalizar nem checar unicidade | NIT/CTPS com máscara passavam pela checagem e duplicavam documento |
+| Troca de senha mantinha os refresh tokens | A sessão de um invasor seguia renovando depois da troca |
+| Upload gravava antes de validar o lote e sem compensar rollback | Arquivo de cliente órfão no bucket |
+
+Também: `open-in-view` desligado e controllers de auth, usuário e tenant sem repositório.
+
+**Abertos, por dependerem de decisão ou de ambiente:**
+
+- **Senha do INSS já exposta.** Até o deploy desta correção, a aba de dados pessoais entregava a
+  senha a qualquer papel, e as revelações anteriores não têm auditoria. Avaliar se os clientes
+  precisam trocar a senha do Meu INSS.
+- **Access token após troca de senha.** O JWT continua válido até expirar (8 h por padrão);
+  encurtar o TTL ou versionar o token fecha essa janela.
+- **`JwtService` completa segredo curto com zeros.** Fora de dev/test deveria recusar o boot, como
+  o `CorsConfig`; depende de confirmar o tamanho do segredo da instância.
+- **`/actuator/prometheus` é público**, e a instância responde em IP público. Restringir por rede
+  ou autenticação no scrape.
+- **Swagger público com exemplos de login** (e-mails de usuários e senha `password`). Confirmar se
+  essas contas existem em produção e retirar os exemplos.
+- **MIME declarado pelo cliente.** O upload confia no `Content-Type`; falta conferir a assinatura
+  do arquivo. Antivírus segue na Fase C.
+- **Dados reais no histórico do git.** O commit `897c9ae` tem nomes e e-mails de usuários do
+  escritório Prado. Os arquivos atuais estão limpos; o histórico só muda com reescrita e
+  force-push.
+
+---
+
 ## Margem de melhoria, por prioridade
 
 ### 0. A instância está em disco local, não em S3 — verificado em 09/10/2026

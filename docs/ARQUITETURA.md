@@ -58,6 +58,7 @@ audit/         Trilha de auditoria (AuditLogListener + audit_log)
 
 Regra de dependência: `controller → service → repository → model`. DTOs cruzam
 controller↔service; entidades nunca vazam para fora do service.
+`ControllerLayeringTest` reprova controller que dependa de repositório.
 
 ---
 
@@ -147,7 +148,8 @@ Autenticação **stateless por JWT** (sem sessão):
   `TenantResolutionFilter` roda antes do filtro JWT para o usuário ser carregado
   do schema certo. Ver seção 6 e `MULTI_TENANT_E_AUTH.md`.
 
-Autorização por papel (`@PreAuthorize`) segue planejada (ver `ROADMAP.md`).
+- **Autorização por papel:** `@RequerAdmin`/`@RequerAdvogado` (`@PreAuthorize`) nos
+  controllers; `SecuredEndpointsContractTest` barra rota nova sem decisão declarada.
 
 ---
 
