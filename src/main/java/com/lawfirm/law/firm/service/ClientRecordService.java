@@ -98,7 +98,7 @@ public class ClientRecordService {
 
         boolean paymentsVisible = CurrentUser.hasRole("ADMIN");
         ClientRecord clientRecord = collect(client, paymentsVisible);
-        byte[] content = ClientRecordPdfRenderer.render(clientRecord);
+        byte[] content = ClientRecordHtmlRenderer.render(clientRecord);
 
         auditRepository.save(
                 new AuditLog(

@@ -1,96 +1,28 @@
 package com.lawfirm.law.firm.service;
 
+import static com.lawfirm.law.firm.service.ClientRecordFixtures.emptyRecord;
+import static com.lawfirm.law.firm.service.ClientRecordFixtures.fullRecord;
+import static com.lawfirm.law.firm.service.ClientRecordFixtures.interview;
+import static com.lawfirm.law.firm.service.ClientRecordFixtures.pagesOf;
+import static com.lawfirm.law.firm.service.ClientRecordFixtures.recordWith;
+import static com.lawfirm.law.firm.service.ClientRecordFixtures.textOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.lawfirm.law.firm.dto.ClientAddressResponseDTO;
-import com.lawfirm.law.firm.dto.ClientDetailsDTO;
-import com.lawfirm.law.firm.dto.ClientInterviewResponseDTO;
 import com.lawfirm.law.firm.dto.ClientRequestStageHistoryDTO;
 import com.lawfirm.law.firm.dto.PaymentListItemDTO;
-import com.lawfirm.law.firm.model.Gender;
-import com.lawfirm.law.firm.support.TestFixtures;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.openpdf.text.pdf.PdfReader;
-import org.openpdf.text.pdf.parser.PdfTextExtractor;
 
 @DisplayName("Ficha do cliente em PDF: conteúdo e paginação")
-class ClientRecordPdfRendererTest {
-
-    private static ClientDetailsDTO client() {
-        ClientDetailsDTO client = new ClientDetailsDTO();
-        client.setClientId(TestFixtures.CLIENT_ID);
-        client.setFullName("Conceição Araújo");
-        client.setCpf("529.982.247-25");
-        client.setBirthDate(LocalDate.of(1960, 3, 9));
-        client.setAge(66);
-        client.setGender(Gender.FEMININO);
-        client.setResponsibleUserId(TestFixtures.USER_ID);
-        return client;
-    }
-
-    private static ClientRecord recordWith(
-            List<ClientInterviewResponseDTO> interviews,
-            List<ClientRequestStageHistoryDTO> stages,
-            boolean paymentsVisible,
-            List<PaymentListItemDTO> payments) {
-        ClientAddressResponseDTO address = new ClientAddressResponseDTO();
-        address.setStreet("Rua das Acácias");
-        address.setAddressNumber("10");
-        address.setCity("São Paulo");
-        address.setState("SP");
-        address.setIsPrimary(true);
-        return new ClientRecord(
-                "Escritório Teste",
-                Instant.parse("2026-10-30T12:00:00Z"),
-                client(),
-                List.of(address),
-                List.of(),
-                interviews,
-                List.of(),
-                List.of(),
-                List.of(),
-                stages,
-                List.of(),
-                paymentsVisible,
-                payments,
-                Map.of(TestFixtures.USER_ID, "Dra. Responsável"));
-    }
-
-    private static String textOf(byte[] pdf) throws IOException {
-        try (PdfReader reader = new PdfReader(pdf)) {
-            PdfTextExtractor extractor = new PdfTextExtractor(reader);
-            StringBuilder text = new StringBuilder();
-            for (int page = 1; page <= reader.getNumberOfPages(); page++) {
-                text.append(extractor.getTextFromPage(page)).append('\n');
-            }
-            return text.toString();
-        }
-    }
-
-    private static int pagesOf(byte[] pdf) throws IOException {
-        try (PdfReader reader = new PdfReader(pdf)) {
-            return reader.getNumberOfPages();
-        }
-    }
-
-    private static ClientInterviewResponseDTO interview(String content) {
-        ClientInterviewResponseDTO interview = new ClientInterviewResponseDTO();
-        interview.setOccurredAt(Instant.parse("2026-01-15T17:30:00Z"));
-        interview.setDurationMinutes(30);
-        interview.setContent(content);
-        interview.setCreatedBy(TestFixtures.USER_ID);
-        return interview;
-    }
+class ClientRecordHtmlRendererTest {
 
     @Test
     @DisplayName(
@@ -98,7 +30,7 @@ class ClientRecordPdfRendererTest {
     void printsReadableData() throws IOException {
         String text =
                 textOf(
-                        ClientRecordPdfRenderer.render(
+                        ClientRecordHtmlRenderer.render(
                                 recordWith(
                                         List.of(interview("Relato da entrevista")),
                                         List.of(),
@@ -124,7 +56,7 @@ class ClientRecordPdfRendererTest {
     void omitsPaymentsWhenNotVisible() throws IOException {
         String text =
                 textOf(
-                        ClientRecordPdfRenderer.render(
+                        ClientRecordHtmlRenderer.render(
                                 recordWith(List.of(), List.of(), false, List.of())));
 
         assertFalse(text.contains("Pagamentos"), text);
@@ -143,7 +75,7 @@ class ClientRecordPdfRendererTest {
 
         String text =
                 textOf(
-                                ClientRecordPdfRenderer.render(
+                                ClientRecordHtmlRenderer.render(
                                         recordWith(List.of(), List.of(), true, List.of(payment))))
                         .replace(' ', ' ');
 
@@ -162,7 +94,7 @@ class ClientRecordPdfRendererTest {
         stage.setJustification("motivo ".repeat(2000) + "FIM-JUSTIFICATIVA");
 
         byte[] pdf =
-                ClientRecordPdfRenderer.render(
+                ClientRecordHtmlRenderer.render(
                         recordWith(List.of(interview(longText)), List.of(stage), false, List.of()));
 
         assertTrue(pagesOf(pdf) > 2);
@@ -182,7 +114,7 @@ class ClientRecordPdfRendererTest {
         }
 
         byte[] pdf =
-                ClientRecordPdfRenderer.render(recordWith(List.of(), stages, false, List.of()));
+                ClientRecordHtmlRenderer.render(recordWith(List.of(), stages, false, List.of()));
 
         // A tabela começa depois da primeira página, e dali em diante aparece em todas.
         int pages = pagesOf(pdf);
@@ -194,7 +126,7 @@ class ClientRecordPdfRendererTest {
     @DisplayName("caractere fora do Latin-1 não derruba a geração")
     void survivesCharactersOutsideTheBuiltInFont() throws IOException {
         byte[] pdf =
-                ClientRecordPdfRenderer.render(
+                ClientRecordHtmlRenderer.render(
                         recordWith(
                                 List.of(interview("antes → 😀 日本語 depois")),
                                 List.of(),
@@ -204,5 +136,47 @@ class ClientRecordPdfRendererTest {
         String text = textOf(pdf);
         assertTrue(text.contains("antes"), text);
         assertTrue(text.contains("depois"), text);
+    }
+
+    @Test
+    @DisplayName("ficha completa imprime todas as seções, com e sem as parcelas")
+    void printsEverySectionOfAFullRecord() throws IOException {
+        // Célula estreita quebra "Motivo do / cancelamento" em duas linhas: compara sem a quebra.
+        String text =
+                textOf(ClientRecordHtmlRenderer.render(fullRecord(true))).replaceAll("\\s+", " ");
+
+        for (String expected :
+                List.of(
+                        "Dados pessoais",
+                        "Endereços",
+                        "Dados profissionais e previdenciários",
+                        "Períodos de deficiência",
+                        "Até a presente data",
+                        "Entrevistas",
+                        "primeiro item",
+                        "citação",
+                        "Documentos anexados",
+                        "Simulações",
+                        "Compromissos",
+                        "Motivo do cancelamento",
+                        "Histórico de situação no escritório",
+                        "Histórico de etapas no INSS",
+                        "Pagamentos a receber do INSS",
+                        "Vencido",
+                        "1.234,50")) {
+            assertTrue(text.contains(expected), expected + " não saiu em:\n" + text);
+        }
+        assertFalse(
+                textOf(ClientRecordHtmlRenderer.render(fullRecord(false)))
+                        .contains("Pagamentos a receber"));
+    }
+
+    @Test
+    @DisplayName("ficha sem nenhum dado ainda sai, com os textos de registro vazio")
+    void printsAnEmptyRecord() throws IOException {
+        String text = textOf(ClientRecordHtmlRenderer.render(emptyRecord(true)));
+
+        assertTrue(text.contains("Nenhum registro"), text);
+        assertTrue(text.contains("Pagamentos a receber do INSS"), text);
     }
 }

@@ -1,5 +1,6 @@
 package com.lawfirm.law.firm.service;
 
+import static com.lawfirm.law.firm.service.ClientRecordFixtures.textOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,7 +23,6 @@ import com.lawfirm.law.firm.model.Situation;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.support.PostgresIntegrationTest;
 import com.lawfirm.law.firm.tenant.TenantContext;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -30,8 +30,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.openpdf.text.pdf.PdfReader;
-import org.openpdf.text.pdf.parser.PdfTextExtractor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
@@ -107,17 +105,6 @@ class ClientRecordIntegrationTest extends PostgresIntegrationTest {
         // O TenantResolutionFilter limpa o tenant ao fim da requisição; o teste ainda lê o banco.
         TenantContext.set("tenant_tania");
         return textOf(pdf);
-    }
-
-    private static String textOf(byte[] pdf) throws IOException {
-        try (PdfReader reader = new PdfReader(pdf)) {
-            PdfTextExtractor extractor = new PdfTextExtractor(reader);
-            StringBuilder text = new StringBuilder();
-            for (int page = 1; page <= reader.getNumberOfPages(); page++) {
-                text.append(extractor.getTextFromPage(page)).append('\n');
-            }
-            return text.toString();
-        }
     }
 
     @Test
