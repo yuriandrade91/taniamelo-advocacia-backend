@@ -128,7 +128,7 @@ public class HolidayService {
                         .uri("/{year}", year)
                         .retrieve()
                         .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
-        // Lista vazia não é "ano sem feriados": todo ano tem. Guardá-la no cache faria a agenda
+        // Lista vazia não é "ano sem feriados": qualquer ano tem. Guardá-la no cache faria a agenda
         // afirmar por um mês que nenhuma data é feriado.
         if (body == null || body.isEmpty()) {
             throw new IllegalStateException("provedor devolveu lista vazia");

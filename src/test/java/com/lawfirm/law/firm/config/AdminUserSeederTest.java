@@ -147,8 +147,11 @@ class AdminUserSeederTest {
     void refusesExamplePasswordOutsideDev() {
         when(userRepository.count()).thenReturn(0L);
 
-        assertThrows(IllegalStateException.class, () -> seeder("changeme123", "postgres").run());
-        assertThrows(IllegalStateException.class, () -> seeder("", "postgres").run());
+        AdminUserSeeder withExample = seeder("changeme123", "postgres");
+        AdminUserSeeder withEmpty = seeder("", "postgres");
+
+        assertThrows(IllegalStateException.class, withExample::run);
+        assertThrows(IllegalStateException.class, withEmpty::run);
 
         verify(userRepository, never()).save(any());
     }
