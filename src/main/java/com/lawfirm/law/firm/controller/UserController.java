@@ -5,17 +5,14 @@ import com.lawfirm.law.firm.dto.ChangePasswordRequestDTO;
 import com.lawfirm.law.firm.dto.MyProfileDTO;
 import com.lawfirm.law.firm.dto.MyProfileUpdateRequestDTO;
 import com.lawfirm.law.firm.dto.UserSummaryDTO;
-import com.lawfirm.law.firm.model.User;
-import com.lawfirm.law.firm.repository.UserRepository;
 import com.lawfirm.law.firm.security.RequerAdvogado;
 import com.lawfirm.law.firm.service.MyProfileService;
+import com.lawfirm.law.firm.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -39,8 +36,8 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Listar exige ADMIN ou SUPPORT ({@code @RequerAdvogado}): quem trabalha no escritório não é da
  * conta de quem só opera.
  *
- * <p>Criar, editar e desativar usuário continuam sem endpoint - hoje o único caminho é o {@code
- * AdminUserSeeder}, que sempre escreve ADMIN. Ver ROADMAP.
+ * <p>Criar, editar e desativar usuário continuam sem endpoint: o caminho é {@code
+ * scripts/tenant/02-criar-usuarios.sql} (ver docs/CADASTRO_DE_TENANT.md).
  */
 @Tag(name = "Usuários", description = "Usuários do escritório - consulta para resolver autoria")
 @SecurityRequirement(name = "bearerAuth")
@@ -49,11 +46,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/users")
 public class UserController {
 
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final MyProfileService myProfileService;
 
-    public UserController(UserRepository userRepository, MyProfileService myProfileService) {
-        this.userRepository = userRepository;
+    public UserController(UserService userService, MyProfileService myProfileService) {
+        this.userService = userService;
         this.myProfileService = myProfileService;
     }
 
@@ -78,21 +75,7 @@ public class UserController {
             @Parameter(description = "Inclui usuários desativados (para resolver autoria antiga)")
                     @RequestParam(defaultValue = "false")
                     boolean includeInactive) {
-        List<UserSummaryDTO> users =
-                userRepository.findAll(Sort.by(Sort.Direction.ASC, "fullName")).stream()
-                        .filter(user -> includeInactive || Boolean.TRUE.equals(user.getActive()))
-                        .map(UserController::toDTO)
-                        .toList();
-        return ResponseEntity.ok(ApiResponse.successList(users));
-    }
-
-    private static UserSummaryDTO toDTO(User user) {
-        return new UserSummaryDTO(
-                user.getId(),
-                user.getFullName(),
-                user.getUsername(),
-                user.getRole(),
-                Boolean.TRUE.equals(user.getActive()));
+        return ResponseEntity.ok(ApiResponse.successList(userService.list(includeInactive)));
     }
 
     // ── Meus dados ──
@@ -109,7 +92,9 @@ public class UserController {
             summary = "Meus dados",
             description =
                     """
-                    Os dados de quem está autenticado. Traz o e-mail, que a listagem de usuários                     não traz — ali seria um diretório de contatos; aqui a pessoa está vendo a                     própria ficha.
+                    Os dados de quem está autenticado. Traz o e-mail, que a listagem de usuários \
+                    não traz — ali seria um diretório de contatos; aqui a pessoa está vendo a \
+                    própria ficha.
 
                     Papel e situação vêm como leitura: quem muda papel é quem administra.""")
     @GetMapping("/me")
@@ -121,9 +106,12 @@ public class UserController {
             summary = "Atualizar meus dados",
             description =
                     """
-                    Nome e e-mail. E-mail repetido no escritório responde 400 nomeando o campo,                     em vez do erro de constraint do banco.
+                    Nome e e-mail. E-mail repetido no escritório responde 400 nomeando o campo, \
+                    em vez do erro de constraint do banco.
 
-                    Papel, situação e nome de usuário não entram: papel seria escalada de                     privilégio disfarçada de edição de perfil, e o nome de usuário é a credencial                     de entrada.""")
+                    Papel, situação e nome de usuário não entram: papel seria escalada de \
+                    privilégio disfarçada de edição de perfil, e o nome de usuário é a credencial \
+                    de entrada.""")
     @PutMapping("/me")
     public ResponseEntity<ApiResponse<MyProfileDTO>> atualizarMeusDados(
             @Valid @RequestBody MyProfileUpdateRequestDTO dto) {
@@ -134,9 +122,15 @@ public class UserController {
             summary = "Trocar minha senha",
             description =
                     """
-                    Exige a senha atual mesmo com a sessão autenticada: o token dura horas e a                     máquina fica destravada — sem a confirmação, quem passar por um computador                     aberto toma a conta.
+                    Exige a senha atual mesmo com a sessão autenticada: o token dura horas e a \
+                    máquina fica destravada — sem a confirmação, quem passar por um computador \
+                    aberto toma a conta.
 
-                    A nova senha precisa ser diferente da atual. Trocar pela mesma responderia 200                     sem trocar nada, e quem fez isso por desconfiar de acesso indevido sairia                     achando que resolveu.""")
+                    Encerra as outras sessões: nenhum refresh token anterior volta a renovar.
+
+                    A nova senha precisa ser diferente da atual. Trocar pela mesma responderia 200 \
+                    sem trocar nada, e quem fez isso por desconfiar de acesso indevido sairia \
+                    achando que resolveu.""")
     @PatchMapping("/me/password")
     public ResponseEntity<Void> trocarMinhaSenha(@Valid @RequestBody ChangePasswordRequestDTO dto) {
         myProfileService.trocarSenha(dto);

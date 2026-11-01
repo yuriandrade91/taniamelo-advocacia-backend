@@ -34,7 +34,10 @@ class TenantControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc =
-                MockMvcBuilders.standaloneSetup(new TenantController(tenantRepository))
+                MockMvcBuilders.standaloneSetup(
+                                new TenantController(
+                                        new com.lawfirm.law.firm.service.TenantService(
+                                                tenantRepository)))
                         .setControllerAdvice(new GlobalExceptionHandler())
                         .build();
     }

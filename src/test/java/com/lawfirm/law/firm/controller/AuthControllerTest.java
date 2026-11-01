@@ -19,6 +19,7 @@ import com.lawfirm.law.firm.security.JwtService;
 import com.lawfirm.law.firm.security.LoginGuard;
 import com.lawfirm.law.firm.security.LoginThrottleService;
 import com.lawfirm.law.firm.security.RefreshTokenCookie;
+import com.lawfirm.law.firm.service.AuthService;
 import com.lawfirm.law.firm.service.RefreshTokenService;
 import com.lawfirm.law.firm.support.TestFixtures;
 import com.lawfirm.law.firm.tenant.CurrentTenant;
@@ -67,13 +68,14 @@ class AuthControllerTest {
     private AuthController controllerCom(
             String cookieName, String cookiePath, boolean secure, String sameSite) {
         return new AuthController(
-                authenticationManager,
-                jwtService,
-                userRepository,
-                refreshTokenService,
-                new RefreshTokenCookie(cookieName, cookiePath, secure, sameSite),
-                new CurrentTenant(tenantRepository),
-                new LoginGuard(loginThrottle, accountLock));
+                new AuthService(
+                        authenticationManager,
+                        jwtService,
+                        userRepository,
+                        refreshTokenService,
+                        new CurrentTenant(tenantRepository),
+                        new LoginGuard(loginThrottle, accountLock)),
+                new RefreshTokenCookie(cookieName, cookiePath, secure, sameSite));
     }
 
     @BeforeEach
@@ -316,6 +318,20 @@ class AuthControllerTest {
                                             Matchers.containsString("refreshToken=novo-refresh")));
 
             verify(refreshTokenService).rotate("refresh-antigo", "Firefox");
+        }
+
+        @Test
+        @DisplayName("usuário desativado não renova a sessão")
+        void deactivatedUserCannotRefresh() throws Exception {
+            User deactivated = TestFixtures.user();
+            deactivated.setActive(false);
+            when(userRepository.findById(TestFixtures.USER_ID))
+                    .thenReturn(Optional.of(deactivated));
+
+            mockMvc.perform(
+                            post("/api/v1/auth/refresh")
+                                    .cookie(new Cookie("refreshToken", "refresh-antigo")))
+                    .andExpect(status().isUnauthorized());
         }
 
         @Test

@@ -35,7 +35,10 @@ class UserControllerTest {
     void setUp() {
         mockMvc =
                 MockMvcBuilders.standaloneSetup(
-                                new UserController(userRepository, myProfileService))
+                                new UserController(
+                                        new com.lawfirm.law.firm.service.UserService(
+                                                userRepository),
+                                        myProfileService))
                         .setControllerAdvice(new GlobalExceptionHandler())
                         .build();
     }

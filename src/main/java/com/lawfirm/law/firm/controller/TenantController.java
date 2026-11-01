@@ -3,10 +3,7 @@ package com.lawfirm.law.firm.controller;
 import com.lawfirm.law.firm.dto.ApiResponse;
 import com.lawfirm.law.firm.dto.TenantPublicDTO;
 import com.lawfirm.law.firm.dto.TenantResponseDTO;
-import com.lawfirm.law.firm.exception.NotFoundException;
-import com.lawfirm.law.firm.model.Tenant;
-import com.lawfirm.law.firm.repository.TenantRepository;
-import com.lawfirm.law.firm.tenant.TenantContext;
+import com.lawfirm.law.firm.service.TenantService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
@@ -32,10 +29,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/tenants")
 public class TenantController {
 
-    private final TenantRepository tenantRepository;
+    private final TenantService service;
 
-    public TenantController(TenantRepository tenantRepository) {
-        this.tenantRepository = tenantRepository;
+    public TenantController(TenantService service) {
+        this.service = service;
     }
 
     @Operation(
@@ -46,14 +43,7 @@ public class TenantController {
     @SecurityRequirements
     @GetMapping("/resolve")
     public ResponseEntity<ApiResponse<TenantPublicDTO>> resolve(@RequestParam String slug) {
-        Tenant tenant =
-                tenantRepository
-                        .findBySlug(slug)
-                        .orElseThrow(() -> NotFoundException.of("Tenant", slug));
-        TenantPublicDTO dto =
-                new TenantPublicDTO(
-                        tenant.getId().toString(), tenant.getSlug(), tenant.getRazaoSocial());
-        return ResponseEntity.ok(ApiResponse.successObject(dto));
+        return ResponseEntity.ok(ApiResponse.successObject(service.resolve(slug)));
     }
 
     @Operation(
@@ -64,27 +54,6 @@ public class TenantController {
     @SecurityRequirement(name = "tenantHeader")
     @GetMapping("/current")
     public ResponseEntity<ApiResponse<TenantResponseDTO>> current() {
-        String schema = TenantContext.get();
-        Tenant tenant =
-                tenantRepository
-                        .findBySchemaName(schema)
-                        .orElseThrow(() -> NotFoundException.of("Tenant", schema));
-        return ResponseEntity.ok(ApiResponse.successObject(toDTO(tenant)));
-    }
-
-    private static TenantResponseDTO toDTO(Tenant tenant) {
-        TenantResponseDTO dto = new TenantResponseDTO();
-        dto.setId(tenant.getId());
-        dto.setSlug(tenant.getSlug());
-        dto.setRazaoSocial(tenant.getRazaoSocial());
-        dto.setCnpj(tenant.getCnpj());
-        dto.setResponsavel(tenant.getResponsavel());
-        dto.setEmail(tenant.getEmail());
-        dto.setTelefone(tenant.getTelefone());
-        dto.setPlano(tenant.getPlano());
-        dto.setStatus(tenant.getStatus());
-        dto.setCriadoEm(tenant.getCriadoEm());
-        dto.setAtualizadoEm(tenant.getAtualizadoEm());
-        return dto;
+        return ResponseEntity.ok(ApiResponse.successObject(service.current()));
     }
 }
