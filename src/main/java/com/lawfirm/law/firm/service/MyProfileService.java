@@ -27,12 +27,18 @@ public class MyProfileService {
 
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
 
-    public MyProfileService(UserRepository repository, PasswordEncoder passwordEncoder) {
+    public MyProfileService(
+            UserRepository repository,
+            PasswordEncoder passwordEncoder,
+            RefreshTokenService refreshTokenService) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
+        this.refreshTokenService = refreshTokenService;
     }
 
+    @Transactional(readOnly = true)
     public MyProfileDTO meusDados() {
         return toDTO(usuarioDaSessao());
     }
@@ -86,6 +92,9 @@ public class MyProfileService {
         user.setPasswordHash(passwordEncoder.encode(dto.getNewPassword()));
         user.setUpdatedAt(Instant.now());
         repository.save(user);
+        // Quem troca a senha por desconfiar de acesso indevido precisa derrubar quem entrou: sem
+        // isso, a sessão do invasor continuaria renovando com a senha antiga já fora de uso.
+        refreshTokenService.revokeAllFor(user.getId());
     }
 
     private User usuarioDaSessao() {

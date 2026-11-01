@@ -59,7 +59,11 @@ public class RefreshTokenService {
         return new Issued(raw, entity.getExpiresAt());
     }
 
-    @Transactional
+    /**
+     * {@code noRollbackFor}: o reuso revoga a família e recusa com {@link BadCredentialsException}.
+     * Sem isso a exceção desfaz a própria revogação, e o token roubado segue renovando sessões.
+     */
+    @Transactional(noRollbackFor = BadCredentialsException.class)
     public Rotation rotate(String rawToken, String userAgent) {
         if (rawToken == null || rawToken.isBlank()) {
             throw new BadCredentialsException("Refresh token ausente");
@@ -96,6 +100,12 @@ public class RefreshTokenService {
                                 repository.save(token);
                             }
                         });
+    }
+
+    /** Encerra todas as sessões renováveis do usuário. */
+    @Transactional
+    public void revokeAllFor(UUID userId) {
+        repository.revokeAllActiveForUser(userId);
     }
 
     public long getTtlSeconds() {

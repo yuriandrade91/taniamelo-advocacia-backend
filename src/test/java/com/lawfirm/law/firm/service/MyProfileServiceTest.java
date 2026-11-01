@@ -44,13 +44,14 @@ class MyProfileServiceTest {
 
     @Mock private UserRepository repository;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private RefreshTokenService refreshTokenService;
 
     private MyProfileService service;
     private User eu;
 
     @BeforeEach
     void setUp() {
-        service = new MyProfileService(repository, passwordEncoder);
+        service = new MyProfileService(repository, passwordEncoder, refreshTokenService);
 
         eu = new User();
         eu.setId(EU);
@@ -166,5 +167,6 @@ class MyProfileServiceTest {
         service.trocarSenha(dto);
 
         assertEquals("$hash-novo", eu.getPasswordHash());
+        verify(refreshTokenService).revokeAllFor(EU);
     }
 }
