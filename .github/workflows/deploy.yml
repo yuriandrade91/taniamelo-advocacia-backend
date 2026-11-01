@@ -206,8 +206,10 @@ jobs:
 
             echo "✅ Deploy concluído: $ESPERADO no ar, health UP, migrations aplicadas."
 
+      # Sem IP a porta nem chegou a ser aberta: tentar fechar só troca o erro que
+      # reprovou o job por um "CIDR block /32 is malformed", que aponta o lugar errado.
       - name: Fechar porta 22 no Security Group
-        if: always()
+        if: always() && steps.ip.outputs.ip != ''
         run: |
           aws ec2 revoke-security-group-ingress \
             --group-id ${{ secrets.EC2_SG_ID }} \
