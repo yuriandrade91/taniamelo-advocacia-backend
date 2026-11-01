@@ -104,6 +104,7 @@ public class ClientFileService {
         return result;
     }
 
+    @Transactional(readOnly = true)
     public Page<ClientFileDocumentResponseDTO> listDocuments(
             UUID clientId, String documentType, int pageNumber, int pageSize) {
         findClientOrThrow(clientId);
@@ -118,6 +119,7 @@ public class ClientFileService {
         return page.map(this::toDocumentDTO);
     }
 
+    @Transactional(readOnly = true)
     public ClientFileDocumentResponseDTO getDocument(UUID clientId, UUID fileId) {
         return toDocumentDTO(findFileOrThrow(clientId, fileId, FileKind.DOCUMENT));
     }
@@ -175,6 +177,7 @@ public class ClientFileService {
         return result;
     }
 
+    @Transactional(readOnly = true)
     public Page<ClientFileSimulationResponseDTO> listSimulations(
             UUID clientId, int pageNumber, int pageSize) {
         findClientOrThrow(clientId);
@@ -184,6 +187,7 @@ public class ClientFileService {
                 .map(this::toSimulationDTO);
     }
 
+    @Transactional(readOnly = true)
     public ClientFileSimulationResponseDTO getSimulation(UUID clientId, UUID fileId) {
         return toSimulationDTO(findFileOrThrow(clientId, fileId, FileKind.SIMULATION));
     }
@@ -230,6 +234,7 @@ public class ClientFileService {
      * Funciona pra documento e simulação - o tipo é resolvido a partir do próprio registro, sem
      * precisar de dois endpoints/métodos idênticos por kind.
      */
+    @Transactional(readOnly = true)
     public FileDownload downloadFile(UUID clientId, UUID fileId) {
         return download(findAnyFileOrThrow(clientId, fileId));
     }

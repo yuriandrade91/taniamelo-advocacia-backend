@@ -45,6 +45,7 @@ public class ClientInterviewService {
         return toDTO(repository.save(entity));
     }
 
+    @Transactional(readOnly = true)
     public Page<ClientInterviewResponseDTO> list(UUID clientId, int pageNumber, int pageSize) {
         findClientOrThrow(clientId);
         var pageable =
@@ -52,6 +53,7 @@ public class ClientInterviewService {
         return repository.findByClient_IdAndDeletedAtIsNull(clientId, pageable).map(this::toDTO);
     }
 
+    @Transactional(readOnly = true)
     public ClientInterviewResponseDTO get(UUID clientId, UUID interviewId) {
         return toDTO(findInterviewOrThrow(clientId, interviewId));
     }

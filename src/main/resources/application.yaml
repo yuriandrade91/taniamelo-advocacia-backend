@@ -11,6 +11,9 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
   jpa:
+    # Sem isto a conexão fica presa até o fim da resposta, inclusive em download de arquivo, e um
+    # acesso lazy esquecido vira consulta escondida fora da transação.
+    open-in-view: false
     hibernate:
       ddl-auto: validate
     properties:

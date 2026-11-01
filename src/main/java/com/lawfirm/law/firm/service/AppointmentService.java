@@ -463,6 +463,7 @@ public class AppointmentService {
         return toDTO(saved);
     }
 
+    @Transactional(readOnly = true)
     public Page<AppointmentHistoryDTO> history(UUID id, int pageNumber, int pageSize) {
         findOrThrow(id);
         Pageable pageable =

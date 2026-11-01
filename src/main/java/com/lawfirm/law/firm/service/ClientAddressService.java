@@ -78,6 +78,7 @@ public class ClientAddressService {
         return addresses.stream().map(dto -> criar(clientId, client, dto)).toList();
     }
 
+    @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<ClientAddressResponseDTO> list(
             UUID clientId, int pageNumber, int pageSize) {
         findClientOrThrow(clientId);
@@ -91,6 +92,7 @@ public class ClientAddressService {
         return repository.findByClient_Id(clientId, pageable).map(this::toDTO);
     }
 
+    @Transactional(readOnly = true)
     public ClientAddressResponseDTO get(UUID clientId, UUID addressId) {
         return toDTO(findAddressOrThrow(clientId, addressId));
     }

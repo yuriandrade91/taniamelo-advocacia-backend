@@ -55,6 +55,7 @@ public class ClientDisabilityPeriodService {
         return toDTO(repository.save(entity), OfficeClock.today());
     }
 
+    @Transactional(readOnly = true)
     public List<ClientDisabilityPeriodResponseDTO> list(UUID clientId) {
         findClientOrThrow(clientId);
         LocalDate today = OfficeClock.today();
@@ -63,6 +64,7 @@ public class ClientDisabilityPeriodService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public ClientDisabilityPeriodResponseDTO get(UUID clientId, UUID periodId) {
         return toDTO(findPeriodOrThrow(clientId, periodId), OfficeClock.today());
     }
@@ -89,6 +91,7 @@ public class ClientDisabilityPeriodService {
      * @param to base de destino; nulo significa a regra geral ("Sem deficiência"), que é o que o
      *     escritório quer saber na maioria dos casos — quanto tempo comum este cliente tem.
      */
+    @Transactional(readOnly = true)
     public DisabilityConversionDTO conversion(UUID clientId, DisabilityGrade to) {
         Client client = findClientOrThrow(clientId);
         Gender gender = client.getGender();
