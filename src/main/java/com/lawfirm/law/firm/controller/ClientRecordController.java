@@ -3,7 +3,6 @@ package com.lawfirm.law.firm.controller;
 import com.lawfirm.law.firm.service.ClientRecordPdf;
 import com.lawfirm.law.firm.service.ClientRecordService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.springframework.http.ContentDisposition;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Cliente - Ficha", description = "Ficha completa do cliente para download")
 @RestController
 @RequestMapping("/api/v1/clients/{clientId}/record")
 public class ClientRecordController {
@@ -26,7 +24,10 @@ public class ClientRecordController {
         this.service = service;
     }
 
+    // A ficha é parte do cadastro: vai na tag do ClientController, que é quem define a descrição
+    // dela, em vez de abrir um grupo próprio no fim do Swagger.
     @Operation(
+            tags = "Cliente(s)",
             summary = "Baixar a ficha completa do cliente em PDF",
             description =
                     """
