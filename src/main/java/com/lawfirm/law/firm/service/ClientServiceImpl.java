@@ -405,9 +405,16 @@ public class ClientServiceImpl implements ClientService {
     public ClientProfessionalDataResponseDTO updateProfessionalData(
             UUID id, ClientProfessionalDataRequestDTO dto) {
         Client existing = findOrThrow(id);
+        String nitPis = DocumentoIdentidade.apenasDigitos(dto.getNitPis());
+        String ctps = DocumentoIdentidade.apenasDigitos(dto.getCtps());
+        String beneficiaryNumber = DocumentoIdentidade.apenasDigitos(dto.getBeneficiaryNumber());
+        // Antes de tocar na entidade: com ela alterada, a própria consulta faria o flush e quem
+        // responderia seria o índice do banco, sem dizer qual campo está duplicado.
+        validateProfessionalDocuments(id, beneficiaryNumber, nitPis, ctps);
+
         existing.setProfession(dto.getProfession());
-        existing.setNitPis(dto.getNitPis());
-        existing.setCtps(dto.getCtps());
+        existing.setNitPis(nitPis);
+        existing.setCtps(ctps);
         existing.setCtpsSeries(dto.getCtpsSeries());
         existing.setContributionYears(dto.getContributionYears());
         existing.setContributionMonths(dto.getContributionMonths());
@@ -417,7 +424,7 @@ public class ClientServiceImpl implements ClientService {
                         dto.getContributionYears(),
                         dto.getContributionMonths(),
                         dto.getContributionDays()));
-        existing.setBeneficiaryNumber(dto.getBeneficiaryNumber());
+        existing.setBeneficiaryNumber(beneficiaryNumber);
         if (dto.getInssPassword() != null && !dto.getInssPassword().isBlank()) {
             existing.setInssPassword(dto.getInssPassword());
         }
@@ -464,11 +471,6 @@ public class ClientServiceImpl implements ClientService {
 
     private void validateUniqueness(Client entity, UUID id) {
         checkDuplicate(
-                entity.getBeneficiaryNumber(),
-                value -> repository.existsByBeneficiaryNumberAndIdNot(value, id),
-                FIELD_BENEFICIARY_NUMBER,
-                MSG_BENEFICIARY_NUMBER_DUPLICADO);
-        checkDuplicate(
                 entity.getCpf(),
                 value -> repository.existsByCpfAndIdNot(value, id),
                 "cpf",
@@ -478,13 +480,24 @@ public class ClientServiceImpl implements ClientService {
                 value -> repository.existsByRgAndIdNot(value, id),
                 "rg",
                 MSG_RG_DUPLICADO);
+        validateProfessionalDocuments(
+                id, entity.getBeneficiaryNumber(), entity.getNitPis(), entity.getCtps());
+    }
+
+    private void validateProfessionalDocuments(
+            UUID id, String beneficiaryNumber, String nitPis, String ctps) {
         checkDuplicate(
-                entity.getNitPis(),
+                beneficiaryNumber,
+                value -> repository.existsByBeneficiaryNumberAndIdNot(value, id),
+                FIELD_BENEFICIARY_NUMBER,
+                MSG_BENEFICIARY_NUMBER_DUPLICADO);
+        checkDuplicate(
+                nitPis,
                 value -> repository.existsByNitPisAndIdNot(value, id),
                 FIELD_NIT_PIS,
                 MSG_NIT_PIS_DUPLICADO);
         checkDuplicate(
-                entity.getCtps(),
+                ctps,
                 value -> repository.existsByCtpsAndIdNot(value, id),
                 "ctps",
                 MSG_CTPS_DUPLICADO);
