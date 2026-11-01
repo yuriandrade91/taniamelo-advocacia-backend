@@ -28,20 +28,20 @@ jobs:
       # instância ficou em disco local sem ninguém ver.
       - name: Conferir o destino dos arquivos dos clientes
         env:
-          APP_STORAGE_TYPE: ${{ vars.APP_STORAGE_TYPE }}
-          APP_STORAGE_S3_BUCKET: ${{ vars.APP_STORAGE_S3_BUCKET_DEV }}
-          APP_STORAGE_S3_REGION: ${{ vars.APP_STORAGE_S3_REGION }}
+          APP_STORAGE_TYPE: ${{ secrets.APP_STORAGE_TYPE }}
+          APP_STORAGE_S3_BUCKET: ${{ secrets.APP_STORAGE_S3_BUCKET_DEV }}
+          APP_STORAGE_S3_REGION: ${{ secrets.APP_STORAGE_S3_REGION }}
         run: |
           case "$APP_STORAGE_TYPE" in
             s3)
               if [ -z "$APP_STORAGE_S3_BUCKET" ] || [ -z "$APP_STORAGE_S3_REGION" ]; then
-                echo "::error::APP_STORAGE_TYPE=s3 exige as variáveis APP_STORAGE_S3_BUCKET_DEV e APP_STORAGE_S3_REGION no repositório."
+                echo "::error::APP_STORAGE_TYPE=s3 exige os secrets APP_STORAGE_S3_BUCKET_DEV e APP_STORAGE_S3_REGION no repositório."
                 exit 1
               fi
               ;;
             local) ;;
             *)
-              echo "::error::Defina a variável APP_STORAGE_TYPE (s3 ou local) no repositório. Valor atual: '$APP_STORAGE_TYPE'."
+              echo "::error::Defina o secret APP_STORAGE_TYPE (s3 ou local) no repositório. Valor atual: '$APP_STORAGE_TYPE'."
               exit 1
               ;;
           esac
@@ -65,13 +65,13 @@ jobs:
 
       - name: Atualizar e subir os containers (git pull + docker compose)
         uses: appleboy/ssh-action@v1.2.0
-        # `vars`, e não `secrets`: nome de bucket e região não são segredo, e
-        # escondê-los só dificultaria descobrir por que um deploy foi parar em
-        # disco local. O primeiro passo já garantiu que elas existem.
+        # Vêm de `secrets`, que é onde estão cadastradas no repositório. O
+        # primeiro passo já garantiu que existem. O GitHub mascara o valor de um
+        # secret nos logs, então "s3" aparece como *** ao longo do deploy.
         env:
-          APP_STORAGE_TYPE: ${{ vars.APP_STORAGE_TYPE }}
-          APP_STORAGE_S3_BUCKET: ${{ vars.APP_STORAGE_S3_BUCKET_DEV }}
-          APP_STORAGE_S3_REGION: ${{ vars.APP_STORAGE_S3_REGION }}
+          APP_STORAGE_TYPE: ${{ secrets.APP_STORAGE_TYPE }}
+          APP_STORAGE_S3_BUCKET: ${{ secrets.APP_STORAGE_S3_BUCKET_DEV }}
+          APP_STORAGE_S3_REGION: ${{ secrets.APP_STORAGE_S3_REGION }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}

@@ -462,19 +462,19 @@ Agora a configuração vem do pipeline e é conferida no fim dele.
 
 ### O que configurar no GitHub
 
-Em **Settings → Secrets and variables → Actions → Variables** (não em
-Secrets: nome de bucket e região não são segredo, e escondê-los só dificulta
-descobrir por que um deploy foi parar em disco local):
+Em **Settings → Secrets and variables → Actions → Secrets** (o workflow lê
+`secrets`, não `vars`: uma Variable com o mesmo nome não é enxergada, e o
+GitHub mascara o valor nos logs):
 
-| Variável | Valor |
+| Secret | Valor |
 |---|---|
 | `APP_STORAGE_TYPE` | `s3` |
 | `APP_STORAGE_S3_BUCKET_DEV` | `amz-s3-bucket-tm` |
 | `APP_STORAGE_S3_REGION` | `us-east-1` |
 
-Sem `APP_STORAGE_TYPE` definida, o deploy **não opina** sobre storage e o
-`.env` da instância fica como está — um pipeline que não quer decidir não
-deve apagar o que foi configurado na máquina.
+Sem `APP_STORAGE_TYPE` definido, o primeiro passo do deploy o **reprova** antes
+de abrir a porta 22 ou tocar na instância: um deploy que não diz onde os
+arquivos dos clientes vão parar não deve ir para o ar.
 
 ### O que acontece no deploy
 
