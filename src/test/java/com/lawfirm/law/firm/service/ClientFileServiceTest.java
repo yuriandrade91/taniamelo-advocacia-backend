@@ -57,6 +57,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
@@ -267,6 +269,59 @@ class ClientFileServiceTest {
                             () -> service.uploadDocuments(TestFixtures.CLIENT_ID, files, metadata));
             assertEquals("documentType", ex.getField());
             assertEquals(ValidationErrorCode.INVALID_ENUM_VALUE, ex.getValidationErrorCode());
+        }
+
+        @Test
+        @DisplayName("um arquivo inválido no fim do lote impede gravar os anteriores")
+        void invalidFileAtTheEndStoresNothing() {
+            List<MultipartFile> files =
+                    List.of(
+                            pdf(),
+                            new MockMultipartFile(
+                                    "files",
+                                    "virus.exe",
+                                    "application/x-msdownload",
+                                    "x".getBytes()));
+            List<ClientFileDocumentUploadMetadataDTO> metadata =
+                    List.of(documentMetadata("Outros"), documentMetadata("Outros"));
+
+            assertThrows(
+                    ValidationException.class,
+                    () -> service.uploadDocuments(TestFixtures.CLIENT_ID, files, metadata));
+
+            verify(fileStorageService, never()).store(any(), anyString());
+        }
+
+        @Test
+        @DisplayName("rollback remove do storage o arquivo já gravado; commit não")
+        void rollbackRemovesTheStoredFile() {
+            when(fileStorageService.store(any(), anyString()))
+                    .thenReturn(new StoredFile("chave-gravada", "application/pdf", 1L));
+            when(repository.save(any(ClientFile.class))).thenAnswer(inv -> inv.getArgument(0));
+            List<MultipartFile> files = List.of(pdf());
+            List<ClientFileDocumentUploadMetadataDTO> metadata =
+                    List.of(documentMetadata("Outros"));
+
+            TransactionSynchronizationManager.initSynchronization();
+            try {
+                service.uploadDocuments(TestFixtures.CLIENT_ID, files, metadata);
+                List<TransactionSynchronization> callbacks =
+                        TransactionSynchronizationManager.getSynchronizations();
+
+                callbacks.forEach(
+                        callback ->
+                                callback.afterCompletion(
+                                        TransactionSynchronization.STATUS_COMMITTED));
+                verify(fileStorageService, never()).delete(anyString());
+
+                callbacks.forEach(
+                        callback ->
+                                callback.afterCompletion(
+                                        TransactionSynchronization.STATUS_ROLLED_BACK));
+                verify(fileStorageService).delete("chave-gravada");
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization();
+            }
         }
 
         @Test

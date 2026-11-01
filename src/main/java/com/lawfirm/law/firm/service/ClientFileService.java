@@ -20,6 +20,7 @@ import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
 import com.lawfirm.law.firm.storage.AllowedMimeTypes;
 import com.lawfirm.law.firm.storage.FileDownload;
+import com.lawfirm.law.firm.storage.FileStorageException;
 import com.lawfirm.law.firm.storage.FileStorageService;
 import com.lawfirm.law.firm.storage.LoadedFile;
 import com.lawfirm.law.firm.storage.StoredFile;
@@ -30,11 +31,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -47,6 +52,8 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @Service
 public class ClientFileService {
+
+    private static final Logger log = LoggerFactory.getLogger(ClientFileService.class);
 
     private final ClientFileRepository repository;
     private final ClientRepository clientRepository;
@@ -70,21 +77,26 @@ public class ClientFileService {
             List<ClientFileDocumentUploadMetadataDTO> metadata) {
         Client client = findClientOrThrow(clientId);
         validateBatch(files, metadata);
+        // O lote inteiro antes do primeiro arquivo: gravar é a parte que não volta atrás sozinha.
+        List<DocumentType> types =
+                metadata.stream()
+                        .map(meta -> parseDocumentType(meta.getDocumentType(), true))
+                        .toList();
+        files.forEach(
+                file ->
+                        validateMimeType(
+                                file,
+                                AllowedMimeTypes.DOCUMENTS,
+                                "Tipo de arquivo não permitido (aceitos: PDF, PNG, JPEG)"));
 
         List<ClientFileDocumentResponseDTO> result = new ArrayList<>(files.size());
         for (int i = 0; i < files.size(); i++) {
             MultipartFile file = files.get(i);
             ClientFileDocumentUploadMetadataDTO meta = metadata.get(i);
 
-            DocumentType type = parseDocumentType(meta.getDocumentType(), true);
-            validateMimeType(
-                    file,
-                    AllowedMimeTypes.DOCUMENTS,
-                    "Tipo de arquivo não permitido (aceitos: PDF, PNG, JPEG)");
-
             ClientFile entity =
                     newFile(client, FileKind.DOCUMENT, file, "clients/" + clientId + "/documents");
-            entity.setDocumentType(type);
+            entity.setDocumentType(types.get(i));
             entity.setNotes(meta.getNotes());
 
             result.add(toDocumentDTO(repository.save(entity)));
@@ -133,13 +145,15 @@ public class ClientFileService {
             List<ClientFileSimulationUploadMetadataDTO> metadata) {
         Client client = findClientOrThrow(clientId);
         validateBatch(files, metadata);
+        files.forEach(
+                file ->
+                        validateMimeType(
+                                file, AllowedMimeTypes.SIMULATIONS, "Simulação só aceita PDF"));
 
         List<ClientFileSimulationResponseDTO> result = new ArrayList<>(files.size());
         for (int i = 0; i < files.size(); i++) {
             MultipartFile file = files.get(i);
             ClientFileSimulationUploadMetadataDTO meta = metadata.get(i);
-
-            validateMimeType(file, AllowedMimeTypes.SIMULATIONS, "Simulação só aceita PDF");
 
             ClientFile entity =
                     newFile(
@@ -275,6 +289,7 @@ public class ClientFileService {
 
     private ClientFile newFile(Client client, FileKind kind, MultipartFile file, String folder) {
         StoredFile stored = fileStorageService.store(file, tenantFolder(folder));
+        removeIfTransactionRollsBack(stored.storageKey());
         ClientFile entity = new ClientFile();
         entity.setClient(client);
         entity.setKind(kind);
@@ -284,6 +299,35 @@ public class ClientFileService {
         entity.setFileSizeBytes(stored.sizeBytes());
         entity.setUploadedBy(CurrentUser.id());
         return entity;
+    }
+
+    /**
+     * O storage não participa da transação: sem isto, um rollback apaga a linha e deixa o arquivo
+     * do cliente no bucket, sem nada no sistema que aponte para ele.
+     */
+    private void removeIfTransactionRollsBack(String storageKey) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status != STATUS_COMMITTED) {
+                            deleteOrphan(storageKey);
+                        }
+                    }
+                });
+    }
+
+    private void deleteOrphan(String storageKey) {
+        try {
+            fileStorageService.delete(storageKey);
+        } catch (FileStorageException ex) {
+            // Depois da transação, não há mais a quem responder: quem chamou já recebeu o erro
+            // original. O log é o que resta para achar o órfão.
+            log.warn("Arquivo órfão após rollback, remova manualmente: {}", storageKey, ex);
+        }
     }
 
     private void unsetCurrentPrincipal(UUID clientId) {
