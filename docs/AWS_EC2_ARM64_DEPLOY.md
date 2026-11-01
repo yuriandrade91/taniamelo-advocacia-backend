@@ -469,7 +469,7 @@ descobrir por que um deploy foi parar em disco local):
 | Variável | Valor |
 |---|---|
 | `APP_STORAGE_TYPE` | `s3` |
-| `APP_STORAGE_S3_BUCKET` | `amz-s3-bucket-tm` |
+| `APP_STORAGE_S3_BUCKET_DEV` | `amz-s3-bucket-tm` |
 | `APP_STORAGE_S3_REGION` | `us-east-1` |
 
 Sem `APP_STORAGE_TYPE` definida, o deploy **não opina** sobre storage e o

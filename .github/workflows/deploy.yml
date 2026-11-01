@@ -29,13 +29,13 @@ jobs:
       - name: Conferir o destino dos arquivos dos clientes
         env:
           APP_STORAGE_TYPE: ${{ vars.APP_STORAGE_TYPE }}
-          APP_STORAGE_S3_BUCKET: ${{ vars.APP_STORAGE_S3_BUCKET }}
+          APP_STORAGE_S3_BUCKET: ${{ vars.APP_STORAGE_S3_BUCKET_DEV }}
           APP_STORAGE_S3_REGION: ${{ vars.APP_STORAGE_S3_REGION }}
         run: |
           case "$APP_STORAGE_TYPE" in
             s3)
               if [ -z "$APP_STORAGE_S3_BUCKET" ] || [ -z "$APP_STORAGE_S3_REGION" ]; then
-                echo "::error::APP_STORAGE_TYPE=s3 exige as variáveis APP_STORAGE_S3_BUCKET e APP_STORAGE_S3_REGION no repositório."
+                echo "::error::APP_STORAGE_TYPE=s3 exige as variáveis APP_STORAGE_S3_BUCKET_DEV e APP_STORAGE_S3_REGION no repositório."
                 exit 1
               fi
               ;;
@@ -70,7 +70,7 @@ jobs:
         # disco local. O primeiro passo já garantiu que elas existem.
         env:
           APP_STORAGE_TYPE: ${{ vars.APP_STORAGE_TYPE }}
-          APP_STORAGE_S3_BUCKET: ${{ vars.APP_STORAGE_S3_BUCKET }}
+          APP_STORAGE_S3_BUCKET: ${{ vars.APP_STORAGE_S3_BUCKET_DEV }}
           APP_STORAGE_S3_REGION: ${{ vars.APP_STORAGE_S3_REGION }}
         with:
           host: ${{ secrets.EC2_HOST }}
