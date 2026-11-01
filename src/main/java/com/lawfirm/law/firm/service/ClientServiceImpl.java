@@ -202,13 +202,10 @@ public class ClientServiceImpl implements ClientService {
         ClientType previousType = existing.getClientType();
         Boolean previousNotBillable = existing.getNotBillable();
         String justification = null;
-        boolean situationChanged = false;
         boolean requestStageChanged = false;
-        boolean benefitChanged = false;
-        boolean clientTypeChanged = false;
         boolean notBillableChanged = false;
 
-        situationChanged =
+        boolean situationChanged =
                 applyEnumPatch(
                         patch.getSituation(),
                         previousSituation,
@@ -216,7 +213,7 @@ public class ClientServiceImpl implements ClientService {
                         "situation",
                         Situation::fromLabel,
                         ValidationErrorCode.INVALID_SITUATION);
-        benefitChanged =
+        boolean benefitChanged =
                 applyEnumPatch(
                         patch.getBenefit(),
                         previousBenefit,
@@ -224,7 +221,7 @@ public class ClientServiceImpl implements ClientService {
                         "benefit",
                         BenefitType::fromLabel,
                         ValidationErrorCode.INVALID_BENEFIT);
-        clientTypeChanged =
+        boolean clientTypeChanged =
                 applyEnumPatch(
                         patch.getClientType(),
                         previousType,
