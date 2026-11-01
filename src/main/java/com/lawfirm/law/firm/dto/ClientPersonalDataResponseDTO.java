@@ -57,7 +57,6 @@ public class ClientPersonalDataResponseDTO {
     private String nitPis;
     private String ctps;
     private String ctpsSeries;
-    private String inssPassword;
 
     private UUID updatedBy;
 

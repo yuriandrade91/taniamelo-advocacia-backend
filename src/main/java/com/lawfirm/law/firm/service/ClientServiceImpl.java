@@ -322,8 +322,12 @@ public class ClientServiceImpl implements ClientService {
         AuditIntent.declaring(AuditAction.RESTORE, () -> repository.saveAndFlush(client));
     }
 
+    /**
+     * Transação de escrita, mesmo sendo uma leitura: em {@code readOnly} o Hibernate não faz flush,
+     * e o registro de que alguém viu a senha nunca chegaria ao banco.
+     */
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public ClientInssPasswordDTO revealInssPassword(UUID id) {
         Client client = findOrThrow(id);
         auditRepository.save(
@@ -592,7 +596,6 @@ public class ClientServiceImpl implements ClientService {
         dto.setNitPis(entity.getNitPis());
         dto.setCtps(entity.getCtps());
         dto.setCtpsSeries(entity.getCtpsSeries());
-        dto.setInssPassword(entity.getInssPassword());
         dto.setUpdatedBy(entity.getUpdatedBy());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;

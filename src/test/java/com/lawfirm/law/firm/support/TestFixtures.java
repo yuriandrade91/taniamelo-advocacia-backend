@@ -50,6 +50,12 @@ public final class TestFixtures {
         throw new IllegalStateException("Campo inexistente: " + name);
     }
 
+    /** Documento único por teste: as colunas têm índice único e o banco é o mesmo na suíte. */
+    public static String uniqueDocumentDigits() {
+        return String.format(
+                "%011d", Math.abs(UUID.randomUUID().getLeastSignificantBits()) % 100_000_000_000L);
+    }
+
     public static Client client() {
         return client(CLIENT_ID, "Maria da Silva");
     }
