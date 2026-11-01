@@ -29,14 +29,14 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 DO $$
 DECLARE
     -- ▼▼▼ PREENCHA ▼▼▼ -------------------------------------------------------
-    v_schema text := 'tenant_prado';
+    v_schema text := 'tenant_exemplo';
 
     -- Papéis: ADMIN (tudo, inclusive o financeiro), SUPPORT (perfil de advogado:
     -- exclui e restaura registros), STAFF (o dia a dia). "username" é opcional;
     -- sem ele vale a parte do e-mail antes do @. Exige ao menos um ADMIN.
     v_usuarios jsonb := '[
-        {"nome": "Bianca Prado",  "email": "bianca.prado@prado.adv.com", "username": "bianca.prado", "role": "ADMIN"},
-        {"nome": "Matheus Prado", "email": "matheus.prado@prado.adv.com", "username": "matheus.prado", "role": "ADMIN"}
+        {"nome": "Fulana de Tal",  "email": "fulana@exemplo.adv.br", "username": "fulana", "role": "ADMIN"},
+        {"nome": "Ciclano de Tal", "email": "ciclano@exemplo.adv.br", "username": "ciclano", "role": "STAFF"}
     ]';
 
     -- Só no primeiro uso, logo depois do passo 1: a aplicação cria sozinha um ADMIN
@@ -53,6 +53,9 @@ DECLARE
     v_removido      uuid;
     r               record;
 BEGIN
+    IF v_usuarios::text ILIKE '%@exemplo.adv.br%' THEN
+        RAISE EXCEPTION 'Preencha v_usuarios antes de rodar: ainda há e-mail de exemplo.';
+    END IF;
     IF v_schema !~ '^tenant_[a-z0-9_]{1,50}$' THEN
         RAISE EXCEPTION 'v_schema inválido (%).', v_schema;
     END IF;

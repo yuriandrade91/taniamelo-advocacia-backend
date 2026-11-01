@@ -10,7 +10,7 @@
 -- Roteiro completo: docs/CADASTRO_DE_TENANT.md.
 --
 -- NÃO coloque dado real neste arquivo dentro do repositório. Copie-o para fora
--- (cp scripts/tenant/01-cadastrar-tenant.sql ~/01-prado.sql), edite a cópia e
+-- (cp scripts/tenant/01-cadastrar-tenant.sql ~/01-meu-escritorio.sql), edite a cópia e
 -- rode a cópia.
 --
 -- Atômico: tudo ou nada. Se alguma validação falhar, nada é gravado.
@@ -19,10 +19,10 @@
 DO $$
 DECLARE
     -- ▼▼▼ PREENCHA ▼▼▼ -------------------------------------------------------
-    v_slug         text := 'prado';         -- identificador público (URL, X-Tenant-Id). Minúsculas, números e hífen.
-    v_schema       text := 'tenant_prado';  -- nome físico do schema. Sempre 'tenant_' + algo. Nunca exposto na API.
-    v_razao_social text := 'Escritório Prado Advocacia'; -- nome completo do escritório (é UNIQUE)
-    v_cnpj         text := '00.000.000/0000-00';     -- no formato 00.000.000/0000-00 (é UNIQUE)
+    v_slug         text := 'exemplo';         -- identificador público (URL, X-Tenant-Id). Minúsculas, números e hífen.
+    v_schema       text := 'tenant_exemplo';  -- nome físico do schema. Sempre 'tenant_' + algo. Nunca exposto na API.
+    v_razao_social text := 'PREENCHER: nome do escritório'; -- nome completo do escritório (é UNIQUE)
+    v_cnpj         text := 'PREENCHER';     -- no formato 00.000.000/0000-00 (é UNIQUE)
     -- Opcionais: deixe NULL se não souber (sem aspas).
     v_responsavel  text := NULL;
     v_email        text := NULL;
