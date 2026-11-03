@@ -323,6 +323,20 @@ e é o coração do domínio previdenciário, onde perder prazo é perder o dire
 Um ponto a favor: `AppointmentType` já tem `PERICIA`, `AUDIENCIA` e `PRAZO`, então a agenda
 sustenta o evento. Falta o processo a que ele pertence.
 
+### Paridade com o Tramitação Inteligente — levantado em 03/11/2026
+
+Plano completo, com custo e ordem, em [PLANO_CNIS_CALCULO_E_IA.md](PLANO_CNIS_CALCULO_E_IA.md).
+
+| Item | Como | Esforço |
+| --- | --- | --- |
+| Importação automática do CNIS | Parser determinístico (PDFBox, já no classpath) + tela de conferência; IA só onde o parser falhar | 2–3 semanas |
+| Simulação de todas as regras de transição | Motor de cálculo em código, validado contra cartas de concessão reais | 5–7 semanas |
+| Relatório profissional em PDF para o cliente | Mesmo padrão da ficha do cliente (`openhtmltopdf`) | 1–2 semanas |
+| IA: peças, "o que tem para hoje", do cliente à petição, jurisprudência, análise de casos | Claude via SDK Java, verificador de citações, feature flag e cota por tenant | 11–16 semanas |
+
+"O que tem para hoje" e "do cliente à petição" dependem do processo, das publicações e do
+agendador da tabela acima (3–5 semanas). Operação estimada em R$ 100–300 de IA por escritório por mês.
+
 ### Fase D — escala
 
 | Item | Estado |
