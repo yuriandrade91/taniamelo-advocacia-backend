@@ -35,7 +35,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * <p><b>Rota de escritório sem tenant também é recusada com 400.</b> O default tinha o mesmo
  * defeito: login sem header autenticava contra os usuários da Tania. Ficam de fora o que não é dado
  * de escritório ({@code /api/v1/support/**}, {@code /api/v1/tenants/resolve}, o que não é {@code
- * /api/v1}) e o preflight {@code OPTIONS}, que o navegador manda sem cabeçalhos próprios.
+ * /api/v1}), a logo pública ({@code /api/v1/tenants/logo}, pedida por um {@code <img>}, que não
+ * manda cabeçalho) e o preflight {@code OPTIONS}, que o navegador manda sem cabeçalhos próprios.
  * Requisição com Bearer sem tenant resolvível segue: a autenticação responde 401 (é o que dispara o
  * refresh no front), e qualquer acesso a banco cai em {@code public}, sem dado de escritório.
  *
@@ -48,7 +49,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
     private static final String BEARER = "Bearer ";
     private static final String API = "/api/v1/";
     private static final List<String> ROTAS_SEM_TENANT =
-            List.of("/api/v1/support/", "/api/v1/tenants/resolve");
+            List.of("/api/v1/support/", "/api/v1/tenants/resolve", "/api/v1/tenants/logo");
 
     private final TenancyProperties properties;
     private final JwtService jwtService;

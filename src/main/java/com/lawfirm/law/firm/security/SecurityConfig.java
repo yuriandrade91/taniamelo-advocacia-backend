@@ -98,8 +98,12 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/api/v1/support/**")
                                         .hasRole("PLATFORM")
-                                        // Resolução pública de tenant por slug (pré-login).
-                                        .requestMatchers(HttpMethod.GET, "/api/v1/tenants/resolve")
+                                        // Resolução pública de tenant por slug e a logo do
+                                        // escritório: as duas servem o login, antes da sessão.
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/tenants/resolve",
+                                                "/api/v1/tenants/logo")
                                         .permitAll()
                                         // Documentação pública: só o formato da API, sem dado
                                         // de negócio. As operações em si continuam exigindo token.

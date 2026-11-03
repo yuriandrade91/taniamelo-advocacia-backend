@@ -346,7 +346,8 @@
                   "pm.test(\"token é um JWT de três partes\", () => pm.expect(d.token.split(\".\")).to.have.lengthOf(3));",
                   "pm.test(\"tokenType Bearer\", () => pm.expect(d.tokenType).to.eql(\"Bearer\"));",
                   "pm.test(\"expiração positiva\", () => pm.expect(d.expiresInSeconds).to.be.above(0));",
-                  "pm.test(\"papel conhecido\", () => pm.expect([\"ADMIN\",\"SUPPORT\",\"STAFF\"]).to.include(d.role));"
+                  "pm.test(\"papel conhecido\", () => pm.expect([\"ADMIN\",\"SUPPORT\",\"STAFF\"]).to.include(d.role));",
+                  "pm.test(\"diz a logo do escritório (nula na marca padrão)\", () => pm.expect(d).to.have.property(\"logoUrl\"));"
                 ]
               }
             }
@@ -844,6 +845,210 @@
                   "  pm.expect(b.success, \"success\").to.be.true;",
                   "  pm.expect(b.errors || [], \"errors\").to.eql([]);",
                   "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar a logo do escritório (ADMIN)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/current/logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "current",
+                "logo"
+              ]
+            },
+            "description": "PNG, JPEG ou WebP de até 2 MB na parte 'file'. Substitui a marca padrão em todas as telas do escritório.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/logo.png",
+                  "contentType": "image/png",
+                  "description": "logo.png"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"devolve a URL pública versionada\", () => {",
+                  "  const url = pm.response.json().data.logoUrl;",
+                  "  pm.expect(url, \"logoUrl\").to.match(/^\\/api\\/v1\\/tenants\\/logo\\?slug=.+&v=\\d+$/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logo pública, sem token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/logo?slug={{tenantSlug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "logo"
+              ],
+              "query": [
+                {
+                  "key": "slug",
+                  "value": "{{tenantSlug}}"
+                }
+              ]
+            },
+            "description": "O login mostra a logo antes de haver sessão, e um <img> não manda Authorization nem X-Tenant-Id."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"é a imagem, com o tipo conferido no envio\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.eql(\"image/png\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PDF com nome de imagem não vira logo",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/current/logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "current",
+                "logo"
+              ]
+            },
+            "description": "O tipo é conferido nos bytes, não no Content-Type que o cliente declara.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/exemplo.pdf",
+                  "contentType": "image/png",
+                  "description": "exemplo.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"aponta o campo file\", () => pm.expect(pm.response.json().errors[0].field).to.eql(\"file\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Voltar à marca padrão (ADMIN)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/current/logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "current",
+                "logo"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sem logo, a rota pública responde 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/logo?slug={{tenantSlug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "logo"
+              ],
+              "query": [
+                {
+                  "key": "slug",
+                  "value": "{{tenantSlug}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
                 ]
               }
             }

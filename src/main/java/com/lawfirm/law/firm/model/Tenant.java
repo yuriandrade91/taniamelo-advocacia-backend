@@ -72,6 +72,30 @@ public class Tenant {
     @Column(name = "atualizado_em")
     private Instant atualizadoEm;
 
+    /** Chave da logo no storage. Nula: o escritório usa a marca padrão do sistema. */
+    @Column(name = "logo_key", length = 500)
+    private String logoKey;
+
+    /** O tipo conferido nos bytes no envio, não o que o navegador declarou. */
+    @Column(name = "logo_content_type", length = 100)
+    private String logoContentType;
+
+    /** Versão da logo: entra na URL pública para o navegador não ficar com a imagem anterior. */
+    @Column(name = "logo_updated_at")
+    private Instant logoUpdatedAt;
+
+    public void useLogo(String storageKey, String contentType) {
+        this.logoKey = storageKey;
+        this.logoContentType = contentType;
+        this.logoUpdatedAt = Instant.now();
+    }
+
+    public void clearLogo() {
+        this.logoKey = null;
+        this.logoContentType = null;
+        this.logoUpdatedAt = null;
+    }
+
     @PreUpdate
     void onUpdate() {
         this.atualizadoEm = Instant.now();

@@ -177,9 +177,12 @@ class TenantResolutionFilterTest {
     }
 
     @Test
-    @DisplayName("rotas de plataforma e a resolução por slug não exigem tenant")
+    @DisplayName("rotas de plataforma, a resolução por slug e a logo pública não exigem tenant")
     void platformRoutesDoNotRequireTenant() throws Exception {
-        for (String uri : new String[] {"/api/v1/support/login", "/api/v1/tenants/resolve"}) {
+        for (String uri :
+                new String[] {
+                    "/api/v1/support/login", "/api/v1/tenants/resolve", "/api/v1/tenants/logo"
+                }) {
             request.setRequestURI(uri);
             AtomicReference<Boolean> chegou = new AtomicReference<>(false);
             filter.doFilterInternal(request, response, (req, res) -> chegou.set(true));

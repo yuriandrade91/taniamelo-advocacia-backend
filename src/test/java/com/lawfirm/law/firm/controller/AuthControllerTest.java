@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.lawfirm.law.firm.exception.GlobalExceptionHandler;
+import com.lawfirm.law.firm.model.Tenant;
 import com.lawfirm.law.firm.model.User;
 import com.lawfirm.law.firm.repository.TenantRepository;
 import com.lawfirm.law.firm.repository.UserRepository;
@@ -105,6 +106,18 @@ class AuthControllerTest {
         TenantContext.clear();
     }
 
+    /** O escritório da requisição passa a ter logo enviada. */
+    private Tenant tenantWithLogo() {
+        Tenant tenant = TestFixtures.tenant();
+        tenant.useLogo("tenant_tania/office/logo.png", "image/png");
+        when(tenantRepository.findBySchemaName(anyString())).thenReturn(Optional.of(tenant));
+        return tenant;
+    }
+
+    private static String logoUrlOf(Tenant tenant) {
+        return "/api/v1/tenants/logo?slug=tania&v=" + tenant.getLogoUpdatedAt().toEpochMilli();
+    }
+
     @Nested
     @DisplayName("POST /login")
     class Login {
@@ -152,6 +165,23 @@ class AuthControllerTest {
                             header().string(
                                             "Set-Cookie",
                                             Matchers.containsString("Max-Age=1209600")));
+        }
+
+        @Test
+        @DisplayName("diz a logo do escritório: nula na marca padrão, o caminho versionado com ela")
+        void loginTellsTheOfficeLogo() throws Exception {
+            mockMvc.perform(
+                            post("/api/v1/auth/login")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"login\":\"a\",\"password\":\"b\"}"))
+                    .andExpect(jsonPath("$.data.logoUrl").doesNotExist());
+
+            Tenant withLogo = tenantWithLogo();
+            mockMvc.perform(
+                            post("/api/v1/auth/login")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"login\":\"a\",\"password\":\"b\"}"))
+                    .andExpect(jsonPath("$.data.logoUrl").value(logoUrlOf(withLogo)));
         }
 
         @Test
@@ -318,6 +348,18 @@ class AuthControllerTest {
                                             Matchers.containsString("refreshToken=novo-refresh")));
 
             verify(refreshTokenService).rotate("refresh-antigo", "Firefox");
+        }
+
+        @Test
+        @DisplayName("a renovação também traz a logo, e já a de agora se ela mudou na sessão")
+        void refreshTellsTheCurrentLogo() throws Exception {
+            Tenant withLogo = tenantWithLogo();
+
+            mockMvc.perform(
+                            post("/api/v1/auth/refresh")
+                                    .cookie(new Cookie("refreshToken", "refresh-antigo")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.logoUrl").value(logoUrlOf(withLogo)));
         }
 
         @Test

@@ -120,6 +120,11 @@ class SecuredEndpointsContractTest {
                     Map.entry("AuthController#refresh", ABERTO),
                     Map.entry("TenantController#resolve", ABERTO),
                     Map.entry("TenantController#current", ABERTO),
+                    // A logo é pública como o resolve: o login a mostra antes da sessão.
+                    Map.entry("TenantController#logo", ABERTO),
+                    // Trocar a marca que aparece em toda tela é decisão da gestão.
+                    Map.entry("TenantController#uploadLogo", ADMIN),
+                    Map.entry("TenantController#removeLogo", ADMIN),
 
                     // ── Suporte (control-plane): restrito por SecurityConfig, não por papel ──
                     //

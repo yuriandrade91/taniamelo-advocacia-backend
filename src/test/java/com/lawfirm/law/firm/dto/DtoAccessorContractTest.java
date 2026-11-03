@@ -167,10 +167,12 @@ class DtoAccessorContractTest {
     @Test
     @DisplayName("records de resposta expõem seus componentes")
     void recordDtos() {
-        TenantPublicDTO tenant = new TenantPublicDTO("uuid", "tania", "Tania Melo Advocacia");
+        TenantPublicDTO tenant =
+                new TenantPublicDTO("uuid", "tania", "Tania Melo Advocacia", "/logo?v=1");
         assertEquals("uuid", tenant.tenantId());
         assertEquals("tania", tenant.slug());
         assertEquals("Tania Melo Advocacia", tenant.razaoSocial());
+        assertEquals("/logo?v=1", tenant.logoUrl());
 
         AppointmentSummaryDTO summary = new AppointmentSummaryDTO(2026, 8, 5L);
         assertEquals(2026, summary.year());

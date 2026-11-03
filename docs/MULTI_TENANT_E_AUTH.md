@@ -32,7 +32,8 @@ schema corrente na ordem:
 2. Claim **`tenant`** do JWT (requisições autenticadas sem o header).
 3. Nada → **400 `TENANT_REQUIRED`** em rota de escritório. Não existe escritório
    padrão: com ele, um login sem header autenticava contra os usuários da Tania.
-   Ficam de fora `/api/v1/support/**`, `/api/v1/tenants/resolve`, o que não é
+   Ficam de fora `/api/v1/support/**`, `/api/v1/tenants/resolve`, a logo pública
+   `/api/v1/tenants/logo` (um `<img>` não manda cabeçalho), o que não é
    `/api/v1` (actuator, Swagger) e o preflight `OPTIONS`. Requisição com Bearer
    sem tenant resolvível segue para a autenticação responder 401 (o front usa
    esse 401 para tentar o refresh).

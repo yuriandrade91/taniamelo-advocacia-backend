@@ -23,4 +23,7 @@ public class TenantResponseDTO {
     private String status;
     private Instant criadoEm;
     private Instant atualizadoEm;
+
+    /** Caminho da logo, versionado. Nulo: o escritório usa a marca padrão. */
+    private String logoUrl;
 }

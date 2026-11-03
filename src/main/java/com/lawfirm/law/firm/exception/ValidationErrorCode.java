@@ -14,6 +14,8 @@ public enum ValidationErrorCode {
     INVALID_BENEFIT("Benefício inválido"),
     INVALID_CLIENT_TYPE("Tipo de cliente inválido"),
     DUPLICATE_VALUE("Valor duplicado para campo único"),
+    /** O mesmo código que o limite global de upload devolve, para o front tratar os dois iguais. */
+    FILE_TOO_LARGE("Arquivo excedeu o tamanho máximo permitido"),
     /**
      * Intervalo de datas impossível ou ambíguo — inclui pedir competência e caixa na mesma
      * consulta, que não tem resposta certa.

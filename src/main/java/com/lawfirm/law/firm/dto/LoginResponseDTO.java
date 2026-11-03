@@ -23,6 +23,13 @@ public class LoginResponseDTO {
     @Schema(description = "Slug amigável do tenant (subdomínio/URL)", example = "tania")
     private String tenantSlug;
 
+    @Schema(
+            description =
+                    "Caminho público e versionado da logo do escritório; nulo enquanto ele usa a"
+                            + " marca padrão",
+            example = "/api/v1/tenants/logo?slug=tania&v=1793649545180")
+    private String logoUrl;
+
     public LoginResponseDTO() {}
 
     public LoginResponseDTO(

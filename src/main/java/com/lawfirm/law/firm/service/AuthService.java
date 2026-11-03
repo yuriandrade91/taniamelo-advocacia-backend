@@ -108,6 +108,7 @@ public class AuthService {
                         user.getRole().name());
         body.setTenantId(tenant.getId().toString());
         body.setTenantSlug(tenant.getSlug());
+        body.setLogoUrl(TenantService.logoUrl(tenant));
         return new Session(body, refreshToken, refreshTokenService.getTtlSeconds());
     }
 }
