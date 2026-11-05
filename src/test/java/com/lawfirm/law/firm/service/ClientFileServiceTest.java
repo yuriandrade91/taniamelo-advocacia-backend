@@ -30,7 +30,9 @@ import com.lawfirm.law.firm.model.FileKind;
 import com.lawfirm.law.firm.repository.ClientFileRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.UserPrincipal;
+import com.lawfirm.law.firm.storage.EncryptedFileStorage;
 import com.lawfirm.law.firm.storage.FileDownload;
+import com.lawfirm.law.firm.storage.FileEncryption;
 import com.lawfirm.law.firm.storage.FileStorageService;
 import com.lawfirm.law.firm.storage.LoadedFile;
 import com.lawfirm.law.firm.storage.StoredFile;
@@ -69,6 +71,11 @@ class ClientFileServiceTest {
     private static final UUID FILE_ID = UUID.fromString("dddddddd-0000-0000-0000-000000000001");
     private static final String TENANT = "tenant_qualquer";
 
+    /**
+     * 32 bytes zerados: chave só de teste, a criptografia em si é testada em FileEncryptionTest.
+     */
+    private static final String FILE_KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+
     @Mock private ClientFileRepository repository;
     @Mock private ClientRepository clientRepository;
     @Mock private FileStorageService fileStorageService;
@@ -77,7 +84,12 @@ class ClientFileServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ClientFileService(repository, clientRepository, fileStorageService);
+        service =
+                new ClientFileService(
+                        repository,
+                        clientRepository,
+                        new EncryptedFileStorage(
+                                fileStorageService, new FileEncryption(FILE_KEY, 1)));
         when(clientRepository.findById(TestFixtures.CLIENT_ID))
                 .thenReturn(Optional.of(TestFixtures.client()));
         when(repository.save(any(ClientFile.class))).thenAnswer(i -> i.getArgument(0));
@@ -155,7 +167,8 @@ class ClientFileServiceTest {
             assertEquals(DocumentType.DOCUMENTOS_MEDICOS, first.getDocumentType());
             assertEquals("clients/x/a.pdf", first.getStorageKey());
             assertEquals("application/pdf", first.getMimeType());
-            assertEquals(1234L, first.getFileSizeBytes());
+            // O tamanho do arquivo enviado, não o do objeto cifrado que o storage guarda.
+            assertEquals(1L, first.getFileSizeBytes());
             assertEquals("cnis.pdf", first.getOriginalFilename());
             assertEquals("observação", first.getNotes());
             assertEquals(TestFixtures.USER_ID, first.getUploadedBy());

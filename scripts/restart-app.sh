@@ -36,7 +36,7 @@ faltando=$(
     # shellcheck disable=SC1090
     . "$ENV_FILE"
     for v in SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD \
-             APP_JWT_SECRET APP_ENCRYPTION_KEY; do
+             APP_JWT_SECRET APP_ENCRYPTION_KEY APP_FILE_ENCRYPTION_KEY; do
         [ -z "${!v}" ] && echo "$v"
     done
     true
@@ -62,6 +62,10 @@ inseguros=$(
     case "$APP_ENCRYPTION_KEY" in
         COLE_AQUI*|ZGV2LW9ubHktaW5zZWN1cmUtMzItYnl0ZS1rZXkhISE=) echo "APP_ENCRYPTION_KEY (placeholder ou CHAVE DE DEV)";;
     esac
+    case "$APP_FILE_ENCRYPTION_KEY" in
+        COLE_AQUI*|ZGV2LW9ubHktZmlsZS1rZXktTk9ULUZPUi1QUk9EISE=) echo "APP_FILE_ENCRYPTION_KEY (placeholder ou CHAVE DE DEV)";;
+    esac
+    [ -n "$APP_FILE_ENCRYPTION_KEY" ] && [ "$APP_FILE_ENCRYPTION_KEY" = "$APP_ENCRYPTION_KEY" ] && echo "APP_FILE_ENCRYPTION_KEY igual a APP_ENCRYPTION_KEY (use chaves diferentes)"
     [ "${APP_ADMIN_PASSWORD:-}" = "changeme123" ] && echo "APP_ADMIN_PASSWORD (default de dev)"
     true
 )

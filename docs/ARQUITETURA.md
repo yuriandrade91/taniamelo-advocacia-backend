@@ -138,7 +138,8 @@ Autenticação **stateless por JWT** (sem sessão):
   auditoria (`created_by`/`updated_by`).
 - **Dado sensível em repouso:** a senha do INSS do cliente é criptografada com
   **AES-256-GCM** via `CryptoConverter` (chave em `APP_ENCRYPTION_KEY`, IV
-  aleatório por valor).
+  aleatório por valor). Os documentos e simulações do cliente também, no
+  storage (seção 8).
 
 - **Refresh token + cookie httpOnly:** login devolve um access token (JWT) no
   corpo e um refresh token em cookie `httpOnly` (guardado hasheado em
@@ -207,7 +208,18 @@ gravado no banco. Duas implementações, selecionadas por `app.storage.type`:
   `ObjectStorageConfig` só cria o `S3Client` quando `type=s3`.
 
 Nenhuma entidade/DTO/service/controller muda ao trocar de disco para S3 — só a
-propriedade de configuração. MIME types aceitos centralizados em
+propriedade de configuração.
+
+**Arquivos de cliente cifrados.** Documentos e simulações passam por
+`EncryptedFileStorage`, por cima do `FileStorageService`: o disco e o bucket só
+recebem o conteúdo cifrado (`FileEncryption`, AES-256-GCM em envelope — chave
+sorteada por arquivo, cifrada pela chave-mestra `APP_FILE_ENCRYPTION_KEY` e
+guardada no cabeçalho do próprio arquivo, com a versão da chave). Arquivo
+alterado ou chave errada é erro, nunca bytes cifrados entregues como documento.
+O banco guarda tipo e tamanho do original. Arquivos anteriores à criptografia
+(sem o cabeçalho) são lidos como estão. A logo do escritório, pública, grava
+direto. `FileEncryptionKeyGuard` recusa subir fora de dev/test sem chave própria,
+e os scripts de deploy também. **Perder a chave é perder os arquivos.** MIME types aceitos centralizados em
 `AllowedMimeTypes` (documentos: PDF/PNG/JPEG; simulações: PDF).
 
 ---

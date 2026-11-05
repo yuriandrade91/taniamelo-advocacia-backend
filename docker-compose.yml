@@ -60,6 +60,10 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
       APP_JWT_SECRET: ${APP_JWT_SECRET}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
+      # Chave-mestra dos documentos dos clientes (FileEncryption). Sem ela, fora de
+      # dev, a aplicação não sobe.
+      APP_FILE_ENCRYPTION_KEY: ${APP_FILE_ENCRYPTION_KEY}
+      APP_FILE_ENCRYPTION_KEY_VERSION: ${APP_FILE_ENCRYPTION_KEY_VERSION:-1}
       APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL}
       APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD}
       # Agente de suporte da plataforma (control-plane). Semeado no boot se vazio.

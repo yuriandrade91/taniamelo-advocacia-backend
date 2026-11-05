@@ -221,6 +221,7 @@ rodar `mvn clean verify` sem o flag se quiser validar.
 ```bash
 openssl rand -base64 48   # APP_JWT_SECRET
 openssl rand -base64 32   # APP_ENCRYPTION_KEY
+openssl rand -base64 32   # APP_FILE_ENCRYPTION_KEY (outra; guarde cópia fora da instância)
 ```
 
 ```bash
@@ -235,6 +236,7 @@ SPRING_DATASOURCE_PASSWORD=TROQUE_ESTA_SENHA
 
 APP_JWT_SECRET=COLE_AQUI_O_JWT_SECRET_GERADO
 APP_ENCRYPTION_KEY=COLE_AQUI_A_CHAVE_DE_CRIPTOGRAFIA_GERADA
+APP_FILE_ENCRYPTION_KEY=COLE_AQUI_A_CHAVE_DOS_ARQUIVOS_GERADA
 
 APP_ADMIN_EMAIL=dra.tania@taniamelo.adv.br
 APP_ADMIN_PASSWORD=escolha-uma-senha-forte-aqui

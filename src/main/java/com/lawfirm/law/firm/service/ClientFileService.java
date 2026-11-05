@@ -19,9 +19,9 @@ import com.lawfirm.law.firm.repository.ClientFileRepository;
 import com.lawfirm.law.firm.repository.ClientRepository;
 import com.lawfirm.law.firm.security.CurrentUser;
 import com.lawfirm.law.firm.storage.AllowedMimeTypes;
+import com.lawfirm.law.firm.storage.EncryptedFileStorage;
 import com.lawfirm.law.firm.storage.FileDownload;
 import com.lawfirm.law.firm.storage.FileStorageException;
-import com.lawfirm.law.firm.storage.FileStorageService;
 import com.lawfirm.law.firm.storage.LoadedFile;
 import com.lawfirm.law.firm.storage.StoredFile;
 import com.lawfirm.law.firm.tenant.TenantContext;
@@ -57,15 +57,15 @@ public class ClientFileService {
 
     private final ClientFileRepository repository;
     private final ClientRepository clientRepository;
-    private final FileStorageService fileStorageService;
+    private final EncryptedFileStorage fileStorage;
 
     public ClientFileService(
             ClientFileRepository repository,
             ClientRepository clientRepository,
-            FileStorageService fileStorageService) {
+            EncryptedFileStorage fileStorage) {
         this.repository = repository;
         this.clientRepository = clientRepository;
-        this.fileStorageService = fileStorageService;
+        this.fileStorage = fileStorage;
     }
 
     // ── Documentos ──
@@ -293,7 +293,7 @@ public class ClientFileService {
     }
 
     private ClientFile newFile(Client client, FileKind kind, MultipartFile file, String folder) {
-        StoredFile stored = fileStorageService.store(file, tenantFolder(folder));
+        StoredFile stored = fileStorage.store(file, tenantFolder(folder));
         removeIfTransactionRollsBack(stored.storageKey());
         ClientFile entity = new ClientFile();
         entity.setClient(client);
@@ -327,7 +327,7 @@ public class ClientFileService {
 
     private void deleteOrphan(String storageKey) {
         try {
-            fileStorageService.delete(storageKey);
+            fileStorage.delete(storageKey);
         } catch (FileStorageException ex) {
             // Depois da transação, não há mais a quem responder: quem chamou já recebeu o erro
             // original. O log é o que resta para achar o órfão.
@@ -348,10 +348,12 @@ public class ClientFileService {
     }
 
     private FileDownload download(ClientFile file) {
-        LoadedFile loaded = fileStorageService.load(file.getStorageKey());
+        LoadedFile loaded = fileStorage.load(file.getStorageKey());
+        // O tipo vem do registro, não do storage: o objeto gravado é o conteúdo cifrado, e o S3 o
+        // guarda como application/octet-stream.
         return new FileDownload(
                 loaded.resource(),
-                loaded.mimeType(),
+                file.getMimeType(),
                 file.getOriginalFilename(),
                 file.getFileSizeBytes());
     }

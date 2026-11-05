@@ -182,3 +182,11 @@ app:
       endpoint: ${APP_STORAGE_S3_ENDPOINT:}
       # path-style: true só para LocalStack/MinIO; na AWS real deixe false.
       path-style-access: ${APP_STORAGE_S3_PATH_STYLE:false}
+    encryption:
+      # Chave-mestra dos documentos e simulações dos clientes (base64, 32 bytes:
+      # openssl rand -base64 32). O default é a chave de dev, em texto aqui de propósito;
+      # FileEncryptionKeyGuard recusa a subida com ela fora de dev/test. Perder a chave
+      # é perder os arquivos: guarde uma cópia fora da instância.
+      key: ${APP_FILE_ENCRYPTION_KEY:ZGV2LW9ubHktZmlsZS1rZXktTk9ULUZPUi1QUk9EISE=}
+      # Vai no cabeçalho de cada arquivo; muda quando a chave-mestra for trocada.
+      key-version: ${APP_FILE_ENCRYPTION_KEY_VERSION:1}
