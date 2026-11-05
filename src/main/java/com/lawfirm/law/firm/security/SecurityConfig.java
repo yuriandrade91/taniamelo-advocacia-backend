@@ -21,8 +21,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
  *
  * <p>Dois cortes, e eles são diferentes: {@code @RequerAdvogado} (ADMIN/SUPPORT) separa operar de
  * destruir - STAFF faz o dia a dia, excluir e restaurar exigem advogado; {@code @RequerAdmin} é só
- * ADMIN e vale para todo o financeiro - o do cliente e o do escritório -, onde a questão não é
- * risco de perder dado e sim quem tem que ver dinheiro.
+ * ADMIN e vale para o financeiro - o do cliente e o do escritório -, onde a questão não é risco de
+ * perder dado e sim quem tem que ver dinheiro.
  *
  * <p>Não construímos um DaoAuthenticationProvider manualmente: com um bean PasswordEncoder e um
  * bean UserDetailsService (CustomUserDetailsService) no contexto, o próprio Spring Security monta o
@@ -74,6 +74,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource))
+                // CSRF explora credencial que o navegador anexa sozinho. O access token vai no
+                // header Authorization, que ele nunca anexa. O único cookie é o de refresh
+                // (/auth/refresh e /auth/logout), e essas rotas exigem X-Tenant-Id: formulário
+                // de outro site não manda header, e fetch com header passa pelo preflight, que o
+                // CORS só libera para as origens configuradas. Se /auth/** entrar em
+                // ROTAS_SEM_TENANT do TenantResolutionFilter, essa defesa cai.
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(eh -> eh.authenticationEntryPoint(authenticationEntryPoint))

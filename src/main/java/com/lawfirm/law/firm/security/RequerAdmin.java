@@ -16,8 +16,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * não precisa disso para trabalhar, e não é por desconfiança: informação financeira que circula por
  * conveniência acaba circulando por acidente.
  *
- * <p>Também guarda a logo do escritório: ela aparece em toda tela de todo usuário, e trocar a marca
- * é decisão da gestão.
+ * <p>Também guarda a logo do escritório: ela aparece em toda tela do usuário, e trocar a marca é
+ * decisão da gestão.
  *
  * <p>Anotação própria, e não {@code @PreAuthorize} repetido, pela mesma razão do {@code
  * RequerAdvogado}: mudar quem vê o financeiro é editar este arquivo.
