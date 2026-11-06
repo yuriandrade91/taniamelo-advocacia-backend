@@ -1,0 +1,49 @@
+@startuml 04-autenticacao
+' Os três caminhos de entrada: login do escritório, refresh e sessão de suporte.
+title Autenticação — login, refresh e sessão de suporte
+
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+
+actor "Usuário do escritório" as user
+actor "Agente de suporte" as agent
+participant "AuthController" as auth
+participant "SupportController" as sup
+participant "LoginThrottle\n(bucket4j) + AccountLock" as guard
+participant "JwtService" as jwt
+participant "RefreshTokenService" as refresh
+database "tenant_x.users\ntenant_x.refresh_tokens" as tdb
+database "public.tenants\npublic.support_users" as pdb
+
+== 1. Login do escritório ==
+user -> auth : POST /auth/login\nX-Tenant-Id + { login (e-mail ou username), password }
+auth -> guard : limite por IP+login, bloqueio de conta
+alt excedeu
+  guard --> user : 429 + Retry-After
+end
+auth -> tdb : autentica no schema do tenant
+auth -> jwt : access token (claims: uid, role, tenant=UUID)
+auth -> refresh : emite refresh opaco (hash SHA-256 no banco)
+auth --> user : 200 { token } + cookie httpOnly refreshToken
+
+== 2. Refresh ==
+user -> auth : POST /auth/refresh (cookie)
+auth -> refresh : valida e ROTACIONA (o antigo é revogado)
+refresh -> tdb
+auth --> user : novo access token + novo cookie
+
+== 3. Sessão de suporte (sem usuário por tenant) ==
+agent -> sup : POST /support/login { email, password }
+sup -> pdb : autentica em public.support_users
+sup -> jwt : token de PLATAFORMA (scope=platform, sem tenant)
+sup --> agent : token de plataforma (só abre sessões)
+agent -> sup : POST /support/sessions/{tenantId}\nBearer <token de plataforma>
+sup -> pdb : tenant existe e está ativo?
+sup -> jwt : token de SESSÃO (role=ADMIN, tenant, act=agente, ~20 min)
+sup --> agent : token de sessão
+note over agent, tdb
+  Com o token de sessão o agente usa as rotas do escritório com acesso total.
+  Cada ação vai para audit_log com acting_support_user_id = agente
+  (performed_by fica nulo: o agente não existe em tenant_x.users).
+end note
+@enduml

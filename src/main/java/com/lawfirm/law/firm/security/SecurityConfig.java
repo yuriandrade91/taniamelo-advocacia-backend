@@ -1,0 +1,139 @@
+package com.lawfirm.law.firm.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+/**
+ * Autenticação stateless via JWT, com autorização por papel ligada ({@code @EnableMethodSecurity}
+ * logo abaixo).
+ *
+ * <p>Dois cortes, e eles são diferentes: {@code @RequerAdvogado} (ADMIN/SUPPORT) separa operar de
+ * destruir - STAFF faz o dia a dia, excluir e restaurar exigem advogado; {@code @RequerAdmin} é só
+ * ADMIN e vale para o financeiro - o do cliente e o do escritório -, onde a questão não é risco de
+ * perder dado e sim quem tem que ver dinheiro.
+ *
+ * <p>Não construímos um DaoAuthenticationProvider manualmente: com um bean PasswordEncoder e um
+ * bean UserDetailsService (CustomUserDetailsService) no contexto, o próprio Spring Security monta o
+ * provider automaticamente ao criar o AuthenticationManager via AuthenticationConfiguration.
+ *
+ * <p>CORS usa o CorsConfigurationSource de CorsConfig (mantido aberto propositalmente enquanto o
+ * time trabalha em ambiente local - ver docs/ROADMAP.md), plugado aqui via http.cors(...) - e não
+ * como um CorsFilter bean solto - para que a resolução de CORS rode antes da autorização. Preflight
+ * OPTIONS também é liberado explicitamente como reforço, já que qualquer endpoint protegido por
+ * anyRequest().authenticated() rejeitaria o preflight com 401 (sem headers de CORS) antes do
+ * browser sequer tentar a requisição real.
+ */
+@Configuration
+@EnableWebSecurity
+/*
+ * Liga a autorização por método (@PreAuthorize / @RequerAdvogado). Sem isto as anotações são
+ * decoração: compilam, ficam no código e não recusam nada - que é o pior estado possível, porque
+ * parece protegido.
+ */
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RestAuthenticationEntryPoint authenticationEntryPoint;
+    private final CorsConfigurationSource corsConfigurationSource;
+    private final com.lawfirm.law.firm.tenant.TenantResolutionFilter tenantResolutionFilter;
+
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            RestAuthenticationEntryPoint authenticationEntryPoint,
+            CorsConfigurationSource corsConfigurationSource,
+            com.lawfirm.law.firm.tenant.TenantResolutionFilter tenantResolutionFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.authenticationEntryPoint = authenticationEntryPoint;
+        this.corsConfigurationSource = corsConfigurationSource;
+        this.tenantResolutionFilter = tenantResolutionFilter;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) {
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource))
+                // CSRF explora credencial que o navegador anexa sozinho. O access token vai no
+                // header Authorization, que ele nunca anexa. O único cookie é o de refresh
+                // (/auth/refresh e /auth/logout), e essas rotas exigem X-Tenant-Id: formulário
+                // de outro site não manda header, e fetch com header passa pelo preflight, que o
+                // CORS só libera para as origens configuradas. Se /auth/** entrar em
+                // ROTAS_SEM_TENANT do TenantResolutionFilter, essa defesa cai.
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(eh -> eh.authenticationEntryPoint(authenticationEntryPoint))
+                .authorizeHttpRequests(
+                        auth ->
+                                auth
+                                        // Preflight requests never carry credentials; permitting
+                                        // them here is
+                                        // what actually fixes the 401-with-no-CORS-headers failure
+                                        // - http.cors(...)
+                                        // alone only positions the filter early, it doesn't exempt
+                                        // OPTIONS from
+                                        // anyRequest().authenticated() below.
+                                        .requestMatchers(HttpMethod.OPTIONS, "/**")
+                                        .permitAll()
+                                        .requestMatchers("/api/v1/auth/**")
+                                        .permitAll()
+                                        // Login de suporte é público; o resto de /support exige o
+                                        // token de plataforma (ROLE_PLATFORM). O token de sessão
+                                        // emitido lá é um Bearer normal e cai nas regras do tenant.
+                                        .requestMatchers("/api/v1/support/login")
+                                        .permitAll()
+                                        .requestMatchers("/api/v1/support/**")
+                                        .hasRole("PLATFORM")
+                                        // Resolução pública de tenant por slug e a logo do
+                                        // escritório: as duas servem o login, antes da sessão.
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/tenants/resolve",
+                                                "/api/v1/tenants/logo")
+                                        .permitAll()
+                                        // Documentação pública: só o formato da API, sem dado
+                                        // de negócio. As operações em si continuam exigindo token.
+                                        .requestMatchers(
+                                                "/api/docs/**",
+                                                "/api/swagger-ui/**",
+                                                "/v3/api-docs/**",
+                                                "/swagger-ui/**",
+                                                "/swagger-ui.html",
+                                                "/webjars/**")
+                                        .permitAll()
+                                        .requestMatchers(
+                                                "/actuator/health",
+                                                "/actuator/info",
+                                                "/actuator/prometheus")
+                                        .permitAll()
+                                        .anyRequest()
+                                        .authenticated())
+                .addFilterBefore(
+                        jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // Resolve o tenant (schema) antes de qualquer acesso ao banco - inclusive antes do
+                // JwtAuthenticationFilter, que carrega o usuário do schema correto.
+                .addFilterBefore(tenantResolutionFilter, JwtAuthenticationFilter.class);
+
+        return http.build();
+    }
+}

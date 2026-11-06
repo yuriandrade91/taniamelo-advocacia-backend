@@ -1,0 +1,167 @@
+spring:
+  application:
+    name: law-firm
+  # Credenciais por variável de ambiente, sem default: ambiente sem elas não sobe, em vez de
+  # herdar um banco e uma senha por esquecimento. Na suíte, quem define o datasource é o
+  # @ServiceConnection do PostgresContainerConfig.
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:}
+    driver-class-name: org.postgresql.Driver
+    username: ${SPRING_DATASOURCE_USERNAME:}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+  jpa:
+    # Sem isto a conexão fica presa até o fim da resposta, inclusive em download de arquivo, e um
+    # acesso lazy esquecido vira consulta escondida fora da transação.
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          # Como o Instant viaja até o banco. UTC aqui é o certo e não tem nada a ver
+          # com o fuso de exibição: quem traduz instante em dia/mês para uma pessoa
+          # ler é o OfficeClock (America/Sao_Paulo). Estava só no perfil dev, o
+          # que deixava produção com o fuso default da JVM - ou seja, dependendo de
+          # onde a máquina está.
+          time_zone: UTC
+  jmx:
+    enabled: false
+
+  # baseline-on-migrate only matters for a non-empty schema that has no
+  # flyway_schema_history table yet (e.g. one specific dev DB that had its schema
+  # created by hand before Flyway was wired up). It's a one-time, per-environment
+  # bootstrap step - it must NOT be a permanent default, or a teammate's/CI's fresh,
+  # empty database would silently skip running V1..V4 the moment they enable it.
+  # Leave disabled here; turn it on only via env vars on the one environment that
+  # needs it (see README "Adotando o Flyway em um banco já existente").
+  # Flyway automático DESLIGADO: com multi-tenancy por schema, as migrations são
+  # aplicadas por schema pelo MultiTenantFlywayMigrator (db/migration/shared no
+  # public + db/migration/tenant em cada schema). Ver com.lawfirm.law.firm.tenant.
+  flyway:
+    enabled: false
+
+  # Limites do upload de documentos/simulações de CNIS. max-request-size é maior
+  # que max-file-size porque o upload em lote manda vários arquivos numa única
+  # requisição multipart.
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 60MB
+
+server:
+  port: 8080
+
+springdoc:
+  api-docs:
+    path: /api/docs/openapi.json
+  swagger-ui:
+    path: /api/docs
+    # No tags-sorter: Swagger UI then renders tags in the order they appear
+    # in the OpenAPI document, which OpenApiConfig#orderedTags fixes to
+    # auth -> clientes -> endereços -> arquivos -> entrevista -> financeiro.
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # prometheus: scrape das métricas (Micrometer). health/info seguem
+        # abertos (ver SecurityConfig); os demais endpoints continuam exigindo auth.
+        include: health,info,prometheus
+  metrics:
+    tags:
+      # Toda métrica carrega application=law-firm - separa este serviço de outros
+      # no mesmo Prometheus/Grafana.
+      application: ${spring.application.name}
+    distribution:
+      # Liga o histograma de http_server_requests para dar p50/p95/p99 por rota
+      # no Grafana (histogram_quantile sobre os buckets).
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 50ms,100ms,200ms,300ms,500ms,1s,2s
+  tracing:
+    # Amostragem do tracing. 10% por padrão (baixo overhead em produção);
+    # suba até 1.0 para investigar, ou 0 para desligar.
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING:0.1}
+  # Chave do Boot 4. A antiga (management.otlp.tracing.endpoint) foi removida e
+  # é ignorada em silêncio - com ela nenhum span saía do app.
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          # Exporta spans via OTLP para o Tempo (stack de observabilidade no compose).
+          # Sem a stack no ar, deixe MANAGEMENT_TRACING_SAMPLING=0 para não gerar ruído.
+          endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://tempo:4318/v1/traces}
+  endpoint:
+    health:
+      show-details: never
+  info:
+    # Liga o bloco `build` do /actuator/info (versão, artefato, horário do build
+    # e o `commit` carimbado pelo build-info). É o que responde "qual versão está
+    # rodando nesta instância?" sem SSH.
+    #
+    # `env` fica DESLIGADO de propósito: ele publicaria propriedades do ambiente
+    # num endpoint sem autenticação.
+    build:
+      enabled: true
+    env:
+      enabled: false
+
+app:
+  jwt:
+    # Obrigatório (APP_JWT_SECRET, 32+ caracteres); o JwtService recusa a subida sem ele.
+    secret: ${APP_JWT_SECRET:}
+    # TTL do access token (JWT no header). Com refresh token ativo, pode ser curto.
+    expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:480}
+    # TTL do refresh token (cookie httpOnly). Rotacionado a cada /auth/refresh.
+    refresh-expiration-days: ${APP_JWT_REFRESH_EXPIRATION_DAYS:14}
+    # Acesso de suporte (impersonation): token de plataforma (abre sessões) e
+    # token de sessão (curto, acessa o escritório). Ver docs/SUPORTE_MULTITENANT.md.
+    support-platform-minutes: ${APP_JWT_SUPPORT_PLATFORM_MINUTES:60}
+    support-session-minutes: ${APP_JWT_SUPPORT_SESSION_MINUTES:20}
+  # Multi-tenancy por schema. Cada tenant = um schema Postgres autocontido.
+  # O frontend informa o tenant (slug ou UUID) via cabeçalho X-Tenant-Id, obrigatório em
+  # rota de escritório sem JWT (inclusive o login): não há escritório padrão. Os tenants atendidos vêm do catálogo public.tenants (status 'ativo'); cadastrar
+  # um escritório não exige mexer aqui nem reiniciar a configuração.
+  tenancy:
+    header-name: ${APP_TENANCY_HEADER:X-Tenant-Id}
+  # Cookie do refresh token. Em produção com front em outro domínio:
+  # secure=true e same-site=None. Em dev local (http, mesma origem): Lax/false.
+  auth:
+    refresh-cookie:
+      name: ${APP_AUTH_REFRESH_COOKIE_NAME:refreshToken}
+      path: ${APP_AUTH_REFRESH_COOKIE_PATH:/api/v1/auth}
+      secure: ${APP_AUTH_REFRESH_COOKIE_SECURE:false}
+      same-site: ${APP_AUTH_REFRESH_COOKIE_SAMESITE:Lax}
+  # CORS: origens permitidas separadas por vírgula. Default "*" para dev local
+  # não travar; na AWS defina APP_CORS_ALLOWED_ORIGINS com o domínio do frontend
+  # (ex.: https://app.taniamelo.adv.br).
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}
+  storage:
+    # "local" (padrão) usa LocalDiskFileStorageService; "s3" usa ObjectStorageFileStorageService.
+    # Só esta propriedade muda ao trocar de disco local para S3 - nenhuma
+    # entidade/DTO/service/controller é alterado (todos dependem de FileStorageService).
+    type: ${APP_STORAGE_TYPE:local}
+    local:
+      # Em docker-compose isto é montado como volume nomeado (ver app-storage)
+      # para sobreviver a rebuilds da imagem.
+      base-path: ${APP_STORAGE_LOCAL_PATH:./storage}
+    s3:
+      # Usados apenas quando type=s3. bucket e region são obrigatórios nesse caso.
+      bucket: ${APP_STORAGE_S3_BUCKET:}
+      region: ${APP_STORAGE_S3_REGION:sa-east-1}
+      # endpoint vazio = AWS real; preencha só para LocalStack/MinIO em teste.
+      endpoint: ${APP_STORAGE_S3_ENDPOINT:}
+      # path-style: true só para LocalStack/MinIO; na AWS real deixe false.
+      path-style-access: ${APP_STORAGE_S3_PATH_STYLE:false}
+    encryption:
+      # Chave-mestra dos documentos e simulações dos clientes (base64, 32 bytes:
+      # openssl rand -base64 32). O default é a chave de dev, em texto aqui de propósito;
+      # FileEncryptionKeyGuard recusa a subida com ela fora de dev/test. Perder a chave
+      # é perder os arquivos: guarde uma cópia fora da instância.
+      key: ${APP_FILE_ENCRYPTION_KEY:ZGV2LW9ubHktZmlsZS1rZXktTk9ULUZPUi1QUk9EISE=}
+      # Vai no cabeçalho de cada arquivo; muda quando a chave-mestra for trocada.
+      key-version: ${APP_FILE_ENCRYPTION_KEY_VERSION:1}

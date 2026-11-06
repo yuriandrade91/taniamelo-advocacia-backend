@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: law-firm
+  jpa:
+    # Flyway is the single source of truth for schema in every profile - Hibernate only
+    # validates that entity mappings match what migrations produced. Never 'update'/'create'
+    # here: that would let Hibernate silently alter schema outside of migration history.
+    hibernate:
+      ddl-auto: validate
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+  jmx:
+    enabled: false
+
+server:
+  port: 8080
+  # Atrás do proxy TLS (Caddy): o Tomcat passa a enxergar https e o IP real a partir dos
+  # X-Forwarded-*, só quando vêm de proxy interno (a rede do compose).
+  forward-headers-strategy: native
+
+# springdoc config lives in application.yaml (base) so it applies to every profile;
+# no need to repeat/override it here.

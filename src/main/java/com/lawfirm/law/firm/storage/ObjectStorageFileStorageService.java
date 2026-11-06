@@ -1,0 +1,136 @@
+package com.lawfirm.law.firm.storage;
+
+import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+
+/**
+ * Implementação em armazenamento de objetos (protocolo S3) do {@link FileStorageService}, ativada
+ * por {@code app.storage.type=s3}. O nome é "ObjectStorage" e não "S3" porque o cliente aponta para
+ * qualquer endpoint compatível com a API S3 - AWS S3 real (padrão), Cloudflare R2, MinIO ou
+ * LocalStack (ver {@code app.storage.s3.endpoint}) - sem prender o código a um provedor específico.
+ * Espelha exatamente o contrato do {@link LocalDiskFileStorageService}: o {@code storageKey}
+ * devolvido é a chave (key) do objeto no bucket - opaca para o resto do sistema, é isso que fica
+ * gravado no banco. Nenhuma entidade/DTO/service/controller muda ao trocar de disco local para
+ * armazenamento de objetos; só a propriedade de configuração.
+ */
+@Service
+@ConditionalOnProperty(name = "app.storage.type", havingValue = "s3")
+public class ObjectStorageFileStorageService implements FileStorageService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(ObjectStorageFileStorageService.class);
+    private static final String DEFAULT_MIME = "application/octet-stream";
+
+    private final S3Client s3Client;
+    private final String bucket;
+
+    public ObjectStorageFileStorageService(
+            S3Client s3Client, @Value("${app.storage.s3.bucket}") String bucket) {
+        this.s3Client = s3Client;
+        this.bucket = bucket;
+        log.info("ObjectStorageFileStorageService ativo (bucket={})", bucket);
+    }
+
+    @Override
+    public StoredFile store(MultipartFile file, String directory) {
+        if (file == null || file.isEmpty()) {
+            throw new FileStorageException("Arquivo vazio ou ausente");
+        }
+
+        String storageKey = StorageKeys.newKey(directory, file.getOriginalFilename());
+
+        String mimeType = file.getContentType() != null ? file.getContentType() : DEFAULT_MIME;
+
+        try {
+            PutObjectRequest request =
+                    PutObjectRequest.builder()
+                            .bucket(bucket)
+                            .key(storageKey)
+                            .contentType(mimeType)
+                            .contentLength(file.getSize())
+                            .build();
+            s3Client.putObject(
+                    request, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+        } catch (IOException | SdkException e) {
+            // SdkException, e não só S3Exception: credencial não encontrada e falha de rede são
+            // SdkClientException, que não vem do serviço S3 - sem ela o erro viraria um 500
+            // genérico, sem a causa.
+            throw new FileStorageException(
+                    "Falha ao gravar arquivo no armazenamento de objetos: " + storageKey, e);
+        }
+
+        return new StoredFile(storageKey, mimeType, file.getSize());
+    }
+
+    @Override
+    public LoadedFile load(String storageKey) {
+        try {
+            GetObjectRequest request =
+                    GetObjectRequest.builder().bucket(bucket).key(storageKey).build();
+            ResponseInputStream<GetObjectResponse> stream = s3Client.getObject(request);
+            String mimeType =
+                    stream.response().contentType() != null
+                            ? stream.response().contentType()
+                            : DEFAULT_MIME;
+            return new LoadedFile(new InputStreamResource(stream), mimeType);
+        } catch (NoSuchKeyException e) {
+            throw new FileStorageException(
+                    "Arquivo não encontrado no armazenamento de objetos: " + storageKey, e);
+        } catch (SdkException e) {
+            throw new FileStorageException(
+                    "Falha ao ler arquivo do armazenamento de objetos: " + storageKey, e);
+        }
+    }
+
+    @Override
+    public void delete(String storageKey) {
+        try {
+            // deleteObject é idempotente no protocolo S3: não falha se a key já não existir.
+            s3Client.deleteObject(
+                    DeleteObjectRequest.builder().bucket(bucket).key(storageKey).build());
+        } catch (SdkException e) {
+            throw new FileStorageException(
+                    "Falha ao remover arquivo do armazenamento de objetos: " + storageKey, e);
+        }
+    }
+
+    @Override
+    public void move(String fromKey, String toKey) {
+        try {
+            // O protocolo S3 não tem "mover": é copiar e apagar a origem. Se a cópia falhar, a
+            // origem continua intacta; se só o delete falhar, sobra uma cópia - nunca uma perda.
+            s3Client.copyObject(
+                    CopyObjectRequest.builder()
+                            .sourceBucket(bucket)
+                            .sourceKey(fromKey)
+                            .destinationBucket(bucket)
+                            .destinationKey(toKey)
+                            .build());
+            s3Client.deleteObject(
+                    DeleteObjectRequest.builder().bucket(bucket).key(fromKey).build());
+        } catch (SdkException e) {
+            throw new FileStorageException(
+                    "Falha ao mover arquivo no armazenamento de objetos: "
+                            + fromKey
+                            + " -> "
+                            + toKey,
+                    e);
+        }
+    }
+}

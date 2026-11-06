@@ -1,0 +1,180 @@
+package com.lawfirm.law.firm.model;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.lawfirm.law.firm.audit.AuditAction;
+import com.lawfirm.law.firm.util.EnumLabelSupport;
+import java.lang.reflect.Method;
+import java.util.List;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+/**
+ * Todo enum de domínio segue o mesmo contrato: getLabel() como @JsonValue, fromLabel()
+ * como @JsonCreator (aceitando nome da constante OU label) e toString() == label. Este teste
+ * percorre todas as constantes de todos eles, então uma constante nova entra na cobertura
+ * automaticamente.
+ */
+@DisplayName("Enums de domínio: contrato label/fromLabel/toString")
+class DomainEnumsTest {
+
+    private static final List<Class<? extends Enum<?>>> LABELLED_ENUMS =
+            List.of(
+                    Gender.class,
+                    MaritalStatus.class,
+                    Situation.class,
+                    BenefitType.class,
+                    ClientType.class,
+                    AddressType.class,
+                    DocumentType.class,
+                    PaymentMethod.class,
+                    PaymentStatus.class,
+                    AppointmentType.class,
+                    AppointmentStatus.class,
+                    AppointmentModality.class,
+                    DisabilityGrade.class);
+
+    static Stream<Class<? extends Enum<?>>> labelledEnums() {
+        return LABELLED_ENUMS.stream();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("labelledEnums")
+    @DisplayName("cada constante resolve pelo nome, pelo label e sem acento")
+    void everyConstantRoundTrips(Class<? extends Enum<?>> type) throws Exception {
+        Method getLabel = type.getMethod("getLabel");
+        Method fromLabel = type.getMethod("fromLabel", String.class);
+
+        for (Object constant : type.getEnumConstants()) {
+            Enum<?> value = (Enum<?>) constant;
+            String label = (String) getLabel.invoke(value);
+
+            assertEquals(label, value.toString(), type.getSimpleName() + "." + value.name());
+            assertSame(value, fromLabel.invoke(null, value.name()));
+            assertSame(value, fromLabel.invoke(null, label));
+            assertSame(value, fromLabel.invoke(null, label.toUpperCase()));
+            assertSame(value, fromLabel.invoke(null, EnumLabelSupport.normalize(label)));
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("labelledEnums")
+    @DisplayName("null vira null e valor desconhecido estoura")
+    void nullAndUnknownValues(Class<? extends Enum<?>> type) throws Exception {
+        Method fromLabel = type.getMethod("fromLabel", String.class);
+        assertNull(fromLabel.invoke(null, (Object) null));
+
+        Exception ex =
+                assertThrows(
+                        Exception.class, () -> fromLabel.invoke(null, "valor-que-nao-existe-42"));
+        assertSame(IllegalArgumentException.class, ex.getCause().getClass());
+    }
+
+    @Test
+    @DisplayName("FileKind e AuditAction são enums puramente técnicos (sem label)")
+    void technicalEnums() {
+        assertEquals(2, FileKind.values().length);
+        assertSame(FileKind.DOCUMENT, FileKind.valueOf("DOCUMENT"));
+        assertSame(FileKind.SIMULATION, FileKind.valueOf("SIMULATION"));
+
+        assertEquals(5, AuditAction.values().length);
+        assertSame(AuditAction.CREATE, AuditAction.valueOf("CREATE"));
+        assertSame(AuditAction.UPDATE, AuditAction.valueOf("UPDATE"));
+        // DELETE e RESTORE valem também para exclusão LÓGICA, que no banco é um update - quem
+        // diz qual é qual é o service, via AuditIntent.
+        assertSame(AuditAction.DELETE, AuditAction.valueOf("DELETE"));
+        assertSame(AuditAction.RESTORE, AuditAction.valueOf("RESTORE"));
+        // READ é a exceção à regra "só mutação gera auditoria": existe para a leitura da
+        // senha do INSS, que precisa ter autor e data.
+        assertSame(AuditAction.READ, AuditAction.valueOf("READ"));
+    }
+
+    @Test
+    @DisplayName("Role e AppointmentAction cobrem os papéis/ações esperados")
+    void roleAndAppointmentAction() {
+        assertSame(Role.ADMIN, Role.valueOf("ADMIN"));
+        for (Role role : Role.values()) {
+            assertSame(role, Role.valueOf(role.name()));
+        }
+        for (AppointmentAction action : AppointmentAction.values()) {
+            assertSame(action, AppointmentAction.valueOf(action.name()));
+        }
+    }
+
+    @Test
+    @DisplayName("os nomes antigos de benefício ainda entram, mas resolvem para o canônico")
+    void oldBenefitNamesAreAliases() {
+        // "Invalidez" é o nome anterior à EC 103/2019 de "incapacidade permanente"; "PCD" é a
+        // escrita informal de "deficiência". Eram valores próprios do enum, e o mesmo benefício
+        // ficava gravado de dois jeitos - qualquer contagem por benefício somava metade em cada.
+        assertSame(
+                BenefitType.APOSENTADORIA_POR_INCAPACIDADE_PERMANENTE,
+                BenefitType.fromLabel("Aposentadoria por invalidez"));
+        assertSame(
+                BenefitType.APOSENTADORIA_POR_INCAPACIDADE_PERMANENTE,
+                BenefitType.fromLabel("APOSENTADORIA_POR_INVALIDEZ"));
+        assertSame(
+                BenefitType.APOSENTADORIA_POR_DEFICIENCIA,
+                BenefitType.fromLabel("Aposentadoria para PCD"));
+        assertSame(
+                BenefitType.APOSENTADORIA_POR_DEFICIENCIA,
+                BenefitType.fromLabel("APOSENTADORIA_PCD"));
+    }
+
+    @Test
+    @DisplayName("o apelido não vira valor: sobraram sete benefícios, e a resposta usa o canônico")
+    void aliasesAreNotValues() {
+        assertEquals(7, BenefitType.values().length);
+        assertEquals(
+                "Aposentadoria por incapacidade permanente",
+                BenefitType.fromLabel("Aposentadoria por invalidez").getLabel());
+        assertEquals(
+                "Aposentadoria por deficiência",
+                BenefitType.fromLabel("Aposentadoria para PCD").getLabel());
+    }
+
+    @Test
+    @DisplayName("o funil de situação tem ordem, de 1 a 6, sem buraco nem empate")
+    void situationIsOrdered() {
+        int esperado = 1;
+        for (Situation s : Situation.values()) {
+            assertEquals(esperado++, s.getOrdem(), s.name() + " fora de ordem");
+        }
+    }
+
+    @Test
+    @DisplayName("retrocesso é voltar no funil - avançar, pular e a situação inicial não são")
+    void situationRegression() {
+        assertTrue(
+                Situation.ehRetrocesso(
+                        Situation.BENEFICIO_CONCLUIDO, Situation.ANALISE_DOCUMENTAL));
+        assertFalse(
+                Situation.ehRetrocesso(Situation.FORMULARIO_PREENCHIDO, Situation.BENEFICIO_FUTURO),
+                "pular etapa para a frente é normal: cliente que chega com tudo pronto");
+        assertFalse(
+                Situation.ehRetrocesso(null, Situation.BENEFICIO_CONCLUIDO),
+                "sem anterior é a situação inicial - o cliente começou ali, não voltou");
+        assertFalse(
+                Situation.ehRetrocesso(Situation.ANALISE_DOCUMENTAL, Situation.ANALISE_DOCUMENTAL));
+    }
+
+    @Test
+    @DisplayName("labels específicos usados pelo frontend não mudam sem querer")
+    void labelsAreStable() {
+        assertEquals("Masculino", Gender.MASCULINO.getLabel());
+        assertEquals("Solteiro(a)", MaritalStatus.SOLTEIRO.getLabel());
+        assertEquals("Formulário preenchido", Situation.FORMULARIO_PREENCHIDO.getLabel());
+        assertEquals("Aposentadoria por idade", BenefitType.APOSENTADORIA_POR_IDADE.getLabel());
+        assertEquals("Potencial", ClientType.POTENCIAL.getLabel());
+        assertEquals("Pendente", PaymentStatus.PENDENTE.getLabel());
+        assertEquals("Agendado", AppointmentStatus.AGENDADO.getLabel());
+    }
+}

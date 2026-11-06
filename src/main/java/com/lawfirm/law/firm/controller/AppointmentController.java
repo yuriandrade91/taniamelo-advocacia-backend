@@ -1,0 +1,307 @@
+package com.lawfirm.law.firm.controller;
+
+import com.lawfirm.law.firm.dto.ApiResponse;
+import com.lawfirm.law.firm.dto.AppointmentCancelRequestDTO;
+import com.lawfirm.law.firm.dto.AppointmentCompleteRequestDTO;
+import com.lawfirm.law.firm.dto.AppointmentHistoryDTO;
+import com.lawfirm.law.firm.dto.AppointmentRequestDTO;
+import com.lawfirm.law.firm.dto.AppointmentResponseDTO;
+import com.lawfirm.law.firm.dto.AppointmentSearchParams;
+import com.lawfirm.law.firm.dto.AppointmentSummaryDTO;
+import com.lawfirm.law.firm.dto.AppointmentTimelinePointDTO;
+import com.lawfirm.law.firm.dto.HolidayCheckDTO;
+import com.lawfirm.law.firm.dto.Pagination;
+import com.lawfirm.law.firm.security.RequerAdvogado;
+import com.lawfirm.law.firm.service.AppointmentService;
+import com.lawfirm.law.firm.service.HolidayService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.UUID;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * Agenda do escritório: CRUD de compromissos (top-level, tenant-scoped) + resumo por mês (abas) e
+ * trilha de alterações. Envelope, paginação (1-based) e resolução de tenant no padrão do projeto.
+ *
+ * <p>Segurança declarada com os DOIS esquemas (bearer + tenant): uma {@code @SecurityRequirement}
+ * por operação SUBSTITUI o requisito global do springdoc, então precisamos repetir o bearer aqui -
+ * senão o Swagger deixa de anexar o token e o "Try it out" volta 401.
+ */
+@Tag(
+        name = "Agenda",
+        description =
+                "Compromissos do escritório: entrevistas, reuniões, perícias, audiências e prazos")
+@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = "tenantHeader")
+@RestController
+@RequestMapping("/api/v1/appointments")
+public class AppointmentController {
+
+    private final AppointmentService service;
+    private final HolidayService holidayService;
+
+    public AppointmentController(AppointmentService service, HolidayService holidayService) {
+        this.service = service;
+        this.holidayService = holidayService;
+    }
+
+    @Operation(summary = "Criar compromisso", description = "Nasce com status Agendado.")
+    @PostMapping
+    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> create(
+            @Valid @RequestBody AppointmentRequestDTO dto) {
+        AppointmentResponseDTO created = service.create(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.successObject(created));
+    }
+
+    @Operation(
+            summary = "Listar compromissos",
+            description =
+                    "Paginado no envelope padrão, ordenado por início (asc). Filtros opcionais:"
+                            + " ano+mês (abas, cada um aceita múltiplos valores - repita o parâmetro na"
+                            + " query string, ex.: year=2025&year=2026), intervalo (from/to ISO-8601,"
+                            + " usado só quando nenhum ano/mês é informado), tipo e situação (também"
+                            + " aceitam múltiplos valores), cliente e busca por título.")
+    @GetMapping
+    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> list(
+            @ParameterObject AppointmentSearchParams params) {
+        Page<AppointmentResponseDTO> page = service.list(params);
+        return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
+    }
+
+    @Operation(
+            summary = "Lixeira: compromissos excluídos",
+            description =
+                    """
+                    Compromissos com exclusão lógica, mais recentes primeiro, para restaurar pelo \
+                    `PATCH /appointments/{id}/restore`.
+
+                    Existe porque, sem ela, restaurar só era possível para quem tivesse anotado o \
+                    UUID antes de excluir. Cada item traz `deletedAt`.
+
+                    **Restrito a ADMIN e SUPPORT**: é o mesmo papel que exclui e restaura.""")
+    @RequerAdvogado
+    @GetMapping("/deleted")
+    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> listDeleted(
+            @RequestParam(defaultValue = "1") int pageNumber,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        Page<AppointmentResponseDTO> page = service.listDeleted(pageNumber, pageSize);
+        return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
+    }
+
+    @Operation(
+            summary = "Resumo por mês",
+            description =
+                    "Contagem de compromissos PENDENTES (status Agendado) por mês do ano - alimenta"
+                            + " as abas da agenda. Toda ação reflete no número: criar soma; concluir,"
+                            + " cancelar ou excluir subtrai.")
+    @GetMapping("/summary")
+    public ResponseEntity<ApiResponse<AppointmentSummaryDTO>> summary(
+            @Parameter(description = "Ano de referência") @RequestParam int year) {
+        return ResponseEntity.ok(ApiResponse.successList(service.summary(year)));
+    }
+
+    @Operation(
+            summary = "Série mensal para o gráfico do relatório",
+            description =
+                    """
+                    Total de compromissos e quebra por status (Agendado, Concluído, Cancelado) \
+                    por mês, na janela pedida.
+
+                    Meses sem compromisso vêm no array, zerados — um mês ausente faria o gráfico \
+                    colar dois meses distantes lado a lado. `totalCount` é a soma dos três status, \
+                    cancelados inclusive.
+
+                    Não confundir com `GET /summary`, que conta só os **pendentes** para as abas \
+                    da agenda: ali concluir um compromisso baixa o número, aqui não.""")
+    @GetMapping("/timeline")
+    public ResponseEntity<ApiResponse<AppointmentTimelinePointDTO>> timeline(
+            @Parameter(description = "Início (yyyy-MM-dd)")
+                    @RequestParam
+                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                    LocalDate from,
+            @Parameter(description = "Fim (yyyy-MM-dd)")
+                    @RequestParam
+                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                    LocalDate to) {
+        return ResponseEntity.ok(ApiResponse.successList(service.timeline(from, to)));
+    }
+
+    @Operation(
+            summary = "Conflitos de horário",
+            description =
+                    """
+                    Compromissos **agendados** que ocupam a mesma faixa de horário — para a tela \
+                    avisar antes de gravar.
+
+                    **Avisa, não bloqueia:** perícia e audiência às vezes se sobrepõem de \
+                    propósito, então nem `POST` nem `PUT` recusam por conflito. Quem decide é quem \
+                    agenda.
+
+                    Regra de sobreposição: `existente.startAt < endAt` **e** \
+                    `existente.endAt > startAt`. Intervalos que só encostam (14h-15h e 15h-16h) \
+                    **não** conflitam.
+
+                    Cancelados e concluídos ficam de fora — não disputam horário com ninguém.
+
+                    Na edição, informe `excludeId` para o compromisso não conflitar consigo mesmo.
+
+                    Janela ausente ou invertida devolve lista vazia (é consulta, não gravação).
+                    """)
+    @GetMapping("/conflicts")
+    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> conflicts(
+            @Parameter(
+                            description = "Início da janela (ISO-8601)",
+                            example = "2026-08-20T14:30:00Z")
+                    @RequestParam
+                    Instant startAt,
+            @Parameter(
+                            description = "Término da janela (ISO-8601)",
+                            example = "2026-08-20T15:30:00Z")
+                    @RequestParam
+                    Instant endAt,
+            @Parameter(description = "Compromisso sendo editado, ignorado na checagem")
+                    @RequestParam(required = false)
+                    UUID excludeId) {
+        return ResponseEntity.ok(
+                ApiResponse.successList(service.findConflicts(startAt, endAt, excludeId)));
+    }
+
+    @Operation(
+            summary = "Verificar se a data é feriado",
+            description =
+                    """
+                    Para a tela chamar ao escolher a data do compromisso e mostrar `message`.
+
+                    **Avisa, não bloqueia:** nem `POST` nem `PUT` recusam data de feriado.
+
+                    **Cobre só o calendário nacional.** Feriados estaduais e municipais não são \
+                    verificados, então `holiday=false` não garante dia útil no local do compromisso.
+
+                    Calendário indisponível ou ano fora de 1900-2199 devolve **200** com \
+                    `verified=false`: não é erro, mas também não significa que a data está livre. \
+                    Nesse caso `message` já traz o texto para um toast (com o calendário fora do ar, \
+                    pede para tentar mais tarde).
+
+                    Data no formato `yyyy-MM-dd`, sem hora: quem diz o dia é a agenda do escritório, \
+                    e um instante em UTC poderia cair no dia seguinte. Formato inválido devolve 400.
+                    """)
+    @GetMapping("/holiday")
+    public ResponseEntity<ApiResponse<HolidayCheckDTO>> holiday(
+            @Parameter(description = "Data a verificar", example = "2026-12-25")
+                    @RequestParam
+                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                    LocalDate date) {
+        return ResponseEntity.ok(ApiResponse.successObject(holidayService.check(date)));
+    }
+
+    @Operation(summary = "Detalhe de um compromisso")
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> get(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.successObject(service.get(id)));
+    }
+
+    @Operation(
+            summary = "Editar compromisso",
+            description =
+                    """
+                    Substituição completa. Exige `justification`, registrada no histórico.
+
+                    Só compromisso **agendado** pode ser editado: cancelado ou concluído devolve \
+                    422 `OPERATION_NOT_ALLOWED` (regra de negócio, não corpo malformado). Para \
+                    remarcar algo já encerrado, crie um compromisso novo - assim a trilha guarda \
+                    os dois fatos separados.""")
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> update(
+            @PathVariable UUID id, @Valid @RequestBody AppointmentRequestDTO dto) {
+        return ResponseEntity.ok(ApiResponse.successObject(service.update(id, dto)));
+    }
+
+    @Operation(
+            summary = "Cancelar compromisso",
+            description =
+                    """
+                    Marca como Cancelado. Exige `justification`, registrada no histórico.
+
+                    **Estado terminal**, como concluir: cancelar de novo, ou cancelar algo já                     concluído, devolve 422 `OPERATION_NOT_ALLOWED`.""")
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> cancel(
+            @PathVariable UUID id, @Valid @RequestBody AppointmentCancelRequestDTO dto) {
+        return ResponseEntity.ok(
+                ApiResponse.successObject(service.cancel(id, dto.getJustification())));
+    }
+
+    @Operation(
+            summary = "Concluir compromisso",
+            description =
+                    """
+                    Marca como Concluído e registra `COMPLETED` na trilha (`GET /{id}/history`).
+
+                    **Estado terminal**: compromisso concluído não é editado, cancelado nem                     revertido. Se foi engano, exclua (`DELETE /{id}`, reversível e auditado) ou                     crie um novo.
+
+                    Recusa com 422 `OPERATION_NOT_ALLOWED` se já estiver concluído ou cancelado.
+
+                    Concluir **antes** do horário de início devolve 422                     `EARLY_COMPLETION_NOT_CONFIRMED` - a tela pergunta e reenvia com                     `earlyCompletionAcknowledged: true`, e a ciência fica na trilha. Corpo                     opcional: para concluir algo que já começou, não é preciso mandar nada.""")
+    @PatchMapping("/{id}/complete")
+    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> complete(
+            @PathVariable UUID id,
+            @RequestBody(required = false) AppointmentCompleteRequestDTO dto) {
+        boolean confirmado = dto != null && dto.isEarlyCompletionAcknowledged();
+        return ResponseEntity.ok(ApiResponse.successObject(service.complete(id, confirmado)));
+    }
+
+    @Operation(
+            summary = "Excluir compromisso",
+            description =
+                    """
+                    Exclusão **lógica**: o compromisso sai da agenda e do resumo por mês, mas \
+                    continua no banco e volta por `PATCH /{id}/restore`.
+
+                    Fica registrado na trilha (`GET /{id}/history`) como `DELETED`, com quem \
+                    excluiu e quando. Não pede justificativa.
+
+                    Excluir um compromisso já excluído devolve 404 - para a API ele não existe \
+                    mais.""")
+    @RequerAdvogado
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "Restaurar compromisso excluído",
+            description =
+                    """
+                    Desfaz a exclusão lógica e devolve o compromisso à agenda com o mesmo id, \
+                    horário e histórico. Registra `RESTORED` na trilha.
+
+                    Idempotente: restaurar um compromisso ativo devolve 200 com o compromisso, sem \
+                    alterar nada e sem gerar registro na trilha. Id inexistente devolve 404.""")
+    @RequerAdvogado
+    @PatchMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<AppointmentResponseDTO>> restore(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.successObject(service.restore(id)));
+    }
+
+    @Operation(
+            summary = "Histórico de alterações",
+            description = "Edições e cancelamentos com justificativa, mais recente primeiro.")
+    @GetMapping("/{id}/history")
+    public ResponseEntity<ApiResponse<AppointmentHistoryDTO>> history(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "1") int pageNumber,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        Page<AppointmentHistoryDTO> page = service.history(id, pageNumber, pageSize);
+        return ResponseEntity.ok(ApiResponse.successList(page.getContent(), Pagination.of(page)));
+    }
+}

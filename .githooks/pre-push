@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Pre-push gate: roda o build completo (compile + spotless:check + checkstyle +
+# package) antes de deixar enviar para o remoto. Complementa o pre-commit, que
+# só faz process-classes (compile + lint) por commit; aqui garantimos que o
+# artefato empacota antes de qualquer push.
+#
+# Testes: pulados por ora (-DskipTests) porque a suíte atual é @SpringBootTest e
+# exige um Postgres real (mesma razão do CI - ver docs/CI_CD.md). Assim que o
+# Testcontainers entrar (ver docs/QUALIDADE_SONAR_HOOKS.md), remova o -DskipTests
+# desta linha para travar o push também nos testes.
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-push: running full build (mvn verify -DskipTests)..."
+if ! mvn -q verify -DskipTests; then
+    echo ""
+    echo "pre-push: BLOCKED - build failed. Fix the errors above and try again."
+    exit 1
+fi
+
+echo "pre-push: build passed."

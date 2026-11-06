@@ -1,0 +1,78 @@
+# Compiled class files
+*.class
+
+# Log files
+*.log
+
+# Package files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE - IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# IDE - Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+
+# IDE - VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Application
+application-local.yaml
+application-local.properties
+
+# Environment
+.env
+.env.local
+
+#AWS Files
+*.pem
+
+# Configuração local de ferramenta de IA. Cada máquina tem a sua; versionar
+# faria aparecer como arquivo novo em todo `git status` de quem não usa.
+.claude/
+
+# Saídas de ferramenta de IA (cases, zips). Mesma razão do .claude/: é de
+# máquina, não do projeto, e sem isto aparece em todo `git status`.
+Claude outputs/
+
+# Arquivos enviados pelos clientes no perfil local (app.storage.local.base-path,
+# default ./storage). É dado de execução, e documento de cliente não vai para
+# repositório nenhum — em produção o perfil é s3. Ancorado na raiz ("/"):
+# sem a barra, o padrão também ignorava o pacote Java .../firm/storage/, e
+# arquivo novo ali ficava fora do commit sem aviso.
+/storage/
+
+# Dumps do scripts/backup-db.sh: o banco inteiro, com dado de cliente.
+/backups/

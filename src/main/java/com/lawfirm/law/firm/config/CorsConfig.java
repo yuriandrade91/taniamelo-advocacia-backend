@@ -1,0 +1,95 @@
+package com.lawfirm.law.firm.config;
+
+import java.util.Arrays;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+/**
+ * Exposes a {@link CorsConfigurationSource} consumed by {@code SecurityConfig#securityFilterChain}
+ * via {@code http.cors(...)}. Deliberately NOT a standalone {@code CorsFilter} bean: a plain filter
+ * bean registers after Spring Security's chain (default servlet filter order), so a preflight
+ * OPTIONS request to any protected endpoint gets rejected with 401 by the authorization filter
+ * before the CORS headers are ever added - the browser then reports it as a CORS/network failure.
+ * Wiring this source into http.cors(...) instead lets Spring Security run its CORS handling as the
+ * very first filter, ahead of authentication/authorization.
+ *
+ * <p>As origens permitidas vêm de {@code app.cors.allowed-origins} (lista separada por vírgula). O
+ * padrão é {@code *} para não travar o desenvolvimento local; na AWS/produção, defina a variável
+ * {@code APP_CORS_ALLOWED_ORIGINS} com o domínio real do frontend (ex.: {@code
+ * https://app.taniamelo.adv.br}). Quando o valor é {@code *} usa-se {@code allowedOriginPatterns}
+ * (obrigatório junto de {@code allowCredentials=true}); com origens explícitas usa-se {@code
+ * allowedOrigins}.
+ */
+@Configuration
+public class CorsConfig {
+
+    private final List<String> allowedOrigins;
+    private final boolean wildcardAllowed;
+
+    public CorsConfig(
+            @Value("${app.cors.allowed-origins:*}") String allowedOriginsCsv, Environment env) {
+        this.allowedOrigins =
+                Arrays.stream(allowedOriginsCsv.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList();
+        // "dev" é a máquina do desenvolvedor; "test" é o contexto do @SpringBootTest, que nunca
+        // recebe tráfego real. Fora dos dois, "*" com allowCredentials=true é só um
+        // esquecimento de configuração.
+        List<String> profilesAbertosAoWildcard = List.of("dev", "test");
+        this.wildcardAllowed =
+                Arrays.stream(env.getActiveProfiles())
+                        .anyMatch(profilesAbertosAoWildcard::contains);
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        // Permite credenciais (cookies, header Authorization).
+        config.setAllowCredentials(true);
+
+        boolean wildcard = allowedOrigins.isEmpty() || allowedOrigins.contains("*");
+        if (wildcard) {
+            // "*" + allowCredentials=true reflete QUALQUER origem e deixa o cookie de refresh
+            // (ver AuthController) acessível a ela — aceitável só em dev, nunca fora dele. Falha
+            // na subida em vez de expor isso silenciosamente se alguém esquecer de configurar
+            // APP_CORS_ALLOWED_ORIGINS fora do perfil "dev".
+            if (!wildcardAllowed) {
+                throw new IllegalStateException(
+                        "app.cors.allowed-origins não pode ser \"*\" fora dos perfis dev/test. "
+                                + "Defina APP_CORS_ALLOWED_ORIGINS com o(s) domínio(s) real(is) do"
+                                + " frontend.");
+            }
+            // allowedOriginPatterns aceita "*" mesmo com allowCredentials=true (allowedOrigins
+            // não).
+            config.setAllowedOriginPatterns(List.of("*"));
+        } else {
+            config.setAllowedOrigins(allowedOrigins);
+        }
+
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("*");
+
+        // Header de RESPOSTA que o navegador só entrega ao JavaScript se estiver
+        // listado aqui. `addAllowedHeader("*")` acima é sobre o que ENTRA, e não
+        // cobre isto - são duas listas diferentes, e confundir as duas é como o
+        // `Retry-After` do 429 chegava ao navegador e sumia antes do `fetch`.
+        //
+        // Sem ele a tela de login só consegue dizer "tente mais tarde", e quem lê
+        // isso tenta de novo imediatamente - exatamente o que o freio evita.
+        config.addExposedHeader(HttpHeaders.RETRY_AFTER);
+        // Mesmo motivo: sem ele o `fetch` não lê o nome do arquivo e o download sai sem nome.
+        config.addExposedHeader(HttpHeaders.CONTENT_DISPOSITION);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+}

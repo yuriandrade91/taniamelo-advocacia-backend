@@ -1,0 +1,135 @@
+{
+  "uid": "law-firm-endpoints",
+  "title": "Law Firm — Endpoints (RED)",
+  "tags": ["law-firm", "red", "http"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "uri",
+        "label": "Endpoint",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(http_server_requests_seconds_count{application=\"law-firm\"}, uri)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 2,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Requisições/s (total)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2 } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"law-firm\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Erros 5xx (%)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(rate(http_server_requests_seconds_count{application=\"law-firm\",status=~\"5..\"}[$__rate_interval])) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"law-firm\"}[$__rate_interval])), 0.0001)"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Latência p95 (global)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 3 } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"law-firm\"}[$__rate_interval])))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Rate por endpoint (req/s)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "{{method}} {{uri}}",
+          "expr": "sum by (method, uri) (rate(http_server_requests_seconds_count{application=\"law-firm\", uri=~\"$uri\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Erros por status",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "{{status}}",
+          "expr": "sum by (status) (rate(http_server_requests_seconds_count{application=\"law-firm\", status=~\"4..|5..\", uri=~\"$uri\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latência p95 por endpoint",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "{{uri}}",
+          "expr": "histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{application=\"law-firm\", uri=~\"$uri\"}[$__rate_interval])))"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Top endpoints (req/s, últimas 5min)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "expr": "topk(15, sum by (method, uri, status) (rate(http_server_requests_seconds_count{application=\"law-firm\"}[5m])))"
+        }
+      ]
+    }
+  ]
+}

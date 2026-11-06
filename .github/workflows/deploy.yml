@@ -1,0 +1,222 @@
+name: Deploy
+
+# Dispara DEPOIS do CI, não em paralelo com ele. Com `push` o deploy subia junto
+# com o build e um commit que quebrasse a suíte ia para a instância mesmo assim -
+# o pipeline avisava do erro depois de já tê-lo publicado.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [develop]
+    types: [completed]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    name: Deploy via SSH na instância EC2 (ARM64)
+    runs-on: ubuntu-latest
+    environment: development
+    # workflow_dispatch é a saída manual (rollback, redeploy); pelo gatilho
+    # automático, só passa CI verde.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      # Antes de abrir a porta ou tocar na instância. Sem APP_STORAGE_TYPE o
+      # deploy ficava verde sem dizer onde os arquivos dos clientes iam parar,
+      # e a asserção de storage lá embaixo era pulada inteira - foi assim que a
+      # instância ficou em disco local sem ninguém ver.
+      - name: Conferir o destino dos arquivos dos clientes
+        env:
+          APP_STORAGE_TYPE: ${{ secrets.APP_STORAGE_TYPE }}
+          APP_STORAGE_S3_BUCKET: ${{ secrets.APP_STORAGE_S3_BUCKET_DEV }}
+          APP_STORAGE_S3_REGION: ${{ secrets.APP_STORAGE_S3_REGION }}
+        run: |
+          case "$APP_STORAGE_TYPE" in
+            s3)
+              if [ -z "$APP_STORAGE_S3_BUCKET" ] || [ -z "$APP_STORAGE_S3_REGION" ]; then
+                echo "::error::APP_STORAGE_TYPE=s3 exige os secrets APP_STORAGE_S3_BUCKET_DEV e APP_STORAGE_S3_REGION no repositório."
+                exit 1
+              fi
+              ;;
+            local) ;;
+            *)
+              echo "::error::Defina o secret APP_STORAGE_TYPE (s3 ou local) no repositório. Valor atual: '$APP_STORAGE_TYPE'."
+              exit 1
+              ;;
+          esac
+          echo "Storage pedido: $APP_STORAGE_TYPE"
+
+      - name: Obter IP do runner
+        id: ip
+        run: echo "ip=$(curl -s https://checkip.amazonaws.com)" >> $GITHUB_OUTPUT
+
+      - name: Abrir porta 22 temporariamente no Security Group
+        run: |
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${{ secrets.EC2_SG_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ip }}/32
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+
+      - name: Atualizar e subir os containers (git pull + docker compose)
+        uses: appleboy/ssh-action@v1.2.0
+        # Vêm de `secrets`, que é onde estão cadastradas no repositório. O
+        # primeiro passo já garantiu que existem. O GitHub mascara o valor de um
+        # secret nos logs, então "s3" aparece como *** ao longo do deploy.
+        env:
+          APP_STORAGE_TYPE: ${{ secrets.APP_STORAGE_TYPE }}
+          APP_STORAGE_S3_BUCKET: ${{ secrets.APP_STORAGE_S3_BUCKET_DEV }}
+          APP_STORAGE_S3_REGION: ${{ secrets.APP_STORAGE_S3_REGION }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          # Leva as três para dentro do shell remoto. Credencial da AWS não
+          # vai junto de propósito: na EC2 quem responde por isso é a IAM Role
+          # da instância, não uma chave copiada para o .env.
+          envs: APP_STORAGE_TYPE,APP_STORAGE_S3_BUCKET,APP_STORAGE_S3_REGION
+          script: |
+            set -e
+            source ~/.bashrc 2>/dev/null || true
+            # O drone-ssh executa este script como shell NÃO-interativo - o
+            # ~/.bashrc de muita distro tem um guard ("case $- in *i*)...")
+            # que retorna cedo justamente nesse caso, então o PATH de login
+            # não é garantido aqui. Docker/Compose instalados via dnf caem em
+            # /usr/bin; isso evita "docker: command not found" mesmo quando o
+            # .bashrc não é aplicado.
+            export PATH="$PATH:/usr/bin:/usr/local/bin:/bin"
+            cd ~/taniamelo-advocacia-backend
+
+            # Atualiza o código
+            git fetch origin develop
+            git reset --hard origin/develop
+
+            # Sobe backend + Postgres via Docker Compose (perfil "full").
+            #
+            # O script vem DO REPOSITÓRIO (o git reset --hard acima acabou de
+            # atualizá-lo): o passo mais importante do deploy não é solto na
+            # instância, é revisado e reproduzível.
+            #
+            # Ele recusa subir com .env ausente, secret de exemplo, chave de
+            # criptografia de desenvolvimento ou datasource ainda apontando
+            # pra localhost, perfil diferente de postgres ou storage diferente de s3.
+            # Nada é semeado: o banco sobe vazio e o escritório entra por
+            # scripts/tenant.
+            # Antes de subir: garante no .env da instância para onde vão os
+            # arquivos dos clientes. Vem do pipeline porque o .env é criado à
+            # mão uma vez e depois ninguém lembra dele — foi assim que a
+            # instância ficou em disco local contra o que a documentação dizia.
+            bash scripts/configurar-storage.sh
+
+            bash scripts/restart-app-docker.sh
+
+            # ── Só agora o deploy pode se dizer concluído ──
+            #
+            # restart-app-docker.sh já espera a aplicação responder UP antes de
+            # popular o banco, mas a checagem abaixo é quem decide se o JOB
+            # falha - sem ela, um container que nunca ficou saudável (ou um
+            # Flyway que abortou) passava como deploy bem-sucedido. O job
+            # ficava verde com a instância fora do ar, que é o pior resultado
+            # possível: ninguém vai olhar um pipeline que passou.
+            #
+            # As migrations rodam no @PostConstruct do MultiTenantFlywayMigrator, a
+            # cada boot. Portanto "a aplicação respondeu UP" é, por construção,
+            # "as migrations desta versão aplicaram com sucesso".
+            ESPERADO=$(git rev-parse --short HEAD)
+            echo "Aguardando a aplicação responder (commit esperado: $ESPERADO)..."
+
+            SUBIU=nao
+            for _ in $(seq 1 30); do
+              # -f faz o curl falhar em 503, que é o que o Spring devolve quando
+              # o health está DOWN - não basta responder, tem de responder UP.
+              if curl -fsS -m 5 http://localhost:8080/actuator/health > /dev/null 2>&1; then
+                SUBIU=sim
+                break
+              fi
+              sleep 4
+            done
+
+            if [ "$SUBIU" != "sim" ]; then
+              echo "::error::A aplicação não respondeu UP em ~120s. Deploy considerado FALHO."
+              echo "--- Últimas linhas do container (erro do Flyway aparece aqui) ---"
+              docker compose logs --tail 80 app || true
+              exit 1
+            fi
+
+            # A instância respondeu - mas é a versão que acabou de ser publicada?
+            # Sem esta checagem, um restart que não pegou o jar novo passa como
+            # deploy bem-sucedido e a investigação começa pelo lugar errado.
+            RODANDO=$(curl -fsS -m 5 http://localhost:8080/actuator/info \
+              | sed -n 's/.*"commit":"\([^"]*\)".*/\1/p')
+
+            if [ "$RODANDO" != "$ESPERADO" ]; then
+              echo "::error::A instância está rodando '$RODANDO', mas este deploy publicou '$ESPERADO'."
+              exit 1
+            fi
+
+            # ── E está guardando arquivo onde deveria? ──
+            #
+            # A instância passou meses com APP_STORAGE_TYPE=local enquanto a
+            # documentação de deploy dizia s3. Nada denunciava: o upload
+            # funciona igual nos dois, porque o Content-Length do download vem
+            # dos metadados no banco, não do storage. O teste de arquivo passa
+            # verde com os documentos dos clientes num volume de uma máquina
+            # só, sem cópia no bucket.
+            #
+            # Por isso a checagem é do mesmo tipo da versão acima: o pipeline
+            # afirma o que subiu, em vez de confiar que subiu. Incondicional:
+            # o primeiro passo do job recusa deploy sem APP_STORAGE_TYPE.
+            STORAGE_ESPERADO="$APP_STORAGE_TYPE"
+            STORAGE_RODANDO=$(curl -fsS -m 5 http://localhost:8080/actuator/info \
+              | sed -n 's/.*"storage":{"type":"\([^"]*\)".*/\1/p')
+
+            if [ "$STORAGE_RODANDO" != "$STORAGE_ESPERADO" ]; then
+              echo "::error::Storage esperado '$STORAGE_ESPERADO', mas a instância subiu com '$STORAGE_RODANDO'."
+              echo "Provável causa: bucket inexistente, região errada, ou a IAM Role da instância sem permissão no bucket."
+              docker compose logs --tail 40 app | grep -i "storage\|s3" || true
+              exit 1
+            fi
+            echo "Storage confirmado: $STORAGE_RODANDO"
+
+            # ── Faxina de disco: só depois de tudo verificado ──
+            #
+            # Todo deploy reconstrói a imagem (`up -d --build` no
+            # restart-app-docker.sh) e a anterior fica órfã. O volume da
+            # instância tem 8 GiB com o Postgres no mesmo disco, então algumas
+            # dezenas de deploys bastam para enchê-lo: foi assim que o deploy
+            # de 08/10/2026 morreu no `git fetch`, com "No space left on
+            # device", antes de publicar qualquer coisa.
+            #
+            # Roda DEPOIS das checagens, de propósito: enquanto a versão nova
+            # não provou que sobe saudável, a imagem anterior é o rollback.
+            #
+            # `--volumes` não aparece aqui em nenhuma hipótese - db-data é o
+            # Postgres de produção e app-storage são os arquivos dos clientes.
+            # A diferença entre limpar e destruir é essa flag.
+            echo "Liberando espaço: imagens órfãs e cache de build antigo..."
+            docker image prune -f
+            docker builder prune -f --filter "until=168h"
+            echo "Disco após a faxina:"
+            df -h / | tail -1
+
+            echo "✅ Deploy concluído: $ESPERADO no ar, health UP, migrations aplicadas."
+
+      # Sem IP a porta nem chegou a ser aberta: tentar fechar só troca o erro que
+      # reprovou o job por um "CIDR block /32 is malformed", que aponta o lugar errado.
+      - name: Fechar porta 22 no Security Group
+        if: always() && steps.ip.outputs.ip != ''
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id ${{ secrets.EC2_SG_ID }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ip }}/32
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}

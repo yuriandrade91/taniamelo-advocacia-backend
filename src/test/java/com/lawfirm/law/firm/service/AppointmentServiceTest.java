@@ -1,0 +1,1139 @@
+package com.lawfirm.law.firm.service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.lawfirm.law.firm.dto.AppointmentHistoryDTO;
+import com.lawfirm.law.firm.dto.AppointmentRequestDTO;
+import com.lawfirm.law.firm.dto.AppointmentResponseDTO;
+import com.lawfirm.law.firm.dto.AppointmentSearchParams;
+import com.lawfirm.law.firm.dto.AppointmentSummaryDTO;
+import com.lawfirm.law.firm.dto.AppointmentTimelinePointDTO;
+import com.lawfirm.law.firm.exception.BusinessErrorCode;
+import com.lawfirm.law.firm.exception.BusinessException;
+import com.lawfirm.law.firm.exception.NotFoundException;
+import com.lawfirm.law.firm.exception.ValidationErrorCode;
+import com.lawfirm.law.firm.exception.ValidationException;
+import com.lawfirm.law.firm.model.Appointment;
+import com.lawfirm.law.firm.model.AppointmentAction;
+import com.lawfirm.law.firm.model.AppointmentHistory;
+import com.lawfirm.law.firm.model.AppointmentModality;
+import com.lawfirm.law.firm.model.AppointmentStatus;
+import com.lawfirm.law.firm.model.AppointmentType;
+import com.lawfirm.law.firm.model.Client;
+import com.lawfirm.law.firm.repository.AppointmentHistoryRepository;
+import com.lawfirm.law.firm.repository.AppointmentRepository;
+import com.lawfirm.law.firm.repository.ClientRepository;
+import com.lawfirm.law.firm.security.UserPrincipal;
+import com.lawfirm.law.firm.support.TestFixtures;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+@DisplayName("AppointmentService: agenda do escritório")
+class AppointmentServiceTest {
+
+    private static final UUID APPOINTMENT_ID =
+            UUID.fromString("44444444-4444-4444-4444-444444444444");
+    private static final Instant FUTURE = Instant.parse("2099-08-20T14:30:00Z");
+    private static final Instant PAST = Instant.parse("2020-01-01T10:00:00Z");
+
+    @Mock private AppointmentRepository repository;
+    @Mock private AppointmentHistoryRepository historyRepository;
+    @Mock private ClientRepository clientRepository;
+
+    private AppointmentService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new AppointmentService(repository, historyRepository, clientRepository);
+        when(repository.save(any(Appointment.class))).thenAnswer(i -> i.getArgument(0));
+        // saveAndFlush é usado onde a intenção de auditoria precisa que o @PostUpdate dispare
+        // dentro do bloco (exclusão e restauração) - ver AuditIntent.
+        lenient()
+                .when(repository.saveAndFlush(any(Appointment.class)))
+                .thenAnswer(i -> i.getArgument(0));
+        when(clientRepository.findById(TestFixtures.CLIENT_ID))
+                .thenReturn(Optional.of(TestFixtures.client()));
+        when(clientRepository.findAllById(any())).thenReturn(List.of());
+    }
+
+    @AfterEach
+    void clearContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void authenticate() {
+        UserPrincipal principal = new UserPrincipal(TestFixtures.user());
+        SecurityContextHolder.getContext()
+                .setAuthentication(
+                        new UsernamePasswordAuthenticationToken(
+                                principal, null, principal.getAuthorities()));
+    }
+
+    private AppointmentRequestDTO requestDto() {
+        AppointmentRequestDTO dto = new AppointmentRequestDTO();
+        dto.setTitle("Perícia INSS");
+        dto.setType(AppointmentType.PERICIA);
+        dto.setStartAt(FUTURE);
+        dto.setEndAt(FUTURE.plusSeconds(3600));
+        dto.setModality(AppointmentModality.ONLINE);
+        dto.setLocation("Agência Centro");
+        dto.setMeetingUrl("https://meet.example/abc");
+        dto.setDescription("levar documentos");
+        return dto;
+    }
+
+    private Appointment existing() {
+        Appointment appointment = TestFixtures.appointment();
+        appointment.setStatus(AppointmentStatus.AGENDADO);
+        return appointment;
+    }
+
+    private Appointment captureSaved() {
+        ArgumentCaptor<Appointment> saved = ArgumentCaptor.forClass(Appointment.class);
+        verify(repository).save(saved.capture());
+        return saved.getValue();
+    }
+
+    private AppointmentHistory captureHistory() {
+        ArgumentCaptor<AppointmentHistory> saved =
+                ArgumentCaptor.forClass(AppointmentHistory.class);
+        verify(historyRepository).save(saved.capture());
+        return saved.getValue();
+    }
+
+    @Nested
+    @DisplayName("create")
+    class Create {
+
+        @Test
+        @DisplayName("nasce Agendado, com todos os campos aplicados e autor registrado")
+        void createsAsScheduled() {
+            authenticate();
+
+            AppointmentResponseDTO response = service.create(requestDto());
+
+            assertEquals("Agendado", response.getStatus());
+            assertEquals("Perícia INSS", response.getTitle());
+            assertEquals("Perícia", response.getType());
+            assertEquals("Online", response.getModality());
+            assertEquals("Agência Centro", response.getLocation());
+            assertEquals("https://meet.example/abc", response.getMeetingUrl());
+            assertEquals(TestFixtures.USER_ID, captureSaved().getCreatedBy());
+            verify(historyRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("sem modalidade informada, assume Presencial")
+        void defaultsModalityToPresencial() {
+            AppointmentRequestDTO dto = requestDto();
+            dto.setModality(null);
+
+            assertEquals(AppointmentModality.PRESENCIAL, captureAfterCreate(dto).getModality());
+        }
+
+        private Appointment captureAfterCreate(AppointmentRequestDTO dto) {
+            service.create(dto);
+            return captureSaved();
+        }
+
+        @Test
+        @DisplayName("com clientId válido, o nome livre é descartado e o do cliente é gravado")
+        void linkedClientSnapshotsTheClientName() {
+            AppointmentRequestDTO dto = requestDto();
+            dto.setClientId(TestFixtures.CLIENT_ID);
+            dto.setClientName("Nome digitado à mão");
+
+            Client client = TestFixtures.client();
+            when(clientRepository.findAllById(any())).thenReturn(List.of(client));
+
+            AppointmentResponseDTO response = service.create(dto);
+
+            Appointment saved = captureSaved();
+            assertEquals(TestFixtures.CLIENT_ID, saved.getClientId());
+            // O nome digitado é descartado, mas a coluna NÃO fica nula: guarda o nome do
+            // cliente no momento do agendamento. É esse retrato que mantém o compromisso
+            // identificável se o cliente for excluído depois.
+            assertEquals("Maria da Silva", saved.getClientName());
+            assertEquals("Maria da Silva", response.getClientName(), "nome vem do cliente");
+        }
+
+        @Test
+        @DisplayName("nome do cliente renomeado tem prioridade sobre o retrato gravado")
+        void currentClientNameWinsOverSnapshot() {
+            AppointmentRequestDTO dto = requestDto();
+            dto.setClientId(TestFixtures.CLIENT_ID);
+
+            Client renamed = TestFixtures.client();
+            renamed.setFullName("Maria da Silva Souza");
+            when(clientRepository.findAllById(any())).thenReturn(List.of(renamed));
+
+            AppointmentResponseDTO response = service.create(dto);
+
+            assertEquals("Maria da Silva Souza", response.getClientName());
+        }
+
+        @Test
+        @DisplayName("sem clientId, aceita o nome livre (pessoa ainda não cadastrada)")
+        void freeTextNameIsKeptWhenThereIsNoClient() {
+            AppointmentRequestDTO dto = requestDto();
+            dto.setClientName("  Yuri Andrade  ");
+
+            AppointmentResponseDTO response = service.create(dto);
+
+            assertNull(captureSaved().getClientId());
+            assertEquals("Yuri Andrade", captureSaved().getClientName(), "com trim");
+            assertEquals("Yuri Andrade", response.getClientName());
+        }
+
+        @Test
+        @DisplayName("nome livre em branco vira null")
+        void blankFreeTextNameBecomesNull() {
+            AppointmentRequestDTO dto = requestDto();
+            dto.setClientName("   ");
+
+            service.create(dto);
+            assertNull(captureSaved().getClientName());
+        }
+
+        @Test
+        @DisplayName("clientId inexistente estoura 404 - nunca grava FK inválida")
+        void unknownClientIdThrows() {
+            UUID unknown = UUID.randomUUID();
+            when(clientRepository.findById(unknown)).thenReturn(Optional.empty());
+            AppointmentRequestDTO dto = requestDto();
+            dto.setClientId(unknown);
+
+            assertThrows(NotFoundException.class, () -> service.create(dto));
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("data no passado sem ciência confirmada vira 422")
+        void pastDateWithoutAcknowledgementIsRejected() {
+            AppointmentRequestDTO dto = requestDto();
+            dto.setStartAt(PAST);
+            dto.setEndAt(PAST.plusSeconds(3600));
+
+            BusinessException ex = assertThrows(BusinessException.class, () -> service.create(dto));
+            assertEquals(BusinessErrorCode.PAST_DATE_NOT_CONFIRMED, ex.getErrorCode());
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("com ciência confirmada, registra quem autorizou e grava no histórico")
+        void pastDateWithAcknowledgementIsRecorded() {
+            AppointmentRequestDTO dto = requestDto();
+            dto.setStartAt(PAST);
+            dto.setEndAt(PAST.plusSeconds(3600));
+            dto.setPastDateAcknowledged(true);
+            authenticate();
+
+            service.create(dto);
+
+            Appointment saved = captureSaved();
+            assertEquals(TestFixtures.USER_ID, saved.getPastDateAuthorizedBy());
+            assertNotNull(saved.getPastDateAuthorizedAt());
+
+            AppointmentHistory history = captureHistory();
+            assertEquals(AppointmentAction.ACKNOWLEDGED, history.getAction());
+            assertTrue(history.getJustification().contains("Ciência confirmada"));
+            assertEquals(TestFixtures.USER_ID, history.getChangedBy());
+        }
+
+        @Test
+        @DisplayName("compromisso futuro não registra autorização retroativa")
+        void futureAppointmentHasNoRetroactiveAuthorization() {
+            service.create(requestDto());
+
+            Appointment saved = captureSaved();
+            assertNull(saved.getPastDateAuthorizedBy());
+            assertNull(saved.getPastDateAuthorizedAt());
+        }
+    }
+
+    @Nested
+    @DisplayName("list")
+    class ListAppointments {
+
+        @SuppressWarnings("unchecked")
+        @BeforeEach
+        void stubFindAll() {
+            when(repository.findAll(any(Specification.class), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(existing())));
+        }
+
+        private AppointmentSearchParams params() {
+            return new AppointmentSearchParams();
+        }
+
+        @SuppressWarnings("unchecked")
+        private Pageable capturePageable() {
+            ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+            verify(repository).findAll(any(Specification.class), pageable.capture());
+            return pageable.getValue();
+        }
+
+        @Test
+        @DisplayName("ordena por início crescente e converte a página 1-based")
+        void sortsByStartAscending() {
+            assertEquals(1, service.list(params()).getContent().size());
+
+            Pageable pageable = capturePageable();
+            assertEquals(0, pageable.getPageNumber());
+            assertEquals(10, pageable.getPageSize());
+            assertEquals(
+                    org.springframework.data.domain.Sort.by(
+                            org.springframework.data.domain.Sort.Order.asc("startAt"),
+                            org.springframework.data.domain.Sort.Order.asc("id")),
+                    pageable.getSort());
+        }
+
+        @Test
+        @DisplayName("tamanho de página inválido cai no default de 10")
+        void invalidPageSizeFallsBackToTen() {
+            AppointmentSearchParams params = params();
+            params.setPageSize(0);
+            service.list(params);
+            assertEquals(10, capturePageable().getPageSize());
+        }
+
+        @Test
+        @DisplayName("filtros de ano/mês, tipo, situação, cliente e busca são combinados")
+        void combinesEveryFilter() {
+            AppointmentSearchParams params = params();
+            params.setYear(List.of(2026, 2027));
+            params.setMonth(List.of(1, 12));
+            params.setType(List.of("Entrevista", "PERICIA"));
+            params.setStatus(List.of("Agendado"));
+            params.setClientId(TestFixtures.CLIENT_ID);
+            params.setSearchTerm("perícia");
+
+            assertNotNull(service.list(params));
+        }
+
+        @Test
+        @DisplayName("sem ano/mês, o período usa from/to")
+        void fallsBackToFromToWhenNoYearOrMonth() {
+            AppointmentSearchParams params = params();
+            params.setFrom("2026-01-01");
+            params.setTo("2026-12-31");
+
+            assertNotNull(service.list(params));
+        }
+
+        @Test
+        @DisplayName("from inválido vira 400")
+        void invalidFromThrows() {
+            AppointmentSearchParams params = params();
+            params.setFrom("ontem");
+
+            ValidationException ex =
+                    assertThrows(ValidationException.class, () -> service.list(params));
+            assertEquals("from", ex.getField());
+        }
+
+        @Test
+        @DisplayName("mês fora de 1-12 vira 400")
+        void monthOutOfRangeThrows() {
+            for (Integer month : new Integer[] {0, 13, -1, null}) {
+                AppointmentSearchParams params = params();
+                params.setMonth(java.util.Arrays.asList(month));
+
+                ValidationException ex =
+                        assertThrows(ValidationException.class, () -> service.list(params));
+                assertEquals("month", ex.getField());
+                assertEquals(ValidationErrorCode.INVALID_DATE, ex.getValidationErrorCode());
+            }
+        }
+
+        @Test
+        @DisplayName("tipo inválido no filtro vira 400 explicando os valores aceitos")
+        void invalidTypeFilterThrows() {
+            AppointmentSearchParams params = params();
+            params.setType(List.of("Churrasco"));
+
+            ValidationException ex =
+                    assertThrows(ValidationException.class, () -> service.list(params));
+            assertEquals("type", ex.getField());
+            assertEquals(ValidationErrorCode.INVALID_ENUM_VALUE, ex.getValidationErrorCode());
+            assertTrue(ex.getMessage().contains("Entrevista"));
+        }
+
+        @Test
+        @DisplayName("situação inválida no filtro vira 400")
+        void invalidStatusFilterThrows() {
+            AppointmentSearchParams params = params();
+            params.setStatus(List.of("Talvez"));
+
+            assertEquals(
+                    "status",
+                    assertThrows(ValidationException.class, () -> service.list(params)).getField());
+        }
+
+        @Test
+        @DisplayName("valores em branco na lista de filtro são ignorados")
+        void blankFilterValuesAreSkipped() {
+            AppointmentSearchParams params = params();
+            params.setType(java.util.Arrays.asList("Entrevista", null, "   "));
+
+            assertNotNull(service.list(params));
+        }
+
+        @Test
+        @DisplayName("os nomes dos clientes vinculados vêm em uma única consulta (sem N+1)")
+        void resolvesClientNamesInASingleQuery() {
+            Appointment first = existing();
+            first.setClientId(TestFixtures.CLIENT_ID);
+            Appointment second = existing();
+            second.setClientId(TestFixtures.CLIENT_ID);
+
+            when(repository.findAll(any(Specification.class), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(first, second)));
+            when(clientRepository.findAllById(any())).thenReturn(List.of(TestFixtures.client()));
+
+            List<AppointmentResponseDTO> content = service.list(params()).getContent();
+
+            assertEquals("Maria da Silva", content.get(0).getClientName());
+            assertEquals("Maria da Silva", content.get(1).getClientName());
+            verify(clientRepository, times(1)).findAllById(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("timeline do relatório")
+    class Timeline {
+
+        private static final LocalDate JAN = LocalDate.of(2026, 1, 1);
+        private static final LocalDate MAR = LocalDate.of(2026, 3, 31);
+
+        @Test
+        @DisplayName("conta os três status por mês e o total fecha com as partes")
+        void countsEveryStatusPerMonth() {
+            Appointment agendado = existing();
+            agendado.setStartAt(Instant.parse("2026-01-15T13:00:00Z"));
+            Appointment concluido = existing();
+            concluido.setStatus(AppointmentStatus.CONCLUIDO);
+            concluido.setStartAt(Instant.parse("2026-01-20T13:00:00Z"));
+            Appointment cancelado = existing();
+            cancelado.setStatus(AppointmentStatus.CANCELADO);
+            cancelado.setStartAt(Instant.parse("2026-01-22T13:00:00Z"));
+            Appointment deMarco = existing();
+            deMarco.setStartAt(Instant.parse("2026-03-05T13:00:00Z"));
+
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of(agendado, concluido, cancelado, deMarco));
+
+            List<AppointmentTimelinePointDTO> serie = service.timeline(JAN, MAR);
+
+            assertEquals(3, serie.size());
+            assertEquals(AppointmentTimelinePointDTO.of("2026-01", 1, 1, 1), serie.get(0));
+            assertEquals(AppointmentTimelinePointDTO.of("2026-03", 1, 0, 0), serie.get(2));
+            // O cancelado entra no total: foi a escolha do contrato, e é o que faz o total fechar
+            // com as barras que o gráfico desenha.
+            assertEquals(3L, serie.get(0).totalCount());
+        }
+
+        @Test
+        @DisplayName("mês sem compromisso vem no array, zerado e na posição certa")
+        void fillsEmptyMonths() {
+            Appointment soEmMarco = existing();
+            soEmMarco.setStartAt(Instant.parse("2026-03-05T13:00:00Z"));
+
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of(soEmMarco));
+
+            List<AppointmentTimelinePointDTO> serie = service.timeline(JAN, MAR);
+
+            assertEquals(
+                    List.of("2026-01", "2026-02", "2026-03"),
+                    serie.stream().map(AppointmentTimelinePointDTO::month).toList());
+            assertEquals(0L, serie.get(0).totalCount());
+            assertEquals(0L, serie.get(1).totalCount());
+            assertEquals(1L, serie.get(2).totalCount());
+        }
+
+        @Test
+        @DisplayName("o mês sai no fuso do escritório, não em UTC")
+        void monthFollowsOfficeZone() {
+            // 31/01 às 22h em São Paulo é 01/02 às 01h em UTC. Agrupando pelo instante cru - ou
+            // por um EXTRACT(MONTH) com a sessão do banco em UTC - este compromisso apareceria em
+            // fevereiro no relatório e em janeiro na agenda.
+            Appointment noiteDoDia31 = existing();
+            noiteDoDia31.setStartAt(Instant.parse("2026-02-01T01:00:00Z"));
+
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of(noiteDoDia31));
+
+            List<AppointmentTimelinePointDTO> serie = service.timeline(JAN, MAR);
+
+            assertEquals(1L, serie.get(0).totalCount(), "deve contar em 2026-01");
+            assertEquals(0L, serie.get(1).totalCount(), "não deve contar em 2026-02");
+        }
+
+        @Test
+        @DisplayName("a janela consultada começa e termina no fuso do escritório")
+        void queriesTheWindowInOfficeZone() {
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of());
+
+            service.timeline(JAN, MAR);
+
+            ArgumentCaptor<Instant> from = ArgumentCaptor.forClass(Instant.class);
+            ArgumentCaptor<Instant> to = ArgumentCaptor.forClass(Instant.class);
+            verify(repository).findByDeletedAtIsNullAndStartAtBetween(from.capture(), to.capture());
+            assertEquals(Instant.parse("2026-01-01T03:00:00Z"), from.getValue());
+            assertEquals(Instant.parse("2026-04-01T02:59:59.999999999Z"), to.getValue());
+        }
+
+        @Test
+        @DisplayName("janela invertida é 400, não série vazia")
+        void invertedWindowIsRejected() {
+            ValidationException ex =
+                    assertThrows(ValidationException.class, () -> service.timeline(MAR, JAN));
+            assertEquals(ValidationErrorCode.INVALID_DATE_RANGE, ex.getValidationErrorCode());
+            verify(repository, never()).findByDeletedAtIsNullAndStartAtBetween(any(), any());
+        }
+
+        @Test
+        @DisplayName("janela de um único mês devolve um ponto")
+        void singleMonthWindow() {
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of());
+
+            List<AppointmentTimelinePointDTO> serie =
+                    service.timeline(LocalDate.of(2026, 5, 10), LocalDate.of(2026, 5, 20));
+
+            assertEquals(1, serie.size());
+            assertEquals("2026-05", serie.get(0).month());
+        }
+    }
+
+    @Nested
+    @DisplayName("summary por mês")
+    class Summary {
+
+        @Test
+        @DisplayName("conta só os pendentes (Agendado), agrupados por mês")
+        void countsOnlyScheduledGroupedByMonth() {
+            Appointment jan = existing();
+            jan.setStartAt(Instant.parse("2026-01-15T10:00:00Z"));
+            Appointment jan2 = existing();
+            jan2.setStartAt(Instant.parse("2026-01-20T10:00:00Z"));
+            Appointment mar = existing();
+            mar.setStartAt(Instant.parse("2026-03-05T10:00:00Z"));
+
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of(jan, jan2, mar));
+
+            List<AppointmentSummaryDTO> summary = service.summary(2026);
+
+            assertEquals(2, summary.size());
+            assertEquals(new AppointmentSummaryDTO(2026, 1, 2L), summary.get(0));
+            assertEquals(new AppointmentSummaryDTO(2026, 3, 1L), summary.get(1));
+        }
+
+        @Test
+        @DisplayName("concluídos e cancelados não entram na contagem")
+        void ignoresCompletedAndCancelled() {
+            Appointment done = existing();
+            done.setStatus(AppointmentStatus.CONCLUIDO);
+            done.setStartAt(Instant.parse("2026-02-01T10:00:00Z"));
+            Appointment cancelled = existing();
+            cancelled.setStatus(AppointmentStatus.CANCELADO);
+            cancelled.setStartAt(Instant.parse("2026-02-02T10:00:00Z"));
+
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of(done, cancelled));
+
+            assertTrue(service.summary(2026).isEmpty());
+        }
+
+        @Test
+        @DisplayName("a janela consultada cobre o ano inteiro no fuso do escritório")
+        void queriesTheWholeYear() {
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of());
+
+            service.summary(2026);
+
+            ArgumentCaptor<Instant> from = ArgumentCaptor.forClass(Instant.class);
+            ArgumentCaptor<Instant> to = ArgumentCaptor.forClass(Instant.class);
+            verify(repository).findByDeletedAtIsNullAndStartAtBetween(from.capture(), to.capture());
+            // Em UTC a janela começava às 21h de 31/12/2025: um compromisso da noite da
+            // virada entrava no resumo do ano errado.
+            assertEquals(Instant.parse("2026-01-01T03:00:00Z"), from.getValue());
+            assertEquals(Instant.parse("2027-01-01T02:59:59.999999999Z"), to.getValue());
+        }
+
+        @Test
+        @DisplayName("ano sem compromissos devolve lista vazia")
+        void emptyYearReturnsEmptyList() {
+            when(repository.findByDeletedAtIsNullAndStartAtBetween(any(), any()))
+                    .thenReturn(List.of());
+            assertTrue(service.summary(2030).isEmpty());
+        }
+    }
+
+    @Nested
+    @DisplayName("update")
+    class Update {
+
+        @Test
+        @DisplayName("exige justificativa e a registra no histórico")
+        void requiresJustificationAndRecordsIt() {
+            Appointment appointment = existing();
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(appointment));
+            authenticate();
+
+            AppointmentRequestDTO dto = requestDto();
+            dto.setJustification("  cliente pediu para adiar  ");
+
+            service.update(APPOINTMENT_ID, dto);
+
+            AppointmentHistory history = captureHistory();
+            assertEquals(AppointmentAction.EDITED, history.getAction());
+            assertEquals("cliente pediu para adiar", history.getJustification(), "com trim");
+            assertEquals(TestFixtures.USER_ID, appointment.getUpdatedBy());
+        }
+
+        @Test
+        @DisplayName("sem justificativa vira 400")
+        void missingJustificationThrows() {
+            Appointment appointment = existing();
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(appointment));
+
+            for (String justification : new String[] {null, "", "   "}) {
+                AppointmentRequestDTO dto = requestDto();
+                dto.setJustification(justification);
+
+                ValidationException ex =
+                        assertThrows(
+                                ValidationException.class,
+                                () -> service.update(APPOINTMENT_ID, dto));
+                assertEquals("justification", ex.getField());
+                assertEquals(ValidationErrorCode.REQUIRED_FIELD, ex.getValidationErrorCode());
+            }
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("mover para uma data no passado sem ciência vira 422")
+        void movingToThePastWithoutAcknowledgementIsRejected() {
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(existing()));
+
+            AppointmentRequestDTO dto = requestDto();
+            dto.setJustification("remarcado");
+            dto.setStartAt(PAST);
+            dto.setEndAt(PAST.plusSeconds(3600));
+
+            assertEquals(
+                    BusinessErrorCode.PAST_DATE_NOT_CONFIRMED,
+                    assertThrows(BusinessException.class, () -> service.update(APPOINTMENT_ID, dto))
+                            .getErrorCode());
+        }
+
+        @Test
+        @DisplayName("mover para o passado com ciência gera dois registros no histórico")
+        void movingToThePastWithAcknowledgementRecordsBoth() {
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(existing()));
+
+            AppointmentRequestDTO dto = requestDto();
+            dto.setJustification("registro retroativo");
+            dto.setStartAt(PAST);
+            dto.setEndAt(PAST.plusSeconds(3600));
+            dto.setPastDateAcknowledged(true);
+
+            service.update(APPOINTMENT_ID, dto);
+
+            ArgumentCaptor<AppointmentHistory> history =
+                    ArgumentCaptor.forClass(AppointmentHistory.class);
+            verify(historyRepository, times(2)).save(history.capture());
+            assertEquals(AppointmentAction.EDITED, history.getAllValues().get(0).getAction());
+            assertEquals(AppointmentAction.ACKNOWLEDGED, history.getAllValues().get(1).getAction());
+        }
+
+        @Test
+        @DisplayName("compromisso inexistente ou excluído estoura 404")
+        void missingAppointmentThrows() {
+            when(repository.findByIdAndDeletedAtIsNull(any())).thenReturn(Optional.empty());
+            AppointmentRequestDTO dto = requestDto();
+            dto.setJustification("x");
+            UUID unknown = UUID.randomUUID();
+
+            NotFoundException ex =
+                    assertThrows(NotFoundException.class, () -> service.update(unknown, dto));
+            assertTrue(ex.getMessage().startsWith("Compromisso"));
+        }
+    }
+
+    @Nested
+    @DisplayName("update — guarda de estado")
+    class UpdateStateGuard {
+
+        @Test
+        @DisplayName("compromisso cancelado não pode ser editado")
+        void cancelledCannotBeEdited() {
+            Appointment cancelled = existing();
+            cancelled.setStatus(AppointmentStatus.CANCELADO);
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(cancelled));
+
+            AppointmentRequestDTO dto = requestDto();
+            dto.setJustification("mudou o horário");
+
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class, () -> service.update(APPOINTMENT_ID, dto));
+            assertTrue(ex.getMessage().contains("cancelado"));
+            verify(repository, never()).save(any(Appointment.class));
+        }
+
+        @Test
+        @DisplayName("compromisso concluído não pode ser editado")
+        void completedCannotBeEdited() {
+            Appointment done = existing();
+            done.setStatus(AppointmentStatus.CONCLUIDO);
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(done));
+
+            AppointmentRequestDTO dto = requestDto();
+            dto.setJustification("mudou o horário");
+
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class, () -> service.update(APPOINTMENT_ID, dto));
+            assertTrue(ex.getMessage().contains("concluído"));
+            verify(repository, never()).save(any(Appointment.class));
+        }
+
+        @Test
+        @DisplayName("a guarda vem antes da justificativa: o motivo do 400 é o estado, não o corpo")
+        void stateGuardRunsBeforeJustificationCheck() {
+            Appointment cancelled = existing();
+            cancelled.setStatus(AppointmentStatus.CANCELADO);
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(cancelled));
+
+            // Sem justificativa E cancelado: a mensagem tem de apontar o estado, senão a
+            // pessoa preenche a justificativa e leva o mesmo erro de novo.
+            var dto = requestDto();
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class, () -> service.update(APPOINTMENT_ID, dto));
+            assertTrue(ex.getMessage().contains("não pode ser editado"));
+        }
+    }
+
+    @Nested
+    @DisplayName("cancel / complete / delete")
+    class StateTransitions {
+
+        private Appointment appointment;
+
+        @BeforeEach
+        void stub() {
+            appointment = existing();
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(appointment));
+        }
+
+        @Test
+        @DisplayName("cancelar exige justificativa, grava o motivo e registra o histórico")
+        void cancelRecordsReasonAndHistory() {
+            authenticate();
+
+            AppointmentResponseDTO response =
+                    service.cancel(APPOINTMENT_ID, "  cliente desistiu  ");
+
+            assertEquals("Cancelado", response.getStatus());
+            assertEquals("cliente desistiu", appointment.getCancellationReason());
+            assertEquals(TestFixtures.USER_ID, appointment.getUpdatedBy());
+
+            AppointmentHistory history = captureHistory();
+            assertEquals(AppointmentAction.CANCELLED, history.getAction());
+            assertEquals("cliente desistiu", history.getJustification());
+        }
+
+        @Test
+        @DisplayName("cancelar sem justificativa vira 400")
+        void cancelWithoutJustificationThrows() {
+            assertEquals(
+                    "justification",
+                    assertThrows(
+                                    ValidationException.class,
+                                    () -> service.cancel(APPOINTMENT_ID, "  "))
+                            .getField());
+            verify(repository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("cancelar duas vezes vira 422")
+        void cancellingTwiceIsRejected() {
+            appointment.setStatus(AppointmentStatus.CANCELADO);
+
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class,
+                            () -> service.cancel(APPOINTMENT_ID, "de novo"));
+            assertEquals(BusinessErrorCode.OPERATION_NOT_ALLOWED, ex.getErrorCode());
+            assertTrue(ex.getMessage().contains("já está cancelado"));
+        }
+
+        @Test
+        @DisplayName("concluir marca Concluído, registra na trilha e não exige justificativa")
+        void completeMarksAsDone() {
+            appointment.setStartAt(Instant.parse("2020-01-10T14:00:00Z"));
+            authenticate();
+
+            assertEquals("Concluído", service.complete(APPOINTMENT_ID, false).getStatus());
+            assertEquals(AppointmentStatus.CONCLUIDO, appointment.getStatus());
+            assertEquals(TestFixtures.USER_ID, appointment.getUpdatedBy());
+
+            // Concluir é estado terminal: a trilha tem de saber quem deu isso por feito.
+            AppointmentHistory h = captureHistory();
+            assertEquals(AppointmentAction.COMPLETED, h.getAction());
+            assertNull(h.getJustification(), "conclusão não pede justificativa");
+        }
+
+        @Test
+        @DisplayName("concluir antes da hora marcada é recusado sem confirmação")
+        void completingBeforeStartNeedsAcknowledgement() {
+            // A fixture começa em 2099: pela agenda, ainda vai acontecer. Dar por realizado o
+            // que ainda não começou é quase sempre linha errada da lista.
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class, () -> service.complete(APPOINTMENT_ID, false));
+            assertEquals(BusinessErrorCode.EARLY_COMPLETION_NOT_CONFIRMED, ex.getErrorCode());
+            assertEquals(AppointmentStatus.AGENDADO, appointment.getStatus());
+            verify(repository, never()).save(any(Appointment.class));
+        }
+
+        @Test
+        @DisplayName("concluir antes da hora COM confirmação passa e a ciência fica na trilha")
+        void completingBeforeStartWithAcknowledgement() {
+            authenticate();
+
+            assertEquals("Concluído", service.complete(APPOINTMENT_ID, true).getStatus());
+
+            ArgumentCaptor<AppointmentHistory> saved =
+                    ArgumentCaptor.forClass(AppointmentHistory.class);
+            verify(historyRepository, times(2)).save(saved.capture());
+            assertEquals(
+                    List.of(AppointmentAction.COMPLETED, AppointmentAction.ACKNOWLEDGED),
+                    saved.getAllValues().stream().map(AppointmentHistory::getAction).toList());
+            assertTrue(saved.getAllValues().get(1).getJustification().contains("antes do horário"));
+        }
+
+        @Test
+        @DisplayName("concluir duas vezes é recusado, como cancelar já era")
+        void completingTwiceIsRejected() {
+            // Carimbar um segundo autor por cima do primeiro apagaria quem de fato deu
+            // isso por feito.
+            appointment.setStatus(AppointmentStatus.CONCLUIDO);
+
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class, () -> service.complete(APPOINTMENT_ID, true));
+            assertEquals(BusinessErrorCode.OPERATION_NOT_ALLOWED, ex.getErrorCode());
+            assertTrue(ex.getMessage().contains("já está concluído"));
+        }
+
+        @Test
+        @DisplayName("concluir um compromisso cancelado vira 422")
+        void completingACancelledAppointmentIsRejected() {
+            appointment.setStatus(AppointmentStatus.CANCELADO);
+
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class, () -> service.complete(APPOINTMENT_ID, true));
+            assertEquals(BusinessErrorCode.OPERATION_NOT_ALLOWED, ex.getErrorCode());
+            assertTrue(ex.getMessage().contains("não pode ser concluído"));
+        }
+
+        @Test
+        @DisplayName("cancelar um compromisso concluído vira 422 - concluído é terminal")
+        void cancellingACompletedAppointmentIsRejected() {
+            // Cancelar depois desmentiria um fato já registrado na trilha. Se foi engano,
+            // o caminho é excluir (reversível e auditado) ou criar um novo.
+            appointment.setStatus(AppointmentStatus.CONCLUIDO);
+
+            BusinessException ex =
+                    assertThrows(
+                            BusinessException.class,
+                            () -> service.cancel(APPOINTMENT_ID, "mudei de ideia"));
+            assertEquals(BusinessErrorCode.OPERATION_NOT_ALLOWED, ex.getErrorCode());
+            assertTrue(ex.getMessage().contains("não pode ser cancelado"));
+        }
+
+        @Test
+        @DisplayName("delete é soft: marca deletedAt e preserva para auditoria")
+        void deleteIsSoft() {
+            authenticate();
+
+            service.delete(APPOINTMENT_ID);
+
+            assertNotNull(appointment.getDeletedAt());
+            assertEquals(TestFixtures.USER_ID, appointment.getUpdatedBy());
+            verify(repository).saveAndFlush(appointment);
+            verify(repository, never()).delete(any(Appointment.class));
+        }
+
+        @Test
+        @DisplayName("delete deixa rastro na trilha, sem exigir justificativa")
+        void deleteRecordsHistory() {
+            authenticate();
+
+            service.delete(APPOINTMENT_ID);
+
+            AppointmentHistory history = captureHistory();
+            assertEquals(AppointmentAction.DELETED, history.getAction());
+            // Excluir não pede motivo; o que a trilha precisa guardar é quem e quando.
+            assertNull(history.getJustification());
+            assertEquals(TestFixtures.USER_ID, history.getChangedBy());
+        }
+
+        @Test
+        @DisplayName("restore limpa deletedAt e registra RESTORED")
+        void restoreClearsDeletedAtAndRecordsHistory() {
+            authenticate();
+            Appointment deleted = existing();
+            deleted.setDeletedAt(Instant.parse("2026-02-01T10:00:00Z"));
+            when(repository.findByIdIncludingDeleted(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(deleted));
+
+            AppointmentResponseDTO response = service.restore(APPOINTMENT_ID);
+
+            assertNotNull(response);
+            assertNull(deleted.getDeletedAt());
+            assertEquals(TestFixtures.USER_ID, deleted.getUpdatedBy());
+
+            AppointmentHistory history = captureHistory();
+            assertEquals(AppointmentAction.RESTORED, history.getAction());
+            assertNull(history.getJustification());
+        }
+
+        @Test
+        @DisplayName("restore de compromisso ativo é no-op e não polui a trilha")
+        void restoreOfActiveAppointmentIsNoOp() {
+            Appointment active = existing();
+            when(repository.findByIdIncludingDeleted(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(active));
+
+            assertNotNull(service.restore(APPOINTMENT_ID));
+
+            verify(repository, never()).save(any(Appointment.class));
+            verify(historyRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("restore de id inexistente estoura 404")
+        void restoreOfMissingAppointmentThrows() {
+            UUID unknown = UUID.randomUUID();
+            when(repository.findByIdIncludingDeleted(unknown)).thenReturn(Optional.empty());
+
+            assertThrows(NotFoundException.class, () -> service.restore(unknown));
+        }
+
+        @Test
+        @DisplayName("operações sobre compromisso inexistente estouram 404")
+        void missingAppointmentThrows() {
+            UUID unknown = UUID.randomUUID();
+            when(repository.findByIdAndDeletedAtIsNull(unknown)).thenReturn(Optional.empty());
+
+            assertThrows(NotFoundException.class, () -> service.get(unknown));
+            assertThrows(NotFoundException.class, () -> service.cancel(unknown, "x"));
+            assertThrows(NotFoundException.class, () -> service.complete(unknown, true));
+            assertThrows(NotFoundException.class, () -> service.delete(unknown));
+            assertThrows(NotFoundException.class, () -> service.history(unknown, 1, 10));
+        }
+    }
+
+    @Nested
+    @DisplayName("get e histórico")
+    class Reads {
+
+        @Test
+        @DisplayName("get mapeia o compromisso e resolve o nome do cliente vinculado")
+        void getMapsAndResolvesClientName() {
+            Appointment appointment = existing();
+            appointment.setClientId(TestFixtures.CLIENT_ID);
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(appointment));
+            when(clientRepository.findAllById(any())).thenReturn(List.of(TestFixtures.client()));
+
+            AppointmentResponseDTO dto = service.get(APPOINTMENT_ID);
+
+            assertEquals(APPOINTMENT_ID, dto.getId());
+            assertEquals("Maria da Silva", dto.getClientName());
+            assertEquals("Entrevista", dto.getType());
+        }
+
+        @Test
+        @DisplayName("compromisso sem cliente vinculado não consulta a tabela de clientes")
+        void withoutClientIdNoLookupIsMade() {
+            Appointment appointment = existing();
+            appointment.setClientName("Alguém");
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(appointment));
+
+            assertEquals("Alguém", service.get(APPOINTMENT_ID).getClientName());
+            verify(clientRepository, never()).findAllById(any());
+        }
+
+        @Test
+        @DisplayName("tipo, modalidade e status nulos viram rótulos nulos")
+        void nullEnumsMapToNullLabels() {
+            Appointment appointment = existing();
+            appointment.setType(null);
+            appointment.setModality(null);
+            appointment.setStatus(null);
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(appointment));
+
+            AppointmentResponseDTO dto = service.get(APPOINTMENT_ID);
+            assertNull(dto.getType());
+            assertNull(dto.getModality());
+            assertNull(dto.getStatus());
+        }
+
+        @Test
+        @DisplayName("histórico vem do mais recente para o mais antigo")
+        void historyIsNewestFirst() {
+            AppointmentHistory entry = new AppointmentHistory();
+            entry.setAction(AppointmentAction.EDITED);
+            entry.setJustification("motivo");
+            entry.setChangedAt(Instant.parse("2026-05-01T10:00:00Z"));
+            entry.setChangedBy(TestFixtures.USER_ID);
+
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(existing()));
+            when(historyRepository.findByAppointment_Id(eq(APPOINTMENT_ID), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(entry)));
+
+            List<AppointmentHistoryDTO> content =
+                    service.history(APPOINTMENT_ID, 1, 10).getContent();
+
+            assertEquals("EDITED", content.get(0).action());
+            assertEquals("motivo", content.get(0).justification());
+            assertEquals(TestFixtures.USER_ID, content.get(0).changedByUserId());
+
+            ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+            verify(historyRepository).findByAppointment_Id(any(), pageable.capture());
+            assertEquals(
+                    org.springframework.data.domain.Sort.by(
+                            org.springframework.data.domain.Sort.Order.desc("changedAt"),
+                            org.springframework.data.domain.Sort.Order.asc("id")),
+                    pageable.getValue().getSort());
+        }
+
+        @Test
+        @DisplayName("entrada de histórico sem ação vira action nula no DTO")
+        void historyWithoutActionMapsToNull() {
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(existing()));
+            when(historyRepository.findByAppointment_Id(any(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(new AppointmentHistory())));
+
+            assertNull(service.history(APPOINTMENT_ID, 1, 10).getContent().get(0).action());
+        }
+
+        @Test
+        @DisplayName("paginação inválida no histórico é normalizada")
+        void historyNormalizesPaging() {
+            when(repository.findByIdAndDeletedAtIsNull(APPOINTMENT_ID))
+                    .thenReturn(Optional.of(existing()));
+            when(historyRepository.findByAppointment_Id(any(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of()));
+
+            service.history(APPOINTMENT_ID, 0, 0);
+
+            ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+            verify(historyRepository).findByAppointment_Id(any(), pageable.capture());
+            assertEquals(0, pageable.getValue().getPageNumber());
+            assertEquals(10, pageable.getValue().getPageSize());
+        }
+    }
+
+    @org.junit.jupiter.api.Nested
+    @org.junit.jupiter.api.DisplayName("findConflicts")
+    class FindConflicts {
+
+        @Test
+        @org.junit.jupiter.api.DisplayName("janela ausente ou invertida não consulta o banco")
+        void invalidWindowReturnsEmpty() {
+            // É consulta disparada enquanto se digita: devolver vazio é mais útil que 400.
+            org.junit.jupiter.api.Assertions.assertTrue(
+                    service.findConflicts(null, FUTURE, null).isEmpty());
+            org.junit.jupiter.api.Assertions.assertTrue(
+                    service.findConflicts(FUTURE, null, null).isEmpty());
+            org.junit.jupiter.api.Assertions.assertTrue(
+                    service.findConflicts(FUTURE, FUTURE.minusSeconds(3600), null).isEmpty());
+            // Mesmo instante não é janela.
+            org.junit.jupiter.api.Assertions.assertTrue(
+                    service.findConflicts(FUTURE, FUTURE, null).isEmpty());
+
+            verify(repository, never())
+                    .findAll(
+                            org.mockito.ArgumentMatchers
+                                    .<org.springframework.data.jpa.domain.Specification<
+                                                    Appointment>>
+                                            any(),
+                            org.mockito.ArgumentMatchers.any(
+                                    org.springframework.data.domain.Sort.class));
+        }
+
+        @Test
+        @org.junit.jupiter.api.DisplayName("janela válida consulta e devolve o que sobrepõe")
+        void validWindowQueries() {
+            Appointment existing = TestFixtures.appointment();
+            when(repository.findAll(
+                            org.mockito.ArgumentMatchers
+                                    .<org.springframework.data.jpa.domain.Specification<
+                                                    Appointment>>
+                                            any(),
+                            org.mockito.ArgumentMatchers.any(
+                                    org.springframework.data.domain.Sort.class)))
+                    .thenReturn(List.of(existing));
+
+            var conflicts = service.findConflicts(FUTURE, FUTURE.plusSeconds(3600), null);
+
+            org.junit.jupiter.api.Assertions.assertEquals(1, conflicts.size());
+        }
+    }
+}

@@ -1,0 +1,150 @@
+package com.lawfirm.law.firm.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Date;
+import java.util.UUID;
+import javax.crypto.SecretKey;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+@Service
+public class JwtService {
+
+    private static final String CLAIM_TENANT = "tenant";
+    private static final String CLAIM_SCOPE = "scope";
+
+    private final SecretKey signingKey;
+    private final long expirationMillis;
+    private final long supportPlatformMillis;
+    private final long supportSessionMillis;
+
+    public JwtService(
+            @Value("${app.jwt.secret}") String secret,
+            @Value("${app.jwt.expiration-minutes:480}") long expirationMinutes,
+            @Value("${app.jwt.support-platform-minutes:60}") long supportPlatformMinutes,
+            @Value("${app.jwt.support-session-minutes:20}") long supportSessionMinutes) {
+        // HS256 exige chave de pelo menos 256 bits (32 bytes). Completar com zeros deixaria o
+        // segredo curto ou ausente passar em silêncio, com token forjável; a subida falha.
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException(
+                    "APP_JWT_SECRET deve ter ao menos 32 bytes (openssl rand -base64 48), veio "
+                            + keyBytes.length);
+        }
+        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+        this.expirationMillis = expirationMinutes * 60_000;
+        this.supportPlatformMillis = supportPlatformMinutes * 60_000;
+        this.supportSessionMillis = supportSessionMinutes * 60_000;
+    }
+
+    public String generateToken(UUID userId, String email, String role, String tenant) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .subject(email)
+                .claim("uid", userId)
+                .claim("role", role)
+                .claim(CLAIM_TENANT, tenant)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusMillis(expirationMillis)))
+                .signWith(signingKey)
+                .compact();
+    }
+
+    /**
+     * Token de PLATAFORMA do suporte: identifica o agente no control-plane e serve só para abrir
+     * sessões de suporte ({@code scope=platform}). Sem claim {@code tenant} - sozinho não acessa
+     * dado de nenhum escritório (o {@link JwtAuthenticationFilter} só o aceita em /support/**).
+     */
+    public String generatePlatformToken(UUID supportUserId, String email) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .subject(email)
+                .claim("uid", supportUserId)
+                .claim(CLAIM_SCOPE, "platform")
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusMillis(supportPlatformMillis)))
+                .signWith(signingKey)
+                .compact();
+    }
+
+    /**
+     * Token de SESSÃO de suporte: impersona um tenant específico com acesso total (role ADMIN),
+     * curto por natureza. Carrega o ator real ({@code act}) para a auditoria atribuir a ação a quem
+     * de fato a executou, mesmo o agente não existindo na tabela de usuários daquele escritório.
+     */
+    public String generateSupportSessionToken(UUID supportUserId, String email, String tenant) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .subject(email)
+                .claim("uid", supportUserId)
+                .claim("role", "ADMIN")
+                .claim(CLAIM_TENANT, tenant)
+                .claim(CLAIM_SCOPE, "support-session")
+                .claim("act", supportUserId)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusMillis(supportSessionMillis)))
+                .signWith(signingKey)
+                .compact();
+    }
+
+    /** {@code platform}, {@code support-session}, ou {@code null} para token normal de tenant. */
+    public String extractScope(String token) {
+        return parseClaims(token).get(CLAIM_SCOPE, String.class);
+    }
+
+    public String extractRole(String token) {
+        return parseClaims(token).get("role", String.class);
+    }
+
+    /** Id no claim {@code uid} (usuário do tenant ou usuário de suporte). */
+    public UUID extractUid(String token) {
+        String uid = parseClaims(token).get("uid", String.class);
+        return uid == null ? null : UUID.fromString(uid);
+    }
+
+    /** Id do agente de suporte (claim {@code act}) numa sessão de suporte, ou {@code null}. */
+    public UUID extractActingSupportId(String token) {
+        String act = parseClaims(token).get("act", String.class);
+        return act == null ? null : UUID.fromString(act);
+    }
+
+    public long getSupportPlatformMillis() {
+        return supportPlatformMillis;
+    }
+
+    public long getSupportSessionMillis() {
+        return supportSessionMillis;
+    }
+
+    /** Schema do tenant embutido no token (claim {@code tenant}), ou {@code null} se ausente. */
+    public String extractTenant(String token) {
+        return parseClaims(token).get(CLAIM_TENANT, String.class);
+    }
+
+    public long getExpirationMillis() {
+        return expirationMillis;
+    }
+
+    public String extractEmail(String token) {
+        return parseClaims(token).getSubject();
+    }
+
+    public boolean isValid(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            return claims.getExpiration() == null
+                    || claims.getExpiration().toInstant().isAfter(Instant.now());
+        } catch (JwtException | IllegalArgumentException _) {
+            return false;
+        }
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser().verifyWith(signingKey).build().parseSignedClaims(token).getPayload();
+    }
+}

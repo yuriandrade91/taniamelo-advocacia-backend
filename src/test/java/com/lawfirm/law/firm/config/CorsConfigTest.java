@@ -1,0 +1,121 @@
+package com.lawfirm.law.firm.config;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.mock.env.MockEnvironment;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+@DisplayName("CorsConfig: origens permitidas via app.cors.allowed-origins")
+class CorsConfigTest {
+
+    /** Perfil "test": os testes podem exercitar "*" sem acionar o fail-fast de produção. */
+    private CorsConfiguration configFor(String csv) {
+        MockEnvironment testEnv = new MockEnvironment();
+        testEnv.setActiveProfiles("test");
+        CorsConfigurationSource source = new CorsConfig(csv, testEnv).corsConfigurationSource();
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/clients");
+        CorsConfiguration config = source.getCorsConfiguration(request);
+        assertNotNull(config);
+        return config;
+    }
+
+    @Test
+    @DisplayName("\"*\" usa allowedOriginPatterns (exigido junto de allowCredentials)")
+    void wildcardUsesPatterns() {
+        CorsConfiguration config = configFor("*");
+
+        assertEquals(List.of("*"), config.getAllowedOriginPatterns());
+        assertNull(config.getAllowedOrigins());
+        assertEquals(Boolean.TRUE, config.getAllowCredentials());
+    }
+
+    @Test
+    @DisplayName("origem vazia também cai no comportamento curinga")
+    void emptyValueFallsBackToWildcard() {
+        assertEquals(List.of("*"), configFor("").getAllowedOriginPatterns());
+        assertEquals(List.of("*"), configFor("   ").getAllowedOriginPatterns());
+        assertEquals(List.of("*"), configFor(",,,").getAllowedOriginPatterns());
+    }
+
+    @Test
+    @DisplayName("Retry-After é exposto ao JavaScript, em qualquer configuração de origem")
+    void retryAfterIsExposedToTheBrowser() {
+        // Header de resposta que o navegador esconde do JavaScript a menos que
+        // esteja nesta lista. `addAllowedHeader("*")` NÃO cobre - é a lista do que
+        // entra, não do que sai.
+        //
+        // Sem isto, o `Retry-After` do 429 chega ao navegador e some antes do
+        // código: a tela de login só consegue dizer "tente mais tarde", e quem lê
+        // isso tenta de novo na hora - o oposto do que o freio de tentativas quer.
+        for (String origens : new String[] {"*", "", "https://app.taniamelo.adv.br"}) {
+            assertTrue(
+                    configFor(origens).getExposedHeaders().contains(HttpHeaders.RETRY_AFTER),
+                    "Retry-After deveria ser exposto com origens=" + origens);
+        }
+    }
+
+    @Test
+    @DisplayName("origens explícitas usam allowedOrigins")
+    void explicitOriginsUseAllowedOrigins() {
+        CorsConfiguration config =
+                configFor("https://app.taniamelo.adv.br,https://admin.taniamelo.adv.br");
+
+        assertEquals(
+                List.of("https://app.taniamelo.adv.br", "https://admin.taniamelo.adv.br"),
+                config.getAllowedOrigins());
+        assertNull(config.getAllowedOriginPatterns());
+    }
+
+    @Test
+    @DisplayName("espaços e itens vazios na lista são descartados")
+    void trimsAndDropsEmptyEntries() {
+        CorsConfiguration config = configFor("  https://a.com , , https://b.com  ");
+        assertEquals(List.of("https://a.com", "https://b.com"), config.getAllowedOrigins());
+    }
+
+    @Test
+    @DisplayName("qualquer \"*\" na lista força o modo curinga")
+    void anyWildcardInTheListWins() {
+        assertEquals(List.of("*"), configFor("https://a.com,*").getAllowedOriginPatterns());
+    }
+
+    @Test
+    @DisplayName("todos os métodos e headers são liberados")
+    void allowsAllMethodsAndHeaders() {
+        CorsConfiguration config = configFor("https://a.com");
+        assertEquals(List.of("*"), config.getAllowedHeaders());
+        assertEquals(List.of("*"), config.getAllowedMethods());
+    }
+
+    @Test
+    @DisplayName("a configuração vale para qualquer rota")
+    void appliesToEveryPath() {
+        MockEnvironment testEnv = new MockEnvironment();
+        testEnv.setActiveProfiles("test");
+        CorsConfigurationSource source = new CorsConfig("*", testEnv).corsConfigurationSource();
+        assertNotNull(
+                source.getCorsConfiguration(
+                        new MockHttpServletRequest("POST", "/api/v1/auth/login")));
+        assertNotNull(
+                source.getCorsConfiguration(new MockHttpServletRequest("GET", "/actuator/health")));
+        assertTrue(true);
+    }
+
+    @Test
+    @DisplayName("\"*\" fora dos perfis dev/test falha a subida, não expõe a brecha em silêncio")
+    void wildcardOutsideDevAndTestFailsFast() {
+        MockEnvironment prodLike = new MockEnvironment();
+        CorsConfig config = new CorsConfig("*", prodLike);
+        assertThrows(IllegalStateException.class, config::corsConfigurationSource);
+    }
+}

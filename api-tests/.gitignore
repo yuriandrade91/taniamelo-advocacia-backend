@@ -1,0 +1,12 @@
+node_modules/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+# Credenciais reais: só o .env.example vai para o git.
+.env
+postman/reports/*
+!postman/reports/.gitkeep
+
+# Evidência gerada pelas execuções contra ambiente publicado.
+evidencia/

@@ -1,0 +1,140 @@
+# Teto de log por container. Sem isto o driver json-file cresce sem limite e
+# enche o disco da instância, onde a aplicação e o Postgres dividem o mesmo
+# volume de 8 GiB (ver docs/AWS_EC2_ARM64_DEPLOY.md). Foi uma das causas do
+# deploy que falhou com "No space left on device".
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    container_name: database-postgress
+    logging: *logging
+    image: postgres:17.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # Só em loopback (127.0.0.1), nunca 0.0.0.0: dá pra conectar um client
+    # local (psql, DBeaver) na própria máquina/instância, mas o banco não
+    # fica alcançável pela rede - o "app" já conversa com "db" pela rede
+    # interna do compose, não precisa dessa porta publicada pra isso.
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+      start_period: 10s
+
+  # No separate flyway service: the app owns migrations itself via
+  # spring-boot-starter-flyway, running them once on startup before serving traffic.
+  # Having both a standalone flyway container and the app run migrations risks two
+  # different Flyway versions racing against the same schema_history table.
+  # Only started for a fully containerized run (`docker compose --profile full up`).
+  # Spring Boot's docker-compose auto-start (spring-boot-docker-compose) only brings up
+  # default-profile services, so it starts just "db" - it never launches a second copy
+  # of the app in a container while you're already running it locally.
+  app:
+    container_name: java-application
+    logging: *logging
+    profiles: ["full"]
+    restart: unless-stopped
+    build:
+      context: .
+      # Carimba o SHA do commit em /actuator/info (ver Dockerfile/pom.xml).
+      # O deploy exporta GIT_COMMIT antes de rodar `docker compose ... up --build`;
+      # sem isso, cai no default "desconhecido" (build local, por exemplo).
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-desconhecido}
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
+      # Chave-mestra dos documentos dos clientes (FileEncryption). Sem ela, fora de
+      # dev, a aplicação não sobe.
+      APP_FILE_ENCRYPTION_KEY: ${APP_FILE_ENCRYPTION_KEY}
+      APP_FILE_ENCRYPTION_KEY_VERSION: ${APP_FILE_ENCRYPTION_KEY_VERSION:-1}
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:-false}
+      SPRING_FLYWAY_BASELINE_VERSION: ${SPRING_FLYWAY_BASELINE_VERSION:-0}
+      # Disco local dos documentos/simulações de CNIS. Fica num volume nomeado
+      # (app-storage) para não sumir a cada rebuild da imagem.
+      APP_STORAGE_LOCAL_PATH: /app/storage
+      # Storage: "local" (padrão) usa o volume acima; "s3" usa o bucket abaixo.
+      APP_STORAGE_TYPE: ${APP_STORAGE_TYPE:-local}
+      APP_STORAGE_S3_BUCKET: ${APP_STORAGE_S3_BUCKET:-}
+      APP_STORAGE_S3_REGION: ${APP_STORAGE_S3_REGION:-sa-east-1}
+      APP_STORAGE_S3_ENDPOINT: ${APP_STORAGE_S3_ENDPOINT:-}
+      # Credenciais AWS: em EC2 com IAM Role deixe vazias (DefaultCredentialsProvider
+      # pega a role da instância). Fora da AWS, preencha no .env.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      # CORS: default "*" para teste; troque pelo domínio do frontend em produção.
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-*}
+      # Cookie do refresh token e validade dos tokens. Sem repassá-las aqui, definir
+      # no .env não chega ao container e valem os defaults da aplicação (cookie sem
+      # Secure). Os defaults abaixo são os mesmos de application.yaml.
+      APP_AUTH_REFRESH_COOKIE_SECURE: ${APP_AUTH_REFRESH_COOKIE_SECURE:-false}
+      APP_AUTH_REFRESH_COOKIE_SAMESITE: ${APP_AUTH_REFRESH_COOKIE_SAMESITE:-Lax}
+      APP_JWT_EXPIRATION_MINUTES: ${APP_JWT_EXPIRATION_MINUTES:-480}
+      APP_JWT_REFRESH_EXPIRATION_DAYS: ${APP_JWT_REFRESH_EXPIRATION_DAYS:-14}
+      # Opções da JVM (ex.: -XX:MaxRAMPercentage=70). Vazio = padrão da JVM, que usa
+      # 25% da RAM como heap.
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-}
+      # Tracing DESLIGADO por padrão (sem a stack de observabilidade no ar, exportar
+      # spans para o Tempo geraria só ruído no log). O docker-compose.observability.yml
+      # liga o sampling. Métricas Prometheus independem disto (são pull).
+      MANAGEMENT_TRACING_SAMPLING: ${MANAGEMENT_TRACING_SAMPLING:-0}
+    volumes:
+      - app-storage:/app/storage
+    # Só em loopback: quem atende o público é o proxy TLS (serviço "proxy"), pela rede interna.
+    # O deploy confere o health por aqui (curl localhost:8080 na própria instância).
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sS --fail http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  # Proxy reverso com HTTPS automático (Let's Encrypt). Ver docs/PROXY_TLS.md.
+  # É o único serviço com portas públicas (80 e 443); a 443/udp é o HTTP/3.
+  proxy:
+    container_name: caddy-proxy
+    logging: *logging
+    profiles: ["full"]
+    image: caddy:2.11
+    restart: unless-stopped
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificado e chave da conta ACME: perder estes volumes obriga a emitir de novo.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  app-storage:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,127 @@
+package com.lawfirm.law.firm.audit;
+
+import com.lawfirm.law.firm.security.CurrentUser;
+import jakarta.persistence.PostPersist;
+import jakarta.persistence.PostRemove;
+import jakarta.persistence.PostUpdate;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
+/**
+ * Listener JPA plugado via {@code @EntityListeners(AuditLogListener.class)} em toda entidade {@link
+ * Auditable}: grava automaticamente, em audit_log, quem criou/alterou/removeu cada linha - sem
+ * nenhum service precisar lembrar de chamar isso manualmente (é exatamente esse "esquecimento" que
+ * causava os gaps encontrados antes desta mudança: exclusões físicas - endereço, cliente - não
+ * deixavam nenhum rastro de quem executou a ação).
+ *
+ * <p>Entity listeners são instanciados pelo provider JPA (Hibernate), não pelo Spring, então não dá
+ * para injetar as dependências no construtor normalmente. Solução padrão: um único bean Spring
+ * desta classe injeta o repositório e o transaction manager em campos estáticos logo na subida do
+ * contexto; o próprio Hibernate também instancia sua própria cópia (sem nada setado) para registrar
+ * como listener - as duas cópias compartilham os mesmos campos estáticos, então funciona.
+ *
+ * <p>A gravação NÃO acontece de forma síncrona dentro do callback: salvar uma entidade nova
+ * (AuditLog) durante {@code @PostPersist}/{@code @PostUpdate}/{@code @PostRemove} força um flush
+ * aninhado que reentra no {@code ActionQueue} do Hibernate ainda em processamento, e derruba a
+ * transação inteira com {@code ConcurrentModificationException} - confirmado ao vivo com um teste
+ * de integração real (salvar um Client já quebrava). Por isso o registro é adiado para depois do
+ * commit da transação principal (via {@link TransactionSynchronization#afterCommit()}), numa
+ * transação nova e independente - nunca compartilha sessão/Hibernate com a operação que está sendo
+ * auditada.
+ *
+ * <p>Limitação conhecida: isto só dispara para remoções que passam pelo EntityManager ({@code
+ * repository.delete(...)}/{@code deleteById(...)}). Uma remoção em cascata feita pelo Postgres via
+ * {@code ON DELETE CASCADE} (ex.: apagar um cliente remove endereços/arquivos/ pagamentos em
+ * cascata no banco) não passa pelo Hibernate e por isso não gera uma linha própria por registro
+ * filho - só a remoção do cliente em si é auditada. Ver nota em docs/ROADMAP.md.
+ */
+@Component
+public class AuditLogListener {
+
+    private static final AtomicReference<AuditLogRepository> repositoryRef =
+            new AtomicReference<>();
+    private static final AtomicReference<PlatformTransactionManager> transactionManagerRef =
+            new AtomicReference<>();
+
+    @Autowired
+    public void init(AuditLogRepository repository, PlatformTransactionManager transactionManager) {
+        repositoryRef.set(repository);
+        transactionManagerRef.set(transactionManager);
+    }
+
+    @PostPersist
+    public void onCreate(Object entity) {
+        registrar(entity, AuditAction.CREATE);
+    }
+
+    /**
+     * Exclusão e restauração lógicas chegam aqui como update, porque é o que elas são no banco. Se
+     * o service declarou a intenção ({@link AuditIntent}), ela vale; sem declaração, é edição
+     * mesmo.
+     */
+    @PostUpdate
+    public void onUpdate(Object entity) {
+        AuditAction declarada = AuditIntent.current();
+        registrar(entity, declarada != null ? declarada : AuditAction.UPDATE);
+    }
+
+    @PostRemove
+    public void onRemove(Object entity) {
+        registrar(entity, AuditAction.DELETE);
+    }
+
+    private void registrar(Object entity, AuditAction action) {
+        AuditLogRepository repo = repositoryRef.get();
+        PlatformTransactionManager txManager = transactionManagerRef.get();
+        if (repo == null || txManager == null || !(entity instanceof Auditable auditable)) {
+            // Dependências ainda não injetadas (ex.: entidade carregada antes do contexto Spring
+            // terminar de subir) - não derruba a transação principal por causa da auditoria.
+            return;
+        }
+
+        String entityName = entity.getClass().getSimpleName();
+        UUID entityId = auditable.getId();
+        UUID performedBy = CurrentUser.id();
+        // Numa sessão de suporte, performedBy é null (o agente não é usuário do tenant); o ator
+        // real vai aqui e é gravado em audit_log.acting_support_user_id.
+        UUID actingSupportId = CurrentUser.actingSupportId();
+
+        Runnable persistAuditRow =
+                () -> {
+                    TransactionTemplate newTransaction = new TransactionTemplate(txManager);
+                    newTransaction.setPropagationBehavior(
+                            TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+                    newTransaction.executeWithoutResult(
+                            status ->
+                                    repo.save(
+                                            new AuditLog(
+                                                    entityName,
+                                                    entityId,
+                                                    action,
+                                                    performedBy,
+                                                    actingSupportId,
+                                                    null)));
+                };
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            persistAuditRow.run();
+                        }
+                    });
+        } else {
+            // Sem transação ativa (ex.: chamada fora de um @Transactional) - grava direto, melhor
+            // esforço.
+            persistAuditRow.run();
+        }
+    }
+}
