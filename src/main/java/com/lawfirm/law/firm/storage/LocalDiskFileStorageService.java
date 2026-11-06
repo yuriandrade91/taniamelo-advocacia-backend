@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,8 +19,13 @@ import org.springframework.web.multipart.MultipartFile;
  * nomeado para não perder os arquivos a cada rebuild da imagem. O {@code storageKey} devolvido é o
  * caminho relativo ao diretório base (nunca o caminho absoluto do host) - é isso que fica gravado
  * no banco.
+ *
+ * <p>{@code @Primary} existe só para a análise estática: este bean e o do S3 são excludentes por
+ * {@code app.storage.type}, então em runtime nunca há dois candidatos, mas o Sonar não avalia a
+ * condição e reprova a injeção como ambígua (confiabilidade). Com um único bean, não muda nada.
  */
 @Service
+@Primary
 @ConditionalOnProperty(name = "app.storage.type", havingValue = "local", matchIfMissing = true)
 public class LocalDiskFileStorageService implements FileStorageService {
 
