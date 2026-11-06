@@ -2,6 +2,8 @@ package com.lawfirm.law.firm.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.lawfirm.law.firm.model.Role;
+import com.lawfirm.law.firm.model.User;
 import com.lawfirm.law.firm.repository.UserRepository;
 import com.lawfirm.law.firm.support.PostgresIntegrationTest;
 import java.util.UUID;
@@ -23,7 +25,7 @@ class RefreshTokenFamilyIntegrationTest extends PostgresIntegrationTest {
     @Test
     @DisplayName("depois do reuso, a outra sessão do usuário também não renova")
     void reusedTokenRevokesOtherSessions() {
-        UUID userId = userRepository.findAll().getFirst().getId();
+        UUID userId = userRepository.save(newUser()).getId();
         String stolen = service.issue(userId, "ladrao").rawToken();
         String otherSession = service.issue(userId, "outro-aparelho").rawToken();
         service.rotate(stolen, "ladrao");
@@ -32,5 +34,17 @@ class RefreshTokenFamilyIntegrationTest extends PostgresIntegrationTest {
         assertThrows(
                 BadCredentialsException.class,
                 () -> service.rotate(otherSession, "outro-aparelho"));
+    }
+
+    // O banco nasce sem usuário: o teste cria o seu, em vez de depender do primeiro que existir.
+    private static User newUser() {
+        String sufixo = UUID.randomUUID().toString();
+        User user = new User();
+        user.setFullName("Usuário de Teste");
+        user.setEmail("refresh-" + sufixo + "@teste.invalid");
+        user.setUsername("refresh-" + sufixo);
+        user.setPasswordHash("$2a$10$hash");
+        user.setRole(Role.STAFF);
+        return user;
     }
 }

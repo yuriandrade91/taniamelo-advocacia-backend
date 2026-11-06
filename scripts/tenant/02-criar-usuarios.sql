@@ -39,18 +39,10 @@ DECLARE
         {"nome": "Ciclano de Tal", "email": "ciclano@exemplo.adv.br", "username": "ciclano", "role": "STAFF"}
     ]';
 
-    -- Só no primeiro uso, logo depois do passo 1: a aplicação cria sozinha um ADMIN
-    -- "Administrador" com o APP_ADMIN_EMAIL/APP_ADMIN_PASSWORD GLOBAIS do .env num
-    -- schema vazio. Isso daria ao escritório um login com a credencial de outro.
-    -- Informe aqui o e-mail dele para removê-lo. Descubra com:
-    --   grep ^APP_ADMIN_EMAIL= .env
-    -- NULL = não remove nada (use NULL ao acrescentar usuários a um escritório em uso).
-    v_remover_admin_padrao text := NULL;
     -- ▲▲▲ --------------------------------------------------------------------
 
     v_roles_validos constant text[] := ARRAY['ADMIN', 'SUPPORT', 'STAFF'];
     v_emails        text[];
-    v_removido      uuid;
     r               record;
 BEGIN
     IF v_usuarios::text ILIKE '%@exemplo.adv.br%' THEN
@@ -101,11 +93,6 @@ BEGIN
         RAISE EXCEPTION 'v_usuarios precisa ter ao menos um ADMIN.';
     END IF;
 
-    IF v_remover_admin_padrao IS NOT NULL
-       AND lower(btrim(v_remover_admin_padrao)) = ANY (v_emails) THEN
-        RAISE EXCEPTION 'v_remover_admin_padrao (%) está também na lista de novos usuários.', v_remover_admin_padrao;
-    END IF;
-
     -- E-mail e username são únicos no banco diferenciando maiúsculas, mas o login
     -- ignora a caixa (findByEmailIgnoreCase...). Gravar tudo em minúsculas evita dois
     -- usuários que o login confundiria. E-mail ou username repetido, na lista ou no
@@ -136,23 +123,6 @@ BEGIN
 
         RAISE NOTICE '% | % | usuario: % | senha temporaria: %', r.role, r.email, r.username, r.senha;
     END LOOP;
-
-    IF v_remover_admin_padrao IS NOT NULL THEN
-        -- Todas as chaves para users são ON DELETE SET NULL (refresh_tokens, CASCADE):
-        -- apagar não deixa referência pendurada.
-        DELETE FROM users
-         WHERE lower(email) = lower(btrim(v_remover_admin_padrao))
-        RETURNING id INTO v_removido;
-
-        IF v_removido IS NULL THEN
-            RAISE EXCEPTION 'v_remover_admin_padrao (%) não existe em %. Confira o e-mail.',
-                v_remover_admin_padrao, v_schema;
-        END IF;
-
-        INSERT INTO audit_log (entity_name, entity_id, action, performed_by, detail)
-        VALUES ('User', v_removido, 'DELETE', NULL, 'ADMIN padrao do seeder removido (provisionamento do tenant)');
-        RAISE NOTICE 'ADMIN padrão removido: %', v_remover_admin_padrao;
-    END IF;
 
     -- Quadro final do escritório, para conferir se sobrou algo que não devia.
     FOR r IN SELECT email, username, role, active FROM users ORDER BY role, email LOOP

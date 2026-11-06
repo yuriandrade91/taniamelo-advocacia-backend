@@ -265,14 +265,11 @@ Além disso, mudança de situação do cliente gera trilha própria em
 
 ## 11. Configuração e perfis
 
-- `application.yaml` (base) + `application-dev.yaml` / `application-postgres.yaml`.
-- Tudo sensível vem de variável de ambiente com default de dev: `APP_JWT_SECRET`,
-  `APP_ENCRYPTION_KEY`, `APP_ADMIN_*`, datasource, `APP_STORAGE_*`,
-  `APP_CORS_ALLOWED_ORIGINS`.
-- **CORS** configurável (`app.cors.allowed-origins`): default `*` em dev, domínio
-  fixo em produção.
-- **`AdminUserSeeder`** cria um ADMIN inicial se a tabela de usuários estiver
-  vazia.
+- `application.yaml` (base) + `application-postgres.yaml` (produção).
+- Tudo sensível vem de variável de ambiente, sem default: `APP_JWT_SECRET`,
+  `APP_ENCRYPTION_KEY`, datasource, `APP_STORAGE_*`, `APP_CORS_ALLOWED_ORIGINS`.
+- **CORS** configurável (`app.cors.allowed-origins`): domínio fixo; `*` derruba a subida.
+- Nenhum seeder: o banco sobe vazio. Escritório e usuários entram por `scripts/tenant/`.
 - Upload multipart limitado (10MB/arquivo, 60MB/requisição).
 
 ---

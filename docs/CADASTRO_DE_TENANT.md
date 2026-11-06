@@ -1,89 +1,56 @@
-# Cadastro de tenant — plano
+# Cadastro de tenant (escritório)
 
-**Status: Fase 1 implementada; Fases 2 a 4 propostas.** Um escritório novo ainda é cadastrado à mão.
-Este documento descreve como torná-lo um procedimento único, repetível e sem falha silenciosa.
+**Status:** o catálogo é a fonte única (feito) e o cadastro é por scripts SQL, sem passo manual escondido.
+Um endpoint de provisionamento ainda é proposta (abaixo).
 
-## Como é hoje (e por que dói)
+O banco **sobe vazio**: nenhuma migration ou rotina cria escritório, usuário ou cliente. Cada escritório
+é um schema Postgres; quem decide quais schemas existem é a tabela `public.tenants`, e o
+`MultiTenantFlywayMigrator` cria e migra cada schema `ativo` a cada boot. Não há lista em configuração
+(`APP_TENANCY_SCHEMAS` não existe) nem escritório padrão: rota de escritório sem `X-Tenant-Id` nem JWT
+responde 400 `TENANT_REQUIRED`.
 
-Antes da Fase 1, criar um tenant exigia manter três coisas em sincronia:
+## Procedimento
 
-1. a linha em `public.tenants` (catálogo; é ela que faz o Flyway criar e migrar o schema);
-2. a lista `APP_TENANCY_SCHEMAS` (é ela que o `SchemaCurrentTenantResolver` e o `AdminUserSeeder` usam);
-3. os usuários ADMIN, inseridos por SQL com hash bcrypt (o `AdminUserSeeder` criaria o
-   `admin@taniamelo.adv.br` com a senha de dev no schema novo).
+Os scripts ficam em `scripts/tenant/`. **Não coloque dado real neles dentro do repositório**: copie para
+fora (`cp scripts/tenant/01-cadastrar-tenant.sql ~/01-meu-escritorio.sql`), edite a cópia e rode a cópia.
 
-Esquecer o item 2 não dá erro: o `TenantResolutionFilter` aceita o `X-Tenant-Id` (o registry
-lê o catálogo), mas o resolver do Hibernate não reconhece o schema e cai no padrão
-(`tenant_tania`). O sintoma visto foi `401 INVALID_CREDENTIALS` no login de um usuário que
-existe — na prática, a sessão foi parar no escritório errado.
+1. **Cadastrar no catálogo** — `01-cadastrar-tenant.sql`. Grava uma linha em `public.tenants` com slug,
+   schema (`tenant_` + algo), razão social e CNPJ (únicos). Atômico.
+2. **Reiniciar a aplicação.** O Flyway cria o schema e as tabelas. Confira no log
+   `Flyway: migrations de tenant aplicadas (schema ...)`. Criar o schema à mão deixaria o escritório sem
+   `flyway_schema_history` e quebraria a próxima migration.
+3. **Criar os usuários** — `02-criar-usuarios.sql`. Senha temporária aleatória por usuário, impressa uma
+   única vez; só o hash bcrypt é gravado. Exige ao menos um ADMIN.
+4. **Agente de suporte da plataforma** (uma vez, independe do escritório) —
+   `04-criar-agente-suporte.sql`. Ver [SUPORTE_MULTITENANT.md](SUPORTE_MULTITENANT.md).
+5. **Senha perdida** — `03-redefinir-senha.sql`.
 
-Não dá para resolver só pondo o schema novo no default da lista: num banco novo o catálogo
-ainda não tem a linha, e o `AdminUserSeeder` consultaria `users` de um schema inexistente.
+Rodando o banco em contêiner (ver `AWS_EC2_ARM64_DEPLOY.md`, B.4):
 
-## Fase 1 — o catálogo como única fonte de verdade (feita)
+```bash
+docker exec -i database-postgress psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 < ~/01-meu-escritorio.sql
+docker compose --profile full restart app
+docker exec -i database-postgress psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 < ~/02-usuarios.sql
+```
 
-1. `ActiveTenantSchemas` lê os tenants `ativo` do catálogo por JDBC (um repositório JPA fecharia
-   o ciclo resolver → `EntityManagerFactory` → resolver). O `SchemaCurrentTenantResolver` e o
-   `AdminUserSeeder` passam a usá-lo.
-2. `app.tenancy.schemas` / `APP_TENANCY_SCHEMAS` foram **removidos**: não há lista de reserva.
-   Catálogo ilegível ou vazio significa nenhum tenant conhecido.
-3. Teste: tenant só no catálogo resolve para o próprio schema, nunca para o padrão.
+## Proposta: serviço de provisionamento
 
-`app.tenancy.default-schema` também foi **removido**: rota de escritório sem tenant (sem
-`X-Tenant-Id` e sem JWT) dá 400 `TENANT_REQUIRED`, sessão sem tenant aponta para `public` e a
-validação do Hibernate no boot usa o primeiro tenant ativo. Não sobra tenant em configuração.
+Para o procedimento deixar de ser SQL à mão:
 
-## Fase 2 — serviço de provisionamento
-
-`TenantProvisioningService.provision(...)`, nesta ordem:
-
-1. **Validar.** Slug e schema contra `^tenant_[a-z0-9_]{1,50}$` (o nome do schema entra em
-   SQL, não pode vir livre); CNPJ e slug únicos.
-2. **Registrar** no catálogo com status `provisionando`. O migrator só lê `ativo`, então nada
-   acontece a meio caminho.
-3. **Migrar** só o schema novo: o `MultiTenantFlywayMigrator` ganha `migrate(String schema)`,
-   extraído do laço atual. O placeholder `seedDemoData` continua obrigatório.
-4. **Criar os admins** com senha aleatória por usuário, codificada pelo `PasswordEncoder`. A
-   senha é devolvida uma única vez; não é gravada nem logada.
-5. **Ativar**: status `ativo` e `registry.reload()`.
-6. **Falha** antes do passo 5: o status fica `provisionando` e a operação pode ser
-   reexecutada (idempotente). Sem `DROP SCHEMA` automático — apagar dado exige decisão humana.
-
-## Fase 3 — ponto de entrada
-
-- `POST /api/v1/support/tenants`, com `ROLE_PLATFORM` (agente de suporte já existente).
-  Corpo: `razaoSocial`, `cnpj`, `slug`, `admins[{fullName, email, username}]`.
-- A criação vai para o audit log com `acting_support_user_id`.
-- Como ponte entre as fases, `scripts/novo-tenant.sh` com o procedimento manual codificado
-  (catálogo → subida → usuários), para não depender de SQL de memória.
-
-## Fase 4 — testes
-
-- Integração (Testcontainers): tenant nasce com 0 linhas nas tabelas de negócio, logins
-  funcionam, slug duplicado é recusado, reexecução após falha forçada conclui o trabalho.
-- Regressão: V23, V25, V28 e V29 não semeiam nada em schema fora de `tenant_demo` e
-  `tenant_tania` (a guarda de `current_schema()` é o que protege escritório real).
+1. `TenantProvisioningService.provision(...)`: valida slug e schema contra `^tenant_[a-z0-9_]{1,50}$`
+   (o nome do schema entra em SQL), registra com status `provisionando` (o migrator só lê `ativo`),
+   migra só o schema novo, cria os admins com senha aleatória (devolvida uma única vez), e então ativa e
+   recarrega o registry. Falha antes de ativar deixa `provisionando` e a operação é reexecutável; nunca
+   há `DROP SCHEMA` automático.
+2. `POST /api/v1/support/tenants`, com `ROLE_PLATFORM`, registrada no audit log com o agente que a fez.
+3. Testes de integração: tenant nasce com 0 linhas nas tabelas de negócio, logins funcionam, slug
+   duplicado é recusado, reexecução após falha forçada conclui o trabalho.
 
 ## Decisões em aberto
 
-1. **Troca de senha no primeiro acesso.** Não existe `must_change_password`. Sem ele, a senha
-   gerada vale até alguém trocá-la. Opção: coluna nova (migration V30) + tela no front.
-2. **Por onde começar:** endpoint de suporte ou o script de operação (mais simples).
-   Recomendação: script primeiro, Fase 1 em paralelo.
-3. **Produção.** O provisionamento cria schema com o usuário do banco da aplicação; confirmar
-   que ele tem `CREATE` no banco (o Flyway já cria schemas hoje, então provavelmente tem).
-4. **Dados reais do primeiro caso (Prados).** No banco local o tenant foi criado com CNPJ
-   placeholder `00.000.000/0001-01` e e-mails `@prados.adv.br` inventados.
+1. **Troca de senha no primeiro acesso.** Não existe `must_change_password`; a senha gerada vale até
+   alguém trocá-la (`PATCH /api/v1/users/me/password`). Opção: coluna nova e tela no front.
+2. **Permissão do usuário do banco.** O Flyway cria o schema com o usuário da aplicação; confirmar que ele
+   tem `CREATE` no banco.
 
-## Referência: o procedimento manual usado no tenant `prados` (dev local)
-
-1. `INSERT INTO public.tenants (schema_name, slug, razao_social, cnpj, responsavel, status)`
-   com `status = 'ativo'`.
-2. Subir o app: o Flyway cria e migra o schema. O `AdminUserSeeder` percorre o catálogo e,
-   com a tabela `users` vazia, cria o ADMIN padrão (`admin@taniamelo.adv.br`, senha de dev)
-   no schema novo.
-3. Inserir os usuários reais em `<schema>.users` por SQL (`role = 'ADMIN'`, hash bcrypt) e
-   apagar esse ADMIN padrão.
-
-Ver também [MULTI_TENANT_E_AUTH.md](MULTI_TENANT_E_AUTH.md) e
-[SUPORTE_MULTITENANT.md](SUPORTE_MULTITENANT.md).
+Ver também [MULTI_TENANT_E_AUTH.md](MULTI_TENANT_E_AUTH.md).

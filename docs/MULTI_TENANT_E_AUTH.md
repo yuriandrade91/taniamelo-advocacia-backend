@@ -80,63 +80,41 @@ aplica, na subida:
 Ou seja: adicionar um tenant novo = inserir a linha no catálogo e reiniciar; as
 tabelas são criadas automaticamente.
 
-## 4. Rodar localmente com 2 tenants
+## 4. Criar um escritório
 
-```bash
-# 1. Suba o Postgres e a aplicação (as migrations criam tenant_tania e tenant_demo).
-./scripts/start-postgres.sh
-mvn spring-boot:run           # cria os schemas + tabelas + um ADMIN em cada
-
-# 2. Popule as massas (cada uma no seu schema):
-psql "$DATABASE_URL" -f db/mock-data/seed_tenant_tania.sql   # 125 clientes
-psql "$DATABASE_URL" -f db/mock-data/seed_tenant_demo.sql    # 6 clientes distintos
-```
+O catálogo nasce vazio. Escritório e usuários entram pelos scripts de `scripts/tenant/`;
+roteiro em [CADASTRO_DE_TENANT.md](CADASTRO_DE_TENANT.md).
 
 ## 5. Identificador público do tenant (nunca o nome do schema)
 
 O nome físico do schema (`tenant_tania`) **não** é exposto. A API usa:
 
 - **`tenantId`** — UUID canônico e opaco (`tenants.id`).
-- **`slug`** — identificador amigável para subdomínio/URL (ex.: `tania`, `demo`).
+- **`slug`** — identificador amigável para subdomínio/URL (ex.: `meu-escritorio`).
 
 O cabeçalho **`X-Tenant-Id` aceita o UUID OU o slug**; internamente o
 `TenantRegistry` traduz para o schema. O front descobre o `tenantId` a partir do
 slug (subdomínio) via endpoint público, antes do login:
 
 ```bash
-curl 'http://localhost:8080/api/v1/tenants/resolve?slug=tania'
-# → { "data": { "tenantId": "<uuid>", "slug": "tania", "razaoSocial": "..." } }
+curl 'https://api.seudominio.adv.br/api/v1/tenants/resolve?slug=meu-escritorio'
+# → { "data": { "tenantId": "<uuid>", "slug": "meu-escritorio", "razaoSocial": "..." } }
 ```
 
 ## 6. Login por email OU username (o header decide o escritório)
 
-O campo é `login` e aceita **e-mail ou username**. Credenciais reais das massas
-(senha de todos: `password`):
-
-| Tenant (slug) | Usuário (email / username) | Papel |
-|---|---|---|
-| `tania` | `dra.tania@taniamelo.adv.br` / `dra.tania` | ADMIN |
-| `tania` | `ana.souza@taniamelo.adv.br` / `ana.souza` | STAFF |
-| `demo`  | `dr.almeida@escritoriodemo.adv.br` / `dr.almeida` | ADMIN |
-| `demo`  | `bruna.lima@escritoriodemo.adv.br` / `bruna.lima` | STAFF |
+O campo é `login` e aceita **e-mail ou username**. O usuário é o que o
+`02-criar-usuarios.sql` criou para aquele escritório.
 
 ```bash
-# Tenant tania (por e-mail):
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H 'Content-Type: application/json' -H 'X-Tenant-Id: tania' \
-  -d '{"login":"dra.tania@taniamelo.adv.br","password":"password"}' -i
-
-# Tenant demo (por username):
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H 'Content-Type: application/json' -H 'X-Tenant-Id: demo' \
-  -d '{"login":"dr.almeida","password":"password"}' -i
+curl -X POST https://api.seudominio.adv.br/api/v1/auth/login \
+  -H 'Content-Type: application/json' -H 'X-Tenant-Id: meu-escritorio' \
+  -d '{"login":"usuario@meu-escritorio.adv.br","password":"<senha>"}' -i
 ```
 
 A resposta traz `tenantId` (UUID) e `tenantSlug`. Nas chamadas seguintes envie o
 `Authorization: Bearer <access>` (o tenant vai no claim como UUID) e, por
-robustez, também o `X-Tenant-Id`. No Swagger, o login já tem 4 exemplos prontos
-(email/username × tania/demo) — clique em **Authorize** para preencher o
-`X-Tenant-Id`.
+robustez, também o `X-Tenant-Id`. No Swagger, clique em **Authorize** para preencher o `X-Tenant-Id`.
 
 ## 6. Refresh token + cookie httpOnly
 

@@ -42,12 +42,11 @@ e impersonation explícita, curta e rastreada.
 
 | Variável | Default | Papel |
 |----------|---------|-------|
-| `APP_SUPPORT_EMAIL` / `APP_SUPPORT_PASSWORD` | dev óbvio | Agente inicial, semeado no 1º boot se `public.support_users` vazio |
 | `APP_JWT_SUPPORT_PLATFORM_MINUTES` | 60 | TTL do token de plataforma |
 | `APP_JWT_SUPPORT_SESSION_MINUTES` | 20 | TTL do token de sessão (impersonation) |
 
-O agente inicial é criado pelo `SupportUserSeeder` (control-plane, não por tenant).
-**Troque a senha em produção.**
+Não há seeder: o agente (control-plane, não por tenant) é criado por
+`scripts/tenant/04-criar-agente-suporte.sql`, com senha aleatória impressa uma única vez.
 
 ## Isolamento (o que impede abuso)
 

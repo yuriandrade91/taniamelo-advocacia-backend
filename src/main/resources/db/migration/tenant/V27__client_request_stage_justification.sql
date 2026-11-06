@@ -8,7 +8,7 @@
 -- Por isso a coluna é anulável e sem CHECK.
 --
 -- Migration nova, e não edição da V26: a V26 pode já estar aplicada, e mudar
--- o checksum dela derruba o deploy (ver V23/V25).
+-- o checksum dela derruba o deploy.
 -- ============================================================================
 
 ALTER TABLE client_request_stage_history

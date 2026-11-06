@@ -41,10 +41,6 @@ Bancos criados com as migrations antigas (V1–V15 legadas) devem ser recriados:
    agregado cliente.
 4. **Auditoria** `created_by/updated_by` com FK `users ON DELETE SET NULL`.
 
-## Seeds
+## Dados iniciais
 
-`db/mock-data/seed_mock.sql` popula todas as tabelas para exercitar todos os
-endpoints (2 usuários com senha `password`, 125 clientes - 5 com dado
-detalhado de exemplo + 120 de massa variada para testar paginação/filtro -,
-endereços com principal, histórico, entrevistas, os 11 tipos de documento,
-simulações com principal e parcelas em todos os status).
+Nenhum: o banco sobe vazio. Escritório e usuários entram por `scripts/tenant/`.
