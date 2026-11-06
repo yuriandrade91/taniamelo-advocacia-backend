@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -33,11 +34,13 @@ import com.lawfirm.law.firm.security.UserPrincipal;
 import com.lawfirm.law.firm.storage.EncryptedFileStorage;
 import com.lawfirm.law.firm.storage.FileDownload;
 import com.lawfirm.law.firm.storage.FileEncryption;
+import com.lawfirm.law.firm.storage.FileStorageException;
 import com.lawfirm.law.firm.storage.FileStorageService;
 import com.lawfirm.law.firm.storage.LoadedFile;
 import com.lawfirm.law.firm.storage.StoredFile;
 import com.lawfirm.law.firm.support.TestFixtures;
 import com.lawfirm.law.firm.tenant.TenantContext;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -798,6 +801,122 @@ class ClientFileServiceTest {
                     .findFirstByClient_IdAndKindAndDeletedAtIsNullOrderByUploadedAtDesc(
                             any(), any());
             verify(repository, never()).delete(any());
+        }
+
+        @Test
+        @DisplayName("delete move o objeto para a lixeira do escritório e nunca o apaga")
+        void deleteMovesTheObjectToTheTenantTrash() {
+            ClientFile entity = file(FileKind.DOCUMENT);
+            entity.setStorageKey(TENANT + "/clients/c1/documents/a.pdf");
+            when(repository.findByIdAndClient_IdAndDeletedAtIsNull(any(), any()))
+                    .thenReturn(Optional.of(entity));
+
+            service.deleteFile(TestFixtures.CLIENT_ID, FILE_ID);
+
+            String trash = TENANT + "/_trash/clients/c1/documents/a.pdf";
+            verify(fileStorageService).move(TENANT + "/clients/c1/documents/a.pdf", trash);
+            verify(fileStorageService, never()).delete(anyString());
+            assertEquals(trash, entity.getStorageKey(), "o banco passa a apontar para a lixeira");
+        }
+
+        @Test
+        @DisplayName("chave sem prefixo de schema também vai para a lixeira do escritório")
+        void keyWithoutSchemaPrefixGoesToTheTenantTrash() {
+            ClientFile entity = file(FileKind.DOCUMENT);
+            when(repository.findByIdAndClient_IdAndDeletedAtIsNull(any(), any()))
+                    .thenReturn(Optional.of(entity));
+
+            service.deleteFile(TestFixtures.CLIENT_ID, FILE_ID);
+
+            assertEquals(TENANT + "/_trash/clients/x/a.pdf", entity.getStorageKey());
+        }
+
+        @Test
+        @DisplayName("falha ao mover para a lixeira não marca o arquivo como excluído")
+        void failedMoveLeavesTheFileActive() {
+            ClientFile entity = file(FileKind.DOCUMENT);
+            when(repository.findByIdAndClient_IdAndDeletedAtIsNull(any(), any()))
+                    .thenReturn(Optional.of(entity));
+            doThrow(new FileStorageException("s3 fora do ar"))
+                    .when(fileStorageService)
+                    .move(anyString(), anyString());
+
+            assertThrows(
+                    FileStorageException.class,
+                    () -> service.deleteFile(TestFixtures.CLIENT_ID, FILE_ID));
+
+            assertNull(entity.getDeletedAt());
+            assertEquals("clients/x/a.pdf", entity.getStorageKey());
+            verify(repository, never()).saveAndFlush(any());
+        }
+
+        @Test
+        @DisplayName("rollback da exclusão devolve o objeto à chave anterior")
+        void rollbackMovesTheObjectBack() {
+            ClientFile entity = file(FileKind.DOCUMENT);
+            when(repository.findByIdAndClient_IdAndDeletedAtIsNull(any(), any()))
+                    .thenReturn(Optional.of(entity));
+            TransactionSynchronizationManager.initSynchronization();
+            try {
+                service.deleteFile(TestFixtures.CLIENT_ID, FILE_ID);
+                TransactionSynchronizationManager.getSynchronizations()
+                        .forEach(
+                                s ->
+                                        s.afterCompletion(
+                                                TransactionSynchronization.STATUS_ROLLED_BACK));
+            } finally {
+                TransactionSynchronizationManager.clear();
+            }
+
+            verify(fileStorageService).move(TENANT + "/_trash/clients/x/a.pdf", "clients/x/a.pdf");
+        }
+
+        @Test
+        @DisplayName("restaurar traz o objeto da lixeira e reativa a linha")
+        void restoreBringsTheObjectBack() {
+            ClientFile entity = file(FileKind.DOCUMENT);
+            entity.setStorageKey(TENANT + "/_trash/clients/c1/documents/a.pdf");
+            entity.setDeletedAt(Instant.now());
+            when(repository.findByIdAndClient_IdAndDeletedAtIsNotNull(
+                            FILE_ID, TestFixtures.CLIENT_ID))
+                    .thenReturn(Optional.of(entity));
+            authenticate();
+
+            service.restoreFile(TestFixtures.CLIENT_ID, FILE_ID);
+
+            verify(fileStorageService)
+                    .move(
+                            TENANT + "/_trash/clients/c1/documents/a.pdf",
+                            TENANT + "/clients/c1/documents/a.pdf");
+            assertEquals(TENANT + "/clients/c1/documents/a.pdf", entity.getStorageKey());
+            assertNull(entity.getDeletedAt());
+            assertEquals(TestFixtures.USER_ID, entity.getUpdatedBy());
+        }
+
+        @Test
+        @DisplayName("excluído antes da lixeira existir: restaurar só reativa a linha")
+        void restoreOfALegacyDeletedFileKeepsTheKey() {
+            ClientFile entity = file(FileKind.DOCUMENT);
+            entity.setDeletedAt(Instant.now());
+            when(repository.findByIdAndClient_IdAndDeletedAtIsNotNull(any(), any()))
+                    .thenReturn(Optional.of(entity));
+
+            service.restoreFile(TestFixtures.CLIENT_ID, FILE_ID);
+
+            verify(fileStorageService, never()).move(anyString(), anyString());
+            assertEquals("clients/x/a.pdf", entity.getStorageKey());
+            assertNull(entity.getDeletedAt());
+        }
+
+        @Test
+        @DisplayName("restaurar um arquivo que não está excluído estoura 404")
+        void restoreOfAnActiveFileThrows() {
+            when(repository.findByIdAndClient_IdAndDeletedAtIsNotNull(any(), any()))
+                    .thenReturn(Optional.empty());
+
+            assertThrows(
+                    NotFoundException.class,
+                    () -> service.restoreFile(TestFixtures.CLIENT_ID, FILE_ID));
         }
 
         @Test

@@ -190,13 +190,26 @@ public class ClientFileController {
     @Operation(
             summary = "Excluir um arquivo",
             description =
-                    "Soft delete - o arquivo é preservado como evidência. Funciona tanto para "
-                            + "documento quanto para simulação; se a simulação excluída era a "
+                    "Soft delete - o arquivo é preservado como evidência: o objeto vai para a "
+                            + "lixeira do escritório (_trash) e pode ser restaurado. Funciona tanto "
+                            + "para documento quanto para simulação; se a simulação excluída era a "
                             + "principal, a mais recente restante é promovida.")
     @RequerAdvogado
     @DeleteMapping("/{fileId}")
     public ResponseEntity<Void> delete(@PathVariable UUID clientId, @PathVariable UUID fileId) {
         service.deleteFile(clientId, fileId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "Restaurar um arquivo excluído",
+            description =
+                    "Traz o objeto da lixeira (_trash) de volta ao lugar original e reativa o "
+                            + "registro. Uma simulação restaurada volta como não-principal.")
+    @RequerAdvogado
+    @PostMapping("/{fileId}/restore")
+    public ResponseEntity<Void> restore(@PathVariable UUID clientId, @PathVariable UUID fileId) {
+        service.restoreFile(clientId, fileId);
         return ResponseEntity.noContent().build();
     }
 

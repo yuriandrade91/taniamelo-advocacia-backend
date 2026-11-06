@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -386,6 +387,25 @@ class ClientFileControllerTest {
             mockMvc.perform(delete("/api/v1/clients/{clientId}/files/{id}", CLIENT, FILE_ID))
                     .andExpect(status().isNoContent());
             verify(service).deleteFile(CLIENT, FILE_ID);
+        }
+
+        @Test
+        @DisplayName("POST restore devolve 204")
+        void restoreReturns204() throws Exception {
+            mockMvc.perform(post("/api/v1/clients/{clientId}/files/{id}/restore", CLIENT, FILE_ID))
+                    .andExpect(status().isNoContent());
+            verify(service).restoreFile(CLIENT, FILE_ID);
+        }
+
+        @Test
+        @DisplayName("POST restore de arquivo que não está excluído vira 404")
+        void restoreOfMissingFileReturns404() throws Exception {
+            doThrow(NotFoundException.of("Arquivo excluído", FILE_ID))
+                    .when(service)
+                    .restoreFile(CLIENT, FILE_ID);
+
+            mockMvc.perform(post("/api/v1/clients/{clientId}/files/{id}/restore", CLIENT, FILE_ID))
+                    .andExpect(status().isNotFound());
         }
 
         @Test

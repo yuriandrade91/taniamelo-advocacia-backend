@@ -26,4 +26,10 @@ public interface FileStorageService {
 
     /** Remove o arquivo do storage. Idempotente: não falha se já não existir. */
     void delete(String storageKey);
+
+    /**
+     * Move o arquivo de uma chave para outra, sem alterar o conteúdo. Falha se a origem não
+     * existir; um destino já ocupado é sobrescrito.
+     */
+    void move(String fromKey, String toKey);
 }

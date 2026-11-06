@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -82,6 +83,19 @@ public class LocalDiskFileStorageService implements FileStorageService {
             Files.deleteIfExists(target);
         } catch (IOException e) {
             throw new FileStorageException("Falha ao remover arquivo do storage: " + storageKey, e);
+        }
+    }
+
+    @Override
+    public void move(String fromKey, String toKey) {
+        Path source = resolveWithinBase(fromKey);
+        Path target = resolveWithinBase(toKey);
+        try {
+            Files.createDirectories(target.getParent());
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new FileStorageException(
+                    "Falha ao mover arquivo no storage: " + fromKey + " -> " + toKey, e);
         }
     }
 

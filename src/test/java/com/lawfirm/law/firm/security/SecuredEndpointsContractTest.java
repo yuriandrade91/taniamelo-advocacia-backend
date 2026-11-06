@@ -199,6 +199,7 @@ class SecuredEndpointsContractTest {
                     Map.entry("ClientFileController#updateSimulation", ABERTO),
                     Map.entry("ClientFileController#markPrincipal", ABERTO),
                     Map.entry("ClientFileController#delete", ADVOGADO),
+                    Map.entry("ClientFileController#restore", ADVOGADO),
                     // Consulta de CEP: leitura de dado público, exige só estar autenticado.
                     Map.entry("CepController#lookup", ABERTO),
 

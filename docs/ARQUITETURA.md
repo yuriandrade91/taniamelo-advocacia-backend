@@ -197,7 +197,7 @@ violação de unicidade do Postgres vira 409 mapeada por campo.
 
 ## 8. Armazenamento de arquivos
 
-Abstração `FileStorageService` (`store`/`load`/`delete`) com `storageKey` opaco
+Abstração `FileStorageService` (`store`/`load`/`delete`/`move`) com `storageKey` opaco
 gravado no banco. Duas implementações, selecionadas por `app.storage.type`:
 
 - **`LocalDiskFileStorageService`** (`type=local`, padrão) — disco sob
@@ -221,6 +221,17 @@ O banco guarda tipo e tamanho do original. Arquivos anteriores à criptografia
 direto. `FileEncryptionKeyGuard` recusa subir fora de dev/test sem chave própria,
 e os scripts de deploy também. **Perder a chave é perder os arquivos.** MIME types aceitos centralizados em
 `AllowedMimeTypes` (documentos: PDF/PNG/JPEG; simulações: PDF).
+
+**Chaves e lixeira.** A chave é `<schema>/clients/<clientId>/documents|simulations/<uuid>.<ext>`
+(o id do cliente, nunca o nome: a chave aparece em log e CloudTrail). Nada é apagado do
+storage: `DELETE /files/{fileId}` move o objeto para `<schema>/_trash/...` e o banco passa a
+apontar para lá; `POST /files/{fileId}/restore` faz o caminho inverso (a simulação volta como
+não-principal). O objeto na lixeira continua cifrado, então abre com a mesma chave-mestra.
+Arquivos excluídos antes da lixeira existir ficam na chave original, e o restore só reativa a
+linha. No S3, mover é copiar e apagar a origem, então o papel da aplicação precisa de
+`s3:GetObject`, `s3:PutObject` e `s3:DeleteObject` no bucket. **Antes de rotacionar a
+chave-mestra:** `decrypt` só aceita a versão atual, então um arquivo antigo, na lixeira ou não,
+só abre se a chave antiga continuar disponível.
 
 ---
 

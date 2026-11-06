@@ -37,6 +37,31 @@ class LocalDiskFileStorageServiceTest {
     }
 
     @Test
+    @DisplayName("move leva o arquivo para a nova chave, criando as pastas")
+    void moveRelocatesTheFile() throws IOException {
+        String from = storage.store(pdf("a.pdf"), "t/clients/1").storageKey();
+
+        storage.move(from, "t/_trash/clients/1/a.pdf");
+
+        assertFalse(Files.exists(tempDir.resolve(from)));
+        assertEquals("conteudo", Files.readString(tempDir.resolve("t/_trash/clients/1/a.pdf")));
+    }
+
+    @Test
+    @DisplayName("move de arquivo inexistente falha")
+    void moveOfMissingFileThrows() {
+        assertThrows(FileStorageException.class, () -> storage.move("nao/existe.pdf", "x/y.pdf"));
+    }
+
+    @Test
+    @DisplayName("move recusa destino fora do diretório base")
+    void moveRefusesPathTraversal() {
+        String from = storage.store(pdf("a.pdf"), "docs").storageKey();
+
+        assertThrows(FileStorageException.class, () -> storage.move(from, "../fora.pdf"));
+    }
+
+    @Test
     @DisplayName("o diretório base é criado na subida se não existir")
     void createsBaseDirectoryOnStartup() {
         Path nested = tempDir.resolve("a/b/c");

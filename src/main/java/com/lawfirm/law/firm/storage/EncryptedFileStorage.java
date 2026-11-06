@@ -66,6 +66,11 @@ public class EncryptedFileStorage {
         storage.delete(storageKey);
     }
 
+    /** Move o objeto já cifrado; o conteúdo não é tocado, então o cabeçalho continua válido. */
+    public void move(String fromKey, String toKey) {
+        storage.move(fromKey, toKey);
+    }
+
     private static byte[] bytesOf(MultipartFile file) {
         try {
             return file.getBytes();

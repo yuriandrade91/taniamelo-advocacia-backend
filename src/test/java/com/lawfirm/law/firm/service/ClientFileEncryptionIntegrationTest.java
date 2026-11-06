@@ -20,6 +20,7 @@ import com.lawfirm.law.firm.storage.FileDownload;
 import com.lawfirm.law.firm.storage.FileEncryption;
 import com.lawfirm.law.firm.support.PostgresIntegrationTest;
 import com.lawfirm.law.firm.support.TestFixtures;
+import com.lawfirm.law.firm.tenant.TenantContext;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -96,6 +97,40 @@ class ClientFileEncryptionIntegrationTest extends PostgresIntegrationTest {
         assertEquals("application/pdf", download.mimeType());
         assertEquals(LAUDO.length, download.sizeBytes());
         try (InputStream in = download.resource().getInputStream()) {
+            assertArrayEquals(LAUDO, in.readAllBytes());
+        }
+    }
+
+    @Test
+    @DisplayName("excluir leva o objeto para a lixeira sem apagá-lo; restaurar o devolve legível")
+    void deleteKeepsTheObjectInTheTrashAndRestoreBringsItBack() throws Exception {
+        ClientFileDocumentUploadMetadataDTO metadata = new ClientFileDocumentUploadMetadataDTO();
+        metadata.setDocumentType("OUTROS");
+        UUID fileId =
+                service.uploadDocuments(
+                                clientId,
+                                List.of(
+                                        new MockMultipartFile(
+                                                "files", "laudo.pdf", "application/pdf", LAUDO)),
+                                List.of(metadata))
+                        .get(0)
+                        .getId();
+        String original = fileRepository.findById(fileId).orElseThrow().getStorageKey();
+
+        service.deleteFile(clientId, fileId);
+
+        ClientFile deleted = fileRepository.findById(fileId).orElseThrow();
+        String schema = TenantContext.get();
+        assertTrue(deleted.getStorageKey().startsWith(schema + "/_trash/clients/" + clientId));
+        assertFalse(Files.exists(Path.of(basePath).resolve(original)));
+        assertTrue(Files.exists(Path.of(basePath).resolve(deleted.getStorageKey())));
+
+        service.restoreFile(clientId, fileId);
+
+        ClientFile restored = fileRepository.findById(fileId).orElseThrow();
+        assertEquals(original, restored.getStorageKey());
+        assertTrue(Files.exists(Path.of(basePath).resolve(original)));
+        try (InputStream in = service.downloadFile(clientId, fileId).resource().getInputStream()) {
             assertArrayEquals(LAUDO, in.readAllBytes());
         }
     }

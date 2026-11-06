@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -28,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -213,6 +217,34 @@ class ObjectStorageFileStorageServiceTest {
                 .thenThrow(S3Exception.builder().message("acesso negado").build());
 
         assertThrows(FileStorageException.class, () -> storage.delete("docs/a.pdf"));
+    }
+
+    @Test
+    @DisplayName("move copia para o destino e só então apaga a origem")
+    void moveCopiesThenDeletesTheSource() {
+        storage.move("t/clients/a.pdf", "t/_trash/clients/a.pdf");
+
+        ArgumentCaptor<CopyObjectRequest> copy = ArgumentCaptor.forClass(CopyObjectRequest.class);
+        ArgumentCaptor<DeleteObjectRequest> delete =
+                ArgumentCaptor.forClass(DeleteObjectRequest.class);
+        InOrder order = inOrder(s3Client);
+        order.verify(s3Client).copyObject(copy.capture());
+        order.verify(s3Client).deleteObject(delete.capture());
+        assertEquals(BUCKET, copy.getValue().sourceBucket());
+        assertEquals("t/clients/a.pdf", copy.getValue().sourceKey());
+        assertEquals(BUCKET, copy.getValue().destinationBucket());
+        assertEquals("t/_trash/clients/a.pdf", copy.getValue().destinationKey());
+        assertEquals("t/clients/a.pdf", delete.getValue().key());
+    }
+
+    @Test
+    @DisplayName("cópia que falha não apaga a origem")
+    void failedCopyKeepsTheSource() {
+        when(s3Client.copyObject(any(CopyObjectRequest.class)))
+                .thenThrow(S3Exception.builder().message("acesso negado").build());
+
+        assertThrows(FileStorageException.class, () -> storage.move("a.pdf", "b.pdf"));
+        verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
     }
 
     @Test

@@ -55,6 +55,10 @@ public class ClientFileService {
 
     private static final Logger log = LoggerFactory.getLogger(ClientFileService.class);
 
+    // Lixeira dentro da pasta do próprio escritório, para a restrição por IAM e a exportação por
+    // prefixo de schema continuarem valendo também para o que foi excluído.
+    private static final String TRASH_FOLDER = "_trash/";
+
     private final ClientFileRepository repository;
     private final ClientRepository clientRepository;
     private final EncryptedFileStorage fileStorage;
@@ -240,9 +244,10 @@ public class ClientFileService {
     }
 
     /**
-     * Soft delete kind-agnostic. Se o arquivo removido era uma simulação marcada como principal, a
-     * mais recente restante é promovida - mesma regra do antigo delete por simulação, só que
-     * reaproveitada aqui em vez de duplicada por endpoint.
+     * Soft delete kind-agnostic: a linha fica marcada e o objeto vai para a lixeira do escritório
+     * ({@code <schema>/_trash/...}), de onde {@link #restoreFile} o traz de volta. Nada é apagado
+     * do storage. Se o arquivo removido era uma simulação marcada como principal, a mais recente
+     * restante é promovida.
      */
     @Transactional
     public void deleteFile(UUID clientId, UUID fileId) {
@@ -252,11 +257,32 @@ public class ClientFileService {
         if (wasPrincipal) {
             file.setIsPrincipal(false);
         }
+        relocate(file, trashKeyOf(file.getStorageKey()));
         softDelete(file);
 
         if (wasPrincipal) {
             promoteNextPrincipal(clientId);
         }
+    }
+
+    /**
+     * Desfaz {@link #deleteFile}: traz o objeto da lixeira de volta e reativa a linha. Volta como
+     * não-principal, mesmo que fosse a principal antes de excluir - a promoção já escolheu outra.
+     */
+    @Transactional
+    public void restoreFile(UUID clientId, UUID fileId) {
+        findClientOrThrow(clientId);
+        ClientFile file =
+                repository
+                        .findByIdAndClient_IdAndDeletedAtIsNotNull(fileId, clientId)
+                        .orElseThrow(() -> NotFoundException.of("Arquivo excluído", fileId));
+        // Excluídos antes da lixeira existir ainda estão na chave original: só a linha volta.
+        if (isInTrash(file.getStorageKey())) {
+            relocate(file, restoredKeyOf(file.getStorageKey()));
+        }
+        file.setDeletedAt(null);
+        file.setUpdatedBy(CurrentUser.id());
+        AuditIntent.declaring(AuditAction.RESTORE, () -> repository.saveAndFlush(file));
     }
 
     // ── Private helpers ──
@@ -285,6 +311,55 @@ public class ClientFileService {
         return schema + "/" + folder;
     }
 
+    private static String schemaPrefix() {
+        String schema = TenantContext.get();
+        if (schema == null) {
+            throw new IllegalStateException("Requisição sem tenant");
+        }
+        return schema + "/";
+    }
+
+    // Chave sem o prefixo do schema (gravada antes dele existir) ganha o prefixo ao ir para a
+    // lixeira, e é com ele que volta: continua válida, só deixa de ser a chave original.
+    private static String trashKeyOf(String storageKey) {
+        String prefix = schemaPrefix();
+        String rest =
+                storageKey.startsWith(prefix) ? storageKey.substring(prefix.length()) : storageKey;
+        return prefix + TRASH_FOLDER + rest;
+    }
+
+    private static boolean isInTrash(String storageKey) {
+        return storageKey.startsWith(schemaPrefix() + TRASH_FOLDER);
+    }
+
+    private static String restoredKeyOf(String trashKey) {
+        return schemaPrefix() + trashKey.substring((schemaPrefix() + TRASH_FOLDER).length());
+    }
+
+    /**
+     * Move o objeto e aponta a linha para a nova chave. O storage não participa da transação: se
+     * ela voltar atrás, o objeto é devolvido à chave anterior, senão a linha continuaria apontando
+     * para um lugar onde o arquivo não está mais.
+     */
+    private void relocate(ClientFile file, String newKey) {
+        String previousKey = file.getStorageKey();
+        fileStorage.move(previousKey, newKey);
+        file.setStorageKey(newKey);
+        afterRollback(() -> moveBack(newKey, previousKey));
+    }
+
+    private void moveBack(String currentKey, String previousKey) {
+        try {
+            fileStorage.move(currentKey, previousKey);
+        } catch (FileStorageException ex) {
+            log.warn(
+                    "Rollback não devolveu o arquivo à chave original, mova manualmente: {} -> {}",
+                    currentKey,
+                    previousKey,
+                    ex);
+        }
+    }
+
     private ClientFile findAnyFileOrThrow(UUID clientId, UUID fileId) {
         findClientOrThrow(clientId);
         return repository
@@ -311,6 +386,10 @@ public class ClientFileService {
      * do cliente no bucket, sem nada no sistema que aponte para ele.
      */
     private void removeIfTransactionRollsBack(String storageKey) {
+        afterRollback(() -> deleteOrphan(storageKey));
+    }
+
+    private static void afterRollback(Runnable action) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             return;
         }
@@ -319,7 +398,7 @@ public class ClientFileService {
                     @Override
                     public void afterCompletion(int status) {
                         if (status != STATUS_COMMITTED) {
-                            deleteOrphan(storageKey);
+                            action.run();
                         }
                     }
                 });

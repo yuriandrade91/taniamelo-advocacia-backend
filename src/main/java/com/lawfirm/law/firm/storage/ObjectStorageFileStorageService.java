@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -103,6 +104,30 @@ public class ObjectStorageFileStorageService implements FileStorageService {
         } catch (S3Exception e) {
             throw new FileStorageException(
                     "Falha ao remover arquivo do armazenamento de objetos: " + storageKey, e);
+        }
+    }
+
+    @Override
+    public void move(String fromKey, String toKey) {
+        try {
+            // O protocolo S3 não tem "mover": é copiar e apagar a origem. Se a cópia falhar, a
+            // origem continua intacta; se só o delete falhar, sobra uma cópia - nunca uma perda.
+            s3Client.copyObject(
+                    CopyObjectRequest.builder()
+                            .sourceBucket(bucket)
+                            .sourceKey(fromKey)
+                            .destinationBucket(bucket)
+                            .destinationKey(toKey)
+                            .build());
+            s3Client.deleteObject(
+                    DeleteObjectRequest.builder().bucket(bucket).key(fromKey).build());
+        } catch (S3Exception e) {
+            throw new FileStorageException(
+                    "Falha ao mover arquivo no armazenamento de objetos: "
+                            + fromKey
+                            + " -> "
+                            + toKey,
+                    e);
         }
     }
 }

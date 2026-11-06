@@ -13,7 +13,7 @@ sub-recursos de `/api/v1/clients/{id}`:
 | Endereços | `/addresses` (1:N, um principal) | POST/PUT/DELETE |
 | Entrevistas | `/interviews` | POST/PUT/DELETE |
 | Arquivos | `/files/documents` e `/files/simulations` (upload/lista/detalhe/patch - forma difere por tipo) | POST/GET/PATCH |
-| Arquivos (download/exclusão) | `/files/{fileId}/download` e `DELETE /files/{fileId}` (kind-agnostic - resolvido pelo id, sem forma específica por tipo) | GET/DELETE |
+| Arquivos (download/exclusão) | `/files/{fileId}/download` e `DELETE /files/{fileId}` e `POST /files/{fileId}/restore` (kind-agnostic - resolvido pelo id, sem forma específica por tipo) | GET/DELETE/POST |
 | Situação/benefício/arrecadação | `PATCH /clients/{id}` e `PATCH /clients/{id}/not-billable` | PATCH |
 | Histórico de situação | `GET /clients/{id}/situation-history` | (leitura - gerado automaticamente pelo PATCH acima) |
 
