@@ -30,10 +30,10 @@ Cada achado vem com o comando ou arquivo que o provou.
 
 | # | Decisão | Minha recomendação |
 | --- | --- | --- |
-| D1 | **Tamanho dos arquivos (10 a 60 MB).** Ver seção 4. | Cifra em blocos (caminho B). Com 60 MB, um download ocupa cerca de 300 MB de heap; a t4g.small tem cerca de 512 MB. **Em aberto.** |
+| D1 | **Tamanho dos arquivos (10 a 60 MB).** Ver seção 5. | Cifra em blocos (caminho B). Com 60 MB, um download ocupa cerca de 300 MB de heap; a t4g.small tem cerca de 512 MB. **Em aberto.** |
 | D2 | **Repositório público com dado real no histórico.** | **Decidido: vai ficar privado** (a mudança é feita pelo dono no GitHub). Falta o clone da instância passar a usar *deploy key*. Ver 1.3. |
 | D3 | **Postgres:** container na mesma EC2 ou RDS. | **Decidido: container na EC2**, com snapshot do EBS e dump fora da instância. |
-| D4 | **TLS e domínio.** | **Decidido: proxy próprio (Caddy) na EC2.** Passo a passo em [PROXY_TLS.md](PROXY_TLS.md). |
+| D4 | **TLS e domínio.** | **Decidido: proxy próprio (Caddy) na EC2.** Passo a passo em [PROXY_TLS.md](PROXY_TLS.md); o que falta na AWS está na seção 4. |
 | D5 | **Região do bucket.** | `sa-east-1`, por latência e por dado de cliente brasileiro. **Em aberto.** |
 | D6 | **Seed e schema do escritório real.** | **Decidido: produção vai zerada, sem seed nem inserção.** A `main` não tem mais migration de massa, seeders nem linhas de tenant no catálogo. O schema do escritório real é escolhido no cadastro (`scripts/tenant/01`). |
 
@@ -175,7 +175,7 @@ Os ambientes `development` e `production` existem no GitHub, mas **todos os secr
 
 ### 3.2 Instância
 
-- [ ] Tamanho: a t4g.small (2 GB) é pouco para app + Postgres + observabilidade, e mais ainda com os arquivos grandes (seção 4). Considerar t4g.medium.
+- [ ] Tamanho: a t4g.small (2 GB) é pouco para app + Postgres + observabilidade, e mais ainda com os arquivos grandes (seção 5). Considerar t4g.medium.
 - [ ] **[BLOQUEIA]** Disco: o EBS é de **8 GiB** e já estava 89,5% cheio (medido em 09/10). Produção precisa de volume maior, **criptografado**,
       de preferência com o Postgres em volume separado, e política de *snapshot* diária (Data Lifecycle Manager).
 - [ ] IMDSv2 com `--http-put-response-hop-limit 2`: sem isso a aplicação, que roda dentro do Docker, não recebe credencial da Role
@@ -217,7 +217,36 @@ Os ambientes `development` e `production` existem no GitHub, mas **todos os secr
 
 ---
 
-## 4. Arquivos de 10 a 60 MB
+## 4. HTTPS
+
+Produção só atende por HTTPS. A API guarda CPF, senha do INSS e documentos de perícia, e o login envia
+senha e devolve token: sem TLS, tudo isso trafega em texto. O proxy (Caddy) já está no compose e o roteiro
+está em [PROXY_TLS.md](PROXY_TLS.md); o que falta é **fazer acontecer na AWS e provar**.
+
+**Pronto no código:**
+
+- [x] Proxy Caddy com certificado Let's Encrypt automático, redirecionamento 80 → 443, HSTS e limite de corpo (`proxy/Caddyfile`).
+- [x] A 8080 do app só escuta em `127.0.0.1`; só o proxy tem porta pública.
+- [x] `forward-headers-strategy: native` no perfil `postgres`: o Spring enxerga `https` e o IP real.
+- [x] O deploy recusa `SITE_DOMAIN` de exemplo, `APP_CORS_ALLOWED_ORIGINS` com `*`, `.invalid` ou `localhost`.
+- [x] `.env.example` já traz `APP_AUTH_REFRESH_COOKIE_SECURE=true`.
+
+**A fazer (depende de você, da AWS ou do front):**
+
+- [ ] **[BLOQUEIA]** Registrar o domínio da API e criar o registro **A** para o Elastic IP; conferir com `dig +short` antes de subir o proxy (sem DNS a emissão falha e o Let's Encrypt limita as tentativas).
+- [ ] **[BLOQUEIA]** Security Group com **80 e 443 (TCP) e 443 (UDP)** abertos ao mundo, e **8080 e 5432 fechadas** (3.1).
+- [ ] **[BLOQUEIA]** Preencher no `.env` de produção `SITE_DOMAIN`, `APP_CORS_ALLOWED_ORIGINS=https://<front>` e `APP_AUTH_REFRESH_COOKIE_SECURE=true`.
+- [ ] **[BLOQUEIA]** O **front** passa a chamar a API por `https://` (qualquer `http://` no front é bloqueado pelo navegador como conteúdo misto) e é servido também por HTTPS.
+- [ ] Se front e API ficarem em **domínios diferentes**: `APP_AUTH_REFRESH_COOKIE_SAMESITE=None` (exige `Secure`), e o CORS lista exatamente a origem do front.
+- [ ] Emitir o primeiro certificado e conferir no log do proxy (`certificate obtained successfully`). **Não apagar o volume `caddy-data`**: perdê-lo obriga a emitir de novo e pode esbarrar no limite do Let's Encrypt.
+- [ ] Provar de fora: `https://` responde 200 em `/actuator/health`, `http://` redireciona (308), `http://<IP>:8080` **não** responde, e o teste do SSL Labs dá A ou A+ ([PROXY_TLS.md](PROXY_TLS.md), passo 5).
+- [ ] Alarme de expiração do certificado (a renovação é automática, mas falha em silêncio se o DNS ou a porta 80 mudarem): checagem externa da validade e alerta com 14 dias de antecedência.
+- [ ] Incluir o volume `caddy-data` no backup da instância (snapshot do EBS já cobre).
+- [ ] O bucket recusa tráfego sem TLS (`aws:SecureTransport`, 3.3). O driver JDBC e o Postgres falam só pela rede interna do compose, sem exposição.
+- [ ] Smoke test pós-deploy (seção 7) feito **pelo domínio com HTTPS**, não por `localhost`: é o que prova a cadeia inteira, incluindo o cookie `Secure` do refresh (login, recarregar a página, a sessão tem de continuar).
+- [ ] Pentest em staging inclui TLS e cabeçalhos ([PENTEST.md](PENTEST.md), 4.4): versões de TLS aceitas, HSTS, e que nenhuma resposta com PII é cacheável.
+
+## 5. Arquivos de 10 a 60 MB
 
 Contexto: hoje `max-file-size` é 10 MB e `max-request-size` é 60 MB. Um arquivo acima de 10 MB volta como 400 `FILE_TOO_LARGE`.
 O `EncryptedFileStorage` carrega o arquivo inteiro na memória, na ida e na volta (upload: 3 a 4 vezes o tamanho; download: 4 a 5 vezes).
@@ -237,7 +266,7 @@ Dois downloads simultâneos de arquivos grandes derrubam a JVM inteira, e com el
 
 ---
 
-## 5. Dados e escritório real
+## 6. Dados e escritório real
 
 - [ ] Cadastrar o escritório real no catálogo e criar os usuários reais com os scripts de `scripts/tenant/` (copiados para fora do repositório, como o próprio
       script pede), com senha forte e troca no primeiro acesso (`must_change_password` ainda não existe; ver [CADASTRO_DE_TENANT.md](CADASTRO_DE_TENANT.md)).
@@ -248,7 +277,7 @@ Dois downloads simultâneos de arquivos grandes derrubam a JVM inteira, e com el
 
 ---
 
-## 6. Ensaio, virada e pós-virada
+## 7. Ensaio, virada e pós-virada
 
 1. [ ] Ensaiar **tudo** acima numa instância de staging: criar do zero, subir, cadastrar o escritório, subir arquivos de 60 MB, excluir e restaurar, derrubar a instância e restaurar do backup.
 2. [ ] Pentest em staging com massa sintética, conforme [PENTEST.md](PENTEST.md) (autorização por escrito antes).
@@ -266,9 +295,10 @@ Dois downloads simultâneos de arquivos grandes derrubam a JVM inteira, e com el
 1. Decisões D1 a D6.
 2. Limpeza do repositório, compose e `.env.example`, e os guardas de perfil e de seed (seção 1.2). Tudo pequeno e independente de AWS.
 3. Proteção das branches e decisão sobre o repositório público (1.1 e 1.3).
-4. Arquivos grandes (seção 4), porque muda a dimensão da instância.
-5. AWS de staging, ensaio completo, pentest.
-6. AWS de produção, pipeline de produção, virada.
+4. Domínio e DNS, que levam tempo para propagar (seção 4).
+5. Arquivos grandes (seção 5), porque muda a dimensão da instância.
+6. AWS de staging, ensaio completo, pentest.
+7. AWS de produção, pipeline de produção, HTTPS no ar, virada.
 
 ---
 
