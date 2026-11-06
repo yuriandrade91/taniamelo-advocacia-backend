@@ -37,9 +37,8 @@
 		<jacoco.version>0.8.13</jacoco.version>
 		<sonar-maven-plugin.version>5.1.0.4751</sonar-maven-plugin.version>
 
-		<!-- SonarQube / SonarCloud: chaveie o projeto e (em CI) passe -Dsonar.token=... .
-		     sonar.host.url default aponta para o SonarCloud; troque para a URL do seu
-		     SonarQube self-hosted se for o caso. A cobertura vem do JaCoCo (report XML). -->
+		<!-- SonarCloud: roda só no CI, que passa -Dsonar.token=... e -Dsonar.organization=... .
+		     A cobertura vem do JaCoCo (report XML). -->
 		<!-- Alinhada com a versão que o spring-boot-testcontainers 4.1.0 já traz do core;
 		     o BOM abaixo só estende esse alinhamento aos módulos (postgresql), que o
 		     parent do Boot não gerencia. -->
@@ -50,8 +49,7 @@
 		<!-- Chave COMO O SONARCLOUD A CRIOU no import do GitHub: prefixo da
 		     organização + nome do repositório. Não é escolha estética - com a
 		     chave curta ("taniamelo-advocacia-backend") a análise do CI não
-		     encontra o projeto. Para rodar contra o SonarQube local, sobrescreva
-		     na linha de comando: -Dsonar.projectKey=taniamelo-advocacia-backend -->
+		     encontra o projeto. -->
 		<sonar.projectKey>yuriandrade91_taniamelo-advocacia-backend</sonar.projectKey>
 		<!-- Nome de exibição FIXADO aqui, não só renomeado na UI do Sonar: sem
 		     esta propriedade o plugin manda o <name> do Maven ("law-firm") a

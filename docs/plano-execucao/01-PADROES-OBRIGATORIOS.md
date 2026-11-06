@@ -205,35 +205,28 @@ pnpm test:e2e                      # backend local na 8080; credenciais em env/e
 Sem `env/e2e.local.env` ou sem `api-tests/.env`, **não finja**: registre no relatório que o e2e
 não rodou e por quê.
 
-**Sonar local** (servidor: `docker compose -f docker-compose.sonar.yml up -d` no backend; análise
-com a árvore limpa, depois dos commits):
+**Sonar** roda só no CI (SonarCloud), a cada push. Não rode `sonar:sonar` da máquina: ele publicaria
+no projeto da nuvem uma análise de árvore não commitada. O fluxo é commitar, dar push e ler o
+resultado do commit (sem imprimir o token):
 
 ```bash
-# backend
-set -a; source .env; set +a
-mvn clean verify sonar:sonar -Dsonar.host.url="$SONAR_HOST_URL" \
-  -Dsonar.token="$SONAR_TOKEN_BACK" -Dsonar.projectKey="$SONAR_PROJECT_KEY_BACK"
-
-# frontend (na pasta do front)
-set -a; source ../taniamelo-advocacia-backend/.env; set +a
-pnpm test:coverage
-SONAR_TOKEN="$SONAR_TOKEN_FRONT" pnpm sonar
+set -a; source ../taniamelo-advocacia-backend/.env; set +a   # no backend: source .env
+# gate do branch
+curl -s -u "$SONAR_TOKEN_BACK:" \
+  "$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY_BACK&branch=develop"
+# problemas abertos
+curl -s -u "$SONAR_TOKEN_BACK:" \
+  "$SONAR_HOST_URL/api/issues/search?componentKeys=$SONAR_PROJECT_KEY_BACK&branch=develop&resolved=false"
 ```
 
-No backend o `sonar.qualitygate.wait=true` do `pom.xml` faz o comando falhar se o gate reprovar.
-No frontend o scanner não espera o gate: depois da análise, consulte o resultado (sem imprimir o
-token):
-
-```bash
-curl -s -u "$SONAR_TOKEN_FRONT:" \
-  "$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY_FRONT"
-```
+Para o frontend, troque por `SONAR_TOKEN_FRONT` e `SONAR_PROJECT_KEY_FRONT`. Sem o token, o check
+"SonarCloud Code Analysis" do commit no GitHub mostra quais condições do gate falharam.
 
 O Quality Gate (código novo) tem de **passar**: cobertura ≥ 80%, duplicação ≤ 3%, ratings A em
 manutenibilidade/confiabilidade/segurança, 100% dos hotspots revisados. NÃO use `// NOSONAR` nem
 `@SuppressWarnings` para passar o gate. Falsos positivos conhecidos (`CLAUDE.md`): S1135 (palavra
-"todo") e regras PL/SQL de Oracle — registre no relatório se aparecerem. Sonar local verde não
-garante o SonarCloud do CI; diga isso no relatório.
+"todo") e regras PL/SQL de Oracle — registre no relatório se aparecerem. Build verde não garante o
+gate: diga no relatório que o resultado do Sonar só existe depois do push.
 
 ## 10. Git
 

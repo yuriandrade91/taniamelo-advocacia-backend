@@ -76,9 +76,11 @@ QUALIDADE_SONAR_HOOKS).
 - Formatar: `mvn spotless:apply`. `mvn process-classes` roda compile + `spotless:check` +
   Checkstyle e **falha** o build em violação — é o que o pre-commit roda.
 - App local: `./scripts/dev.sh` (perfil `dev`, porta 8081).
-- Sonar local: `docker compose -f docker-compose.sonar.yml up -d`, depois, com a árvore limpa,
-  `mvn clean verify sonar:sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.token=<token>
-  -Dsonar.projectKey=taniamelo-advocacia-backend` (o `projectKey` do pom é o do SonarCloud).
+- Sonar: só o SonarCloud, e só pelo CI (`ci.yml`, `qualitygate.wait=true`). Não rode
+  `sonar:sonar` da máquina: publicaria no projeto da nuvem uma análise de árvore não commitada.
+  Depois do push, o resultado está no check "SonarCloud Code Analysis" do commit no GitHub e, com
+  mais detalhe, na API: `set -a; source .env; set +a` e
+  `curl -s -u "$SONAR_TOKEN_BACK:" "https://sonarcloud.io/api/issues/search?componentKeys=$SONAR_PROJECT_KEY_BACK&branch=develop&resolved=false"`.
 
 ## Armadilhas
 
@@ -92,8 +94,9 @@ QUALIDADE_SONAR_HOOKS).
 - **Migration aplicada não se edita** — o checksum muda e a subida falha. Crie uma nova versão.
 - `db/migration/tenant` roda em **todo** schema do catálogo, inclusive de escritório real. Massa
   de demonstração só com guarda de `current_schema()` e atrás de `app.seed.demo-data`.
-- **Sonar local ≠ SonarCloud.** A Community Edition local não analisa PL/SQL nem segredos; o
-  SonarCloud do CI analisa. Verde local não garante o gate do CI.
+- **O Sonar só se vê depois do push.** `mvn clean verify` verde não garante o gate do CI: o
+  SonarCloud tem regras que o build não tem (ex.: S9352, beans ambíguos, que ele não resolve por
+  `@ConditionalOnProperty`) e analisa PL/SQL e segredos.
 - Falsos positivos conhecidos do Sonar: S1135 casa a palavra "todo" do português; as regras
   PL/SQL assumem Oracle (onde `''` é `NULL`) — em Postgres a comparação com `''` é intencional.
 

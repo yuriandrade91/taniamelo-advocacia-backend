@@ -81,13 +81,6 @@ PROMETHEUS_SCRAPE_CONFIG=prometheus.ide.yml
 - **Logs não vão para o Loki nesse modo**: o Alloy lê o stdout dos
   *containers*, e o app da IDE não é um. Os logs ficam no console da IDE.
 
-Para subir também o SonarQube, acrescente `docker-compose.sonar.yml` à lista
-(`docker-compose.yml,docker-compose.observability.yml,docker-compose.sonar.yml`).
-Os serviços dele levam o label `org.springframework.boot.ignore`: o Spring os
-sobe, mas não trata o Postgres do Sonar como banco do app nem espera o
-SonarQube ficar pronto (~1 min) para liberar o boot. Ele pede ~2 GiB a mais na
-VM do Docker Desktop — confira os recursos antes de ligar.
-
 ## Acessos
 
 | Serviço | Porta | Exposição |
