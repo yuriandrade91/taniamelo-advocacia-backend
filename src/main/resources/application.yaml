@@ -82,7 +82,7 @@ management:
         http.server.requests: 50ms,100ms,200ms,300ms,500ms,1s,2s
   tracing:
     # Amostragem do tracing. 10% por padrão (baixo overhead em produção);
-    # suba para 1.0 em dev, ou 0 para desligar. Ver application-dev.yaml.
+    # suba até 1.0 para investigar, ou 0 para desligar.
     sampling:
       probability: ${MANAGEMENT_TRACING_SAMPLING:0.1}
   # Chave do Boot 4. A antiga (management.otlp.tracing.endpoint) foi removida e

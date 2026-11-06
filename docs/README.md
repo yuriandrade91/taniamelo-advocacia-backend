@@ -53,7 +53,6 @@ mantê-los aqui faz quem chega ler o passado achando que é o presente.
   para os documentos de cada assunto.
 - **`INFRA_PLAN.md`** — pesquisa e decisões de infra/observabilidade (contexto).
 - **`PROVISIONAMENTO_INFRA.md`** — provisionamento de pipeline/Sonar/Grafana.
-- **`README-DOCKER.md`** — execução via Docker (local/containerizado).
 
 ## Operação / testes
 - **`requests.http`** — requisições da API para disparar à mão do editor.

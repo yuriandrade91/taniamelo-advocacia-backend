@@ -56,7 +56,7 @@ database "PostgreSQL" as pg {
   folder "public (control-plane)" as schPublic {
     component "tenants\nsupport_users" as tPublic
   }
-  folder "tenant_tania / tenant_demo / ..." as schTenant {
+  folder "tenant_escritorio_a / tenant_escritorio_b / ..." as schTenant {
     component "users, clients, appointments,\npayments, audit_log, ..." as tTenant
   }
 }

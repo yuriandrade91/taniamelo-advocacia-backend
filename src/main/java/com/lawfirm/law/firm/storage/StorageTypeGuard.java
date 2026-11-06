@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 @Component
 class StorageTypeGuard {
 
-    // Mesmos perfis que CorsConfig e SeedPasswords tratam como locais.
+    // Mesmos perfis que CorsConfig e FileEncryptionKeyGuard tratam como locais.
     private static final List<String> PERFIS_LOCAIS = List.of("dev", "test");
 
     StorageTypeGuard(

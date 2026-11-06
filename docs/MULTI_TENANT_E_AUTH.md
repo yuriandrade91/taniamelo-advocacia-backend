@@ -6,7 +6,7 @@ como rodar/testar com **dois tenants**. Decisão de estratégia: `adr/ADR-0001`
 
 ## 1. Modelo: um schema Postgres autocontido por tenant
 
-- Cada escritório = um **schema** (ex.: `tenant_tania`, `tenant_demo`) com o
+- Cada escritório = um **schema** (ex.: `tenant_escritorio_a`, `tenant_escritorio_b`) com o
   conjunto COMPLETO de tabelas (users, clients, client_*, audit_log,
   refresh_tokens). Isolamento forte: nenhuma linha de um tenant é visível no
   outro.
@@ -53,7 +53,7 @@ tabela de **control-plane** no schema `public` (nunca dentro de um tenant):
 
 | coluna | uso |
 |---|---|
-| `schema_name` | liga o registro ao schema físico (ex.: `tenant_demo`) |
+| `schema_name` | liga o registro ao schema físico (ex.: `tenant_escritorio_a`) |
 | `razao_social`, `cnpj`, `responsavel`, `email`, `telefone` | dados cadastrais do escritório |
 | `plano`, `status` | plano contratado e se está `ativo` |
 | `criado_em`, `atualizado_em` | auditoria |
@@ -87,7 +87,7 @@ roteiro em [CADASTRO_DE_TENANT.md](CADASTRO_DE_TENANT.md).
 
 ## 5. Identificador público do tenant (nunca o nome do schema)
 
-O nome físico do schema (`tenant_tania`) **não** é exposto. A API usa:
+O nome físico do schema (`tenant_escritorio_a`) **não** é exposto. A API usa:
 
 - **`tenantId`** — UUID canônico e opaco (`tenants.id`).
 - **`slug`** — identificador amigável para subdomínio/URL (ex.: `meu-escritorio`).

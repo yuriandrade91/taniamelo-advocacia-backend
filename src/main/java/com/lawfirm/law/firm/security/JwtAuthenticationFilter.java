@@ -42,11 +42,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      *
      * <p>Sem esta checagem, o {@code X-Tenant-Id} do cabeçalho decidia sozinho em qual schema
      * procurar o usuário ({@link com.lawfirm.law.firm.tenant.TenantResolutionFilter} resolve pelo
-     * header primeiro), e o usuário era carregado pelo e-mail LÁ. Como o {@link
-     * com.lawfirm.law.firm.config.AdminUserSeeder} semeia o mesmo e-mail e a mesma senha em todos
-     * os schemas, existia por construção uma conta presente em todos os escritórios: com o token de
-     * um e o cabeçalho de outro, dava para ler a carteira de clientes alheia, criar compromisso
-     * nela e ler a senha do INSS dos clientes dela.
+     * header primeiro), e o usuário era carregado pelo e-mail LÁ. Como o mesmo e-mail pode existir
+     * em mais de um escritório, uma conta podia estar presente em vários: com o token de um e o
+     * cabeçalho de outro, dava para ler a carteira de clientes alheia, criar compromisso nela e ler
+     * a senha do INSS dos clientes dela.
      *
      * <p>Comparamos schema resolvido contra schema do claim, e não o texto do claim contra o texto
      * do header, porque o identificador público aceita slug OU UUID: {@code demo} e o UUID do mesmo

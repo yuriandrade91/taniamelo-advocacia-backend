@@ -19,7 +19,7 @@ class FileEncryptionKeyGuard {
     /** A mesma do default de {@code app.storage.encryption.key} no {@code application.yaml}. */
     static final String DEV_KEY = "ZGV2LW9ubHktZmlsZS1rZXktTk9ULUZPUi1QUk9EISE=";
 
-    // Mesmos perfis que CorsConfig, SeedPasswords e StorageTypeGuard tratam como locais.
+    // Mesmos perfis que CorsConfig e StorageTypeGuard tratam como locais.
     private static final List<String> PERFIS_LOCAIS = List.of("dev", "test");
 
     FileEncryptionKeyGuard(@Value("${app.storage.encryption.key:}") String key, Environment env) {
