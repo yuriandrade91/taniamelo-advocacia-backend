@@ -9,6 +9,7 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
@@ -17,7 +18,6 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
  * Implementação em armazenamento de objetos (protocolo S3) do {@link FileStorageService}, ativada
@@ -67,7 +67,10 @@ public class ObjectStorageFileStorageService implements FileStorageService {
                             .build();
             s3Client.putObject(
                     request, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-        } catch (IOException | S3Exception e) {
+        } catch (IOException | SdkException e) {
+            // SdkException, e não só S3Exception: credencial não encontrada e falha de rede são
+            // SdkClientException, que não vem do serviço S3 - sem ela o erro viraria um 500
+            // genérico, sem a causa.
             throw new FileStorageException(
                     "Falha ao gravar arquivo no armazenamento de objetos: " + storageKey, e);
         }
@@ -89,7 +92,7 @@ public class ObjectStorageFileStorageService implements FileStorageService {
         } catch (NoSuchKeyException e) {
             throw new FileStorageException(
                     "Arquivo não encontrado no armazenamento de objetos: " + storageKey, e);
-        } catch (S3Exception e) {
+        } catch (SdkException e) {
             throw new FileStorageException(
                     "Falha ao ler arquivo do armazenamento de objetos: " + storageKey, e);
         }
@@ -101,7 +104,7 @@ public class ObjectStorageFileStorageService implements FileStorageService {
             // deleteObject é idempotente no protocolo S3: não falha se a key já não existir.
             s3Client.deleteObject(
                     DeleteObjectRequest.builder().bucket(bucket).key(storageKey).build());
-        } catch (S3Exception e) {
+        } catch (SdkException e) {
             throw new FileStorageException(
                     "Falha ao remover arquivo do armazenamento de objetos: " + storageKey, e);
         }
@@ -121,7 +124,7 @@ public class ObjectStorageFileStorageService implements FileStorageService {
                             .build());
             s3Client.deleteObject(
                     DeleteObjectRequest.builder().bucket(bucket).key(fromKey).build());
-        } catch (S3Exception e) {
+        } catch (SdkException e) {
             throw new FileStorageException(
                     "Falha ao mover arquivo no armazenamento de objetos: "
                             + fromKey

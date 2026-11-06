@@ -29,6 +29,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
@@ -140,6 +141,20 @@ class ObjectStorageFileStorageServiceTest {
                         any(PutObjectRequest.class),
                         any(software.amazon.awssdk.core.sync.RequestBody.class)))
                 .thenThrow(S3Exception.builder().message("acesso negado").build());
+
+        MockMultipartFile arquivo = pdf("a.pdf");
+        assertThrows(FileStorageException.class, () -> storage.store(arquivo, "docs"));
+    }
+
+    @Test
+    @DisplayName("credencial ausente no upload (SdkClientException) vira FileStorageException")
+    void missingCredentialsOnPutBecomesFileStorageException() {
+        when(s3Client.putObject(
+                        any(PutObjectRequest.class),
+                        any(software.amazon.awssdk.core.sync.RequestBody.class)))
+                .thenThrow(
+                        SdkClientException.create(
+                                "Unable to load credentials from any of the providers"));
 
         MockMultipartFile arquivo = pdf("a.pdf");
         assertThrows(FileStorageException.class, () -> storage.store(arquivo, "docs"));

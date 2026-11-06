@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -32,6 +34,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /** Maps DB column names to API field names for integrity-violation messages. */
     private static final Map<String, String> COLUMN_TO_FIELD =
@@ -372,6 +376,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(JpaSystemException.class)
     public ResponseEntity<ApiResponse<Void>> handleJpaSystem(JpaSystemException ex) {
+        log.error("Erro de persistência", ex);
         Throwable root = ex;
         while (root.getCause() != null) root = root.getCause();
         String msg = root.getMessage() != null ? root.getMessage() : ex.getMessage();
@@ -382,6 +387,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SystemException.class)
     public ResponseEntity<ApiResponse<Void>> handleSystem(SystemException ex) {
+        log.error("Erro de sistema", ex);
         String code = ex.getCode();
         String message =
                 ex.getErrorCode() != null
@@ -393,6 +399,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(FileStorageException.class)
     public ResponseEntity<ApiResponse<Void>> handleFileStorage(FileStorageException ex) {
+        log.error("Falha no armazenamento de arquivos", ex);
         return respond(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 List.of(
@@ -406,6 +413,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
+        log.error("Erro não tratado", ex);
         return respond(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 List.of(
