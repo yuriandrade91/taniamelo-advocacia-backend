@@ -64,11 +64,6 @@ services:
       # dev, a aplicação não sobe.
       APP_FILE_ENCRYPTION_KEY: ${APP_FILE_ENCRYPTION_KEY}
       APP_FILE_ENCRYPTION_KEY_VERSION: ${APP_FILE_ENCRYPTION_KEY_VERSION:-1}
-      APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL}
-      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD}
-      # Agente de suporte da plataforma (control-plane). Semeado no boot se vazio.
-      APP_SUPPORT_EMAIL: ${APP_SUPPORT_EMAIL:-}
-      APP_SUPPORT_PASSWORD: ${APP_SUPPORT_PASSWORD:-}
       SPRING_FLYWAY_BASELINE_ON_MIGRATE: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:-false}
       SPRING_FLYWAY_BASELINE_VERSION: ${SPRING_FLYWAY_BASELINE_VERSION:-0}
       # Disco local dos documentos/simulações de CNIS. Fica num volume nomeado
@@ -101,8 +96,10 @@ services:
       MANAGEMENT_TRACING_SAMPLING: ${MANAGEMENT_TRACING_SAMPLING:-0}
     volumes:
       - app-storage:/app/storage
+    # Só em loopback: quem atende o público é o proxy TLS (serviço "proxy"), pela rede interna.
+    # O deploy confere o health por aqui (curl localhost:8080 na própria instância).
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       db:
         condition: service_healthy
@@ -113,6 +110,31 @@ services:
       retries: 5
       start_period: 20s
 
+  # Proxy reverso com HTTPS automático (Let's Encrypt). Ver docs/PROXY_TLS.md.
+  # É o único serviço com portas públicas (80 e 443); a 443/udp é o HTTP/3.
+  proxy:
+    container_name: caddy-proxy
+    logging: *logging
+    profiles: ["full"]
+    image: caddy:2.11
+    restart: unless-stopped
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificado e chave da conta ACME: perder estes volumes obriga a emitir de novo.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+
 volumes:
   db-data:
   app-storage:
+  caddy-data:
+  caddy-config:

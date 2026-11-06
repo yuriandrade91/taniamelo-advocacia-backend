@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Sobe o backend containerizado (app + Postgres) na instância EC2, via
+# Sobe o backend containerizado (app + Postgres + proxy TLS) na instância EC2, via
 # Docker Compose. Chamado pelo job de deploy (.github/workflows/deploy.yml).
 #
 # Sucessor de restart-app.sh: esta instância passou a rodar via
@@ -19,7 +19,6 @@ erro() { echo "ERRO: $*" >&2; exit 1; }
 # ── 0. As ferramentas necessárias existem? ──
 command -v docker > /dev/null || erro "docker não encontrado - rode o bootstrap manual (instalar Docker) antes do primeiro deploy containerizado."
 docker compose version > /dev/null 2>&1 || erro "'docker compose' (plugin) não encontrado."
-command -v psql > /dev/null || erro "psql não encontrado - necessário para popular o banco (dnf install -y postgresql18 ou equivalente)."
 
 # ── 1. O .env existe? ──
 [ -r "$ENV_FILE" ] || erro "$ENV_FILE não existe ou não é legível na raiz do repo. Ele não é gerado pelo deploy - crie manualmente uma vez, com as mesmas variáveis do docker-compose.yml."
@@ -34,6 +33,7 @@ faltando=$(
     set +a
     for v in POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD \
              SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD \
+             SPRING_PROFILES_ACTIVE SITE_DOMAIN APP_CORS_ALLOWED_ORIGINS \
              APP_JWT_SECRET APP_ENCRYPTION_KEY APP_FILE_ENCRYPTION_KEY; do
         [ -z "${!v}" ] && echo "$v"
     done
@@ -64,7 +64,16 @@ inseguros=$(
         COLE_AQUI*|ZGV2LW9ubHktZmlsZS1rZXktTk9ULUZPUi1QUk9EISE=) echo "APP_FILE_ENCRYPTION_KEY (placeholder ou CHAVE DE DEV)";;
     esac
     [ -n "$APP_FILE_ENCRYPTION_KEY" ] && [ "$APP_FILE_ENCRYPTION_KEY" = "$APP_ENCRYPTION_KEY" ] && echo "APP_FILE_ENCRYPTION_KEY igual a APP_ENCRYPTION_KEY (use chaves diferentes)"
-    [ "${APP_ADMIN_PASSWORD:-}" = "changeme123" ] && echo "APP_ADMIN_PASSWORD (default de dev)"
+    # Produção roda só com o perfil "postgres". Qualquer outro (dev, test) liga o que é de
+    # máquina de desenvolvedor, como o CORS "*" e a amostragem total de tracing.
+    [ "$SPRING_PROFILES_ACTIVE" != "postgres" ] && echo "SPRING_PROFILES_ACTIVE='$SPRING_PROFILES_ACTIVE' (produção usa postgres)"
+    case "$SITE_DOMAIN" in
+        *.invalid|localhost*|*example*) echo "SITE_DOMAIN (valor de exemplo; use o domínio real, com DNS já apontado)";;
+    esac
+    case "$APP_CORS_ALLOWED_ORIGINS" in
+        '*'|*.invalid|*localhost*) echo "APP_CORS_ALLOWED_ORIGINS (use o https do frontend real)";;
+    esac
+    [ "${APP_STORAGE_TYPE:-}" != "s3" ] && echo "APP_STORAGE_TYPE='${APP_STORAGE_TYPE:-}' (produção usa s3)"
     case "$SPRING_DATASOURCE_URL" in
         *localhost*|*127.0.0.1*) echo "SPRING_DATASOURCE_URL aponta pra localhost/127.0.0.1 (deveria ser jdbc:postgresql://db:5432/... dentro do compose)";;
     esac
@@ -78,8 +87,7 @@ echo "Subindo containers (commit $GIT_COMMIT)..."
 docker compose --profile full up -d --build
 
 # ── 5. Esperar a aplicação aplicar as migrations ──
-# Migrations rodam no boot (MultiTenantFlywayMigrator); só depois disso os
-# schemas dos tenants existem e dá pra popular o banco com segurança.
+# Migrations rodam no boot (MultiTenantFlywayMigrator).
 echo "Aguardando a aplicação responder (migrations rodam no boot)..."
 subiu=nao
 for _ in $(seq 1 30); do
@@ -90,45 +98,11 @@ for _ in $(seq 1 30); do
     sleep 4
 done
 if [ "$subiu" != "sim" ]; then
-    echo "Containers subiram mas a aplicação não respondeu UP a tempo - pulando o seed."
+    echo "Containers subiram mas a aplicação não respondeu UP a tempo."
     echo "O deploy segue com a checagem de versão, que vai reportar a falha."
     exit 0
 fi
 
-# ── 6. Popular o banco - só na primeira vez, por tenant ──
-# Idempotente: os scripts de seed fazem TRUNCATE, então só rodam quando o
-# schema do tenant ainda não tem CLIENTES. O guard olha clients (não users)
-# de propósito: o AdminUserSeeder cria um ADMIN em cada schema no boot, ANTES
-# desta etapa, então "tem usuário" seria sempre verdadeiro e a massa nunca
-# entraria. clients só é populado pela massa - é o sinal correto de "já
-# semeado". Assim, o primeiro deploy popula e os seguintes preservam dados
-# reais.
-set -a
-. "./$ENV_FILE"
-set +a
-
-for tenant in tania demo; do
-    schema="tenant_${tenant}"
-    seed_file="db/mock-data/seed_tenant_${tenant}.sql"
-    [ -f "$seed_file" ] || { echo "Sem $seed_file - pulando seed de $schema."; continue; }
-
-    ja_populado=$(PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc \
-        "SELECT 1 FROM information_schema.tables WHERE table_schema='${schema}' AND table_name='users'" 2>/dev/null || true)
-    if [ -z "$ja_populado" ]; then
-        echo "Schema $schema sem tabela users ainda - Flyway pode não ter rodado pra esse tenant. Pulando seed."
-        continue
-    fi
-
-    tem_clientes=$(PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc \
-        "SELECT 1 FROM ${schema}.clients LIMIT 1" 2>/dev/null || true)
-    if [ -n "$tem_clientes" ]; then
-        echo "Schema $schema já tem clientes - pulando seed (preserva dados reais)."
-        continue
-    fi
-
-    echo "Populando $schema com a massa de teste ($seed_file)..."
-    PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-        -v ON_ERROR_STOP=1 -f "$seed_file"
-done
-
-echo "Containers no ar, banco populado. O deploy segue com a checagem de versão."
+# O banco sobe vazio e continua vazio: nada é semeado. O escritório e os usuários entram pelos
+# scripts de scripts/tenant (ver docs/CADASTRO_DE_TENANT.md).
+echo "Containers no ar. O deploy segue com a checagem de versão."

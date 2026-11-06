@@ -1,0 +1,34 @@
+# Proxy reverso TLS da produção (Caddy). Termina o HTTPS, obtém e renova o certificado
+# sozinho (Let's Encrypt) e repassa para a aplicação pela rede interna do compose; a 8080 do
+# app só escuta em loopback e nunca fica exposta. Passo a passo: docs/PROXY_TLS.md.
+#
+# {$SITE_DOMAIN} vem do .env (ex.: api.exemplo.adv.br). O DNS tem de apontar para a instância
+# ANTES do primeiro boot, ou a emissão do certificado falha e o Let's Encrypt limita as
+# tentativas por hora.
+{$SITE_DOMAIN} {
+	# Upload em lote: o limite do Spring é 60 MB por requisição (max-request-size). Folga para
+	# o cabeçalho multipart; acima disso o proxy recusa antes de a aplicação gastar memória.
+	request_body {
+		max_size 70MB
+	}
+
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	reverse_proxy app:8080 {
+		# Download de arquivo grande passa pela aplicação (decifra no caminho): a leitura
+		# lenta de uma conexão de escritório não pode ser cortada no meio.
+		transport http {
+			response_header_timeout 5m
+			read_timeout 5m
+			write_timeout 5m
+		}
+		# O Caddy descarta o X-Forwarded-For que o cliente mandar e coloca o IP real: o
+		# limite de tentativas de login (AuthController.clientIp) depende disso.
+	}
+}
