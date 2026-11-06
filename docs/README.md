@@ -48,6 +48,9 @@ mantê-los aqui faz quem chega ler o passado achando que é o presente.
 ## Infraestrutura e deploy (AWS)
 - **`AWS_EC2_ARM64_DEPLOY.md`** — **guia canônico e verificado** de deploy
   (EC2 ARM64 / Amazon Linux 2023 / systemd). Use este para subir/atualizar.
+- **`PLANO_VIRADA_PRODUCAO.md`** — checklist único da virada `develop` → `main` →
+  produção (repositório, pipeline, AWS, arquivos grandes, escritório real). Aponta
+  para os documentos de cada assunto.
 - **`INFRA_PLAN.md`** — pesquisa e decisões de infra/observabilidade (contexto).
 - **`PROVISIONAMENTO_INFRA.md`** — provisionamento de pipeline/Sonar/Grafana.
 - **`README-DOCKER.md`** — execução via Docker (local/containerizado).
