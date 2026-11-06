@@ -1,8 +1,11 @@
 # Plano de virada: `develop` → `main` → produção
 
-**Levantado em 06/11/2026**, sobre a `develop` em `0d1e5dd` (mais as mudanças da lixeira de arquivos,
-ainda não commitadas). Produção **ainda não existe**: a instância atual (`tm-adv-backend`) é o
-ambiente `development` do GitHub.
+**Levantado em 06/11/2026**, sobre a `develop` em `0d1e5dd`. Produção **ainda não existe**: a instância
+atual é o ambiente `development` do GitHub.
+
+**Estado em 06/11/2026 (PR `release/main-producao` → `main`):** os itens marcados `[x]` abaixo foram feitos
+nessa branch. A `main` sai **sem seed, sem seeders e sem ferramentas de dev**; a `develop` continua como está
+(ver "Main e develop divergem de propósito" no fim).
 
 Este documento consolida o que antes estava espalhado e **não substitui** os outros, que continuam
 sendo a fonte de cada assunto. Onde um item já tem roteiro, o link está na linha.
@@ -27,12 +30,12 @@ Cada achado vem com o comando ou arquivo que o provou.
 
 | # | Decisão | Minha recomendação |
 | --- | --- | --- |
-| D1 | **Tamanho dos arquivos (10 a 60 MB).** Ver seção 4. | Cifra em blocos (caminho B). Com 60 MB, um download ocupa cerca de 300 MB de heap; a t4g.small tem cerca de 512 MB. |
-| D2 | **Repositório público com dado real no histórico.** | Tornar privado e rotacionar o que já vazou. Ver 1.3. |
-| D3 | **Postgres:** container na mesma EC2 (como hoje) ou RDS. | Container, com snapshot do EBS e dump fora da instância, para o porte atual. RDS dá recuperação a ponto no tempo; a troca custa cerca de US$12/mês a mais ([INFRA_PLAN](INFRA_PLAN.md)). |
-| D4 | **TLS e domínio.** Hoje é HTTP puro na 8080. | Proxy na própria EC2 (Caddy ou Nginx, Let's Encrypt). ALB com ACM é mais gerenciado e mais caro. |
-| D5 | **Região do bucket.** O default do código é `sa-east-1`; o bucket atual está em `us-east-1`. | `sa-east-1`, por latência e por dado de cliente brasileiro. |
-| D6 | **Nome do schema do escritório real.** Hoje o catálogo traz `tenant_tania`. | Ver 1.2: é o ponto mais perigoso do primeiro boot. |
+| D1 | **Tamanho dos arquivos (10 a 60 MB).** Ver seção 4. | Cifra em blocos (caminho B). Com 60 MB, um download ocupa cerca de 300 MB de heap; a t4g.small tem cerca de 512 MB. **Em aberto.** |
+| D2 | **Repositório público com dado real no histórico.** | **Decidido: vai ficar privado** (a mudança é feita pelo dono no GitHub). Falta o clone da instância passar a usar *deploy key*. Ver 1.3. |
+| D3 | **Postgres:** container na mesma EC2 ou RDS. | **Decidido: container na EC2**, com snapshot do EBS e dump fora da instância. |
+| D4 | **TLS e domínio.** | **Decidido: proxy próprio (Caddy) na EC2.** Passo a passo em [PROXY_TLS.md](PROXY_TLS.md). |
+| D5 | **Região do bucket.** | `sa-east-1`, por latência e por dado de cliente brasileiro. **Em aberto.** |
+| D6 | **Seed e schema do escritório real.** | **Decidido: produção vai zerada, sem seed nem inserção.** A `main` não tem mais migration de massa, seeders nem linhas de tenant no catálogo. O schema do escritório real é escolhido no cadastro (`scripts/tenant/01`). |
 
 ---
 
@@ -58,9 +61,9 @@ Cada achado vem com o comando ou arquivo que o provou.
 
 | Arquivo | Situação | Ação |
 | --- | --- | --- |
-| `src/main/resources/db/migration/V1__create_clients_table.sql` | 0 bytes, versionado. O migrator só lê `db/migration/shared` e `db/migration/tenant`, então é código morto que confunde. | Remover. |
-| `src/main/resources/db/migration/V2__create_client_situation_history_table.sql` | Idem. | Remover. |
-| `README-DOCKER.md` (raiz) | 0 bytes. O conteúdo real está em `docs/README-DOCKER.md`, que é o que o índice cita. | Remover o da raiz. |
+| `src/main/resources/db/migration/V1__create_clients_table.sql` | 0 bytes, versionado. O migrator só lê `db/migration/shared` e `db/migration/tenant`, então é código morto que confunde. | Remover. **Feito.** |
+| `src/main/resources/db/migration/V2__create_client_situation_history_table.sql` | Idem. | Remover. **Feito.** |
+| `README-DOCKER.md` (raiz) | 0 bytes. O conteúdo real está em `docs/README-DOCKER.md`, que é o que o índice cita. | Remover o da raiz. **Feito.** |
 | `api-tests/postman/reports/.gitkeep` | Vazio de propósito. | Manter. |
 
 **Sobras locais** (todas já ignoradas pelo `.gitignore`, não precisam de ação no repositório): `hs_err_pid34753.log`,
@@ -72,7 +75,7 @@ Vale apagar `hs_err_pid*.log` e `backups/` da máquina antes de qualquer cópia 
 
 - [ ] `PROVISIONAMENTO_INFRA.md` e `INFRA_PLAN.md` citam `docs/AWS_TESTE_GRATUITO.md`, `docs/AWS_DEPLOY_PASSO_A_PASSO.md`
       e `docs/custos_hospedagem.xlsx`, que **não existem** (conferido com `ls docs`).
-- [ ] `CI_CD.md` e `AWS_EC2_ARM64_DEPLOY.md` descrevem deploy por `systemd`, sem Docker. O `deploy.yml` real
+- [x] `CI_CD.md` e `AWS_EC2_ARM64_DEPLOY.md` descrevem deploy por `systemd`, sem Docker. O `deploy.yml` real
       usa `docker compose --profile full`. Só a seção "Storage dos arquivos" do segundo está atualizada.
       Reescrever o fluxo de deploy para o que existe, ou alguém seguirá o roteiro errado numa emergência.
 - [ ] `docs/README.md` descreve `AWS_EC2_ARM64_DEPLOY.md` como "systemd".
@@ -80,10 +83,10 @@ Vale apagar `hs_err_pid*.log` e `backups/` da máquina antes de qualquer cópia 
 
 **Arquivo `.env`** (a referência é o `.env.example`; o `.env` real não é versionado):
 
-- [ ] **[BLOQUEIA]** `SPRING_PROFILES_ACTIVE=dev` está no `.env.example` **e** no `.env` local. Em produção tem de ser
+- [x] **[BLOQUEIA]** `SPRING_PROFILES_ACTIVE=dev` está no `.env.example` **e** no `.env` local. Em produção tem de ser
       `postgres`. Nada no deploy confere isso: com `dev` o tracing sobe a 100% e o CORS `*` é permitido (`CorsConfig`).
       Fazer o `restart-app-docker.sh` recusar `dev`.
-- [ ] **[BLOQUEIA]** O `docker-compose.yml` **não repassa** ao container estas variáveis, então defini-las no `.env` não tem efeito
+- [x] **[BLOQUEIA]** O `docker-compose.yml` **não repassa** ao container estas variáveis, então defini-las no `.env` não tem efeito
       (`grep` no compose não acha nenhuma):
       `APP_AUTH_REFRESH_COOKIE_SECURE` e `APP_AUTH_REFRESH_COOKIE_SAMESITE` (hoje o cookie do refresh sai sem `Secure`),
       `APP_SEED_DEMO_DATA` (ver adiante), `APP_JWT_EXPIRATION_MINUTES`, `APP_JWT_REFRESH_EXPIRATION_DAYS`
@@ -95,18 +98,18 @@ Vale apagar `hs_err_pid*.log` e `backups/` da máquina antes de qualquer cópia 
 
 **Primeiro boot em banco novo: o que a aplicação semeia sozinha**
 
-- [ ] **[BLOQUEIA]** `app.seed.demo-data` tem default **`true`** (`MultiTenantFlywayMigrator`). As migrations V23, V25 e V29 inserem massa de
+- [x] **[BLOQUEIA]** `app.seed.demo-data` tem default **`true`** (`MultiTenantFlywayMigrator`). As migrations V23, V25 e V29 inserem massa de
       demonstração (a V29 faz `TRUNCATE` antes) nos schemas `tenant_demo` e `tenant_tania`. Num banco novo, se o escritório real usar o
       schema `tenant_tania`, ele nasce **cheio de cliente fictício**, e o Flyway registra as migrations como aplicadas, então não
       se desfaz sem trabalho manual. Opções: (a) subir a primeira vez com `APP_SEED_DEMO_DATA=false` (depende do item do compose acima);
       (b) usar um schema novo para o escritório real. Recomendo as duas.
-- [ ] **[BLOQUEIA]** `scripts/restart-app-docker.sh` (etapa 6) popula `tenant_tania` e `tenant_demo` com `db/mock-data/seed_tenant_*.sql`
+- [x] **[BLOQUEIA]** `scripts/restart-app-docker.sh` (etapa 6) popula `tenant_tania` e `tenant_demo` com `db/mock-data/seed_tenant_*.sql`
       quando o schema não tem clientes. Em produção isso despeja dado de teste no escritório real. Pôr atrás de uma variável
       (`SEED_MOCK=false` por padrão) ou remover a etapa do caminho de produção.
-- [ ] **[DECIDIR]** `shared/V2__tenants.sql` cadastra `tenant_tania` (CNPJ fictício `12.345.678/0001-90`) e `tenant_demo` como `ativo`.
+- [x] **[DECIDIR]** `shared/V2__tenants.sql` cadastra `tenant_tania` (CNPJ fictício `12.345.678/0001-90`) e `tenant_demo` como `ativo`.
       Migration aplicada não se edita, e a instância de dev já a aplicou. Em produção: corrigir razão social e CNPJ do escritório real por SQL
       e inativar o `tenant_demo` (roteiro em [CADASTRO_DE_TENANT.md](CADASTRO_DE_TENANT.md) e `scripts/tenant/`).
-- [ ] **[BLOQUEIA]** Garantir que o `tenant_demo` **não** fica ativo em produção. Ele é público pelo slug `demo`.
+- [x] **[BLOQUEIA]** Garantir que o `tenant_demo` **não** fica ativo em produção. Ele é público pelo slug `demo`.
 
 ### 1.3 Segurança do repositório
 
@@ -127,8 +130,8 @@ Itens abertos em [MELHORIAS_E_PENDENCIAS](MELHORIAS_E_PENDENCIAS.md), mais o que
 
 - [ ] `/actuator/prometheus` é público (`SecurityConfig`). Restringir por rede ou autenticação.
 - [ ] Swagger público (`/api/docs`, `/v3/api-docs`), com exemplos de login. Desligar em produção ou retirar os exemplos.
-- [ ] `JwtService` completa segredo curto com zeros (linhas 33 a 36). Recusar o boot fora de dev/test, como o `CorsConfig`.
-- [ ] Não há `server.forward-headers-strategy` nem cabeçalho HSTS. Atrás de proxy TLS, sem isso o Spring enxerga HTTP e o IP do proxy.
+- [x] `JwtService` completa segredo curto com zeros (linhas 33 a 36). Recusar o boot fora de dev/test, como o `CorsConfig`.
+- [x] Não há `server.forward-headers-strategy` nem cabeçalho HSTS. Atrás de proxy TLS, sem isso o Spring enxerga HTTP e o IP do proxy.
       O *throttle* de login lê o `X-Forwarded-For` (`AuthController.clientIp`), que quem chega direto na instância pode forjar: o proxy
       deve sobrescrever o cabeçalho, e a 8080 não pode ficar acessível por fora dele.
 - [ ] Access token continua válido por até 8 h depois de trocar a senha. Encurtar o TTL ou versionar o token.
@@ -177,8 +180,8 @@ Os ambientes `development` e `production` existem no GitHub, mas **todos os secr
       de preferência com o Postgres em volume separado, e política de *snapshot* diária (Data Lifecycle Manager).
 - [ ] IMDSv2 com `--http-put-response-hop-limit 2`: sem isso a aplicação, que roda dentro do Docker, não recebe credencial da Role
       e o S3 falha com mensagem que fala de credencial, não de rede ([AWS_EC2_ARM64_DEPLOY.md](AWS_EC2_ARM64_DEPLOY.md), seção Storage).
-- [ ] Proxy TLS na frente da 8080 com `client_max_body_size` (ou equivalente) acima de 60 MB e *timeouts* de leitura longos para upload e download.
-- [ ] Opções de JVM no container (`-XX:MaxRAMPercentage`), hoje ausentes no `Dockerfile` e no compose.
+- [x] Proxy TLS na frente da 8080 com `client_max_body_size` (ou equivalente) acima de 60 MB e *timeouts* de leitura longos para upload e download.
+- [x] Opções de JVM no container (`-XX:MaxRAMPercentage`), hoje ausentes no `Dockerfile` e no compose.
 - [ ] Alarmes no CloudWatch: disco acima de 80%, CPU, falha de *status check* da instância.
 - [ ] `docker compose` com `restart: unless-stopped` já existe; confirmar que o Docker sobe no boot (`systemctl enable docker`).
 
@@ -266,3 +269,18 @@ Dois downloads simultâneos de arquivos grandes derrubam a JVM inteira, e com el
 4. Arquivos grandes (seção 4), porque muda a dimensão da instância.
 5. AWS de staging, ensaio completo, pentest.
 6. AWS de produção, pipeline de produção, virada.
+
+---
+
+## Main e develop divergem de propósito
+
+A `main` (produção) não tem o que serve a máquina de desenvolvimento. Removido na `release/main-producao`:
+`db/mock-data/`, as migrations de massa (V23, V25, V28 e V29), as linhas de tenant da V2/V3, os seeders
+(`AdminUserSeeder`, `SupportUserSeeder`, `SeedPasswords`), `FlywayChecksumRepair` (atalho para bancos de dev
+com checksum antigo), `application-dev.yaml`, `docker-compose.override.yml`, `scripts/{dev,run,start-postgres,diagnostico-local,restart-app}.sh`
+e os alvos de observabilidade da IDE. Consequências:
+
+- **Nunca faça deploy da `main` sobre um banco criado pela `develop`**: a V2 e a V3 mudaram de checksum e o Flyway recusa a subida.
+- Os números V23, V25, V28 e V29 ficam vagos na `main`; a próxima migration é a V30 nas duas.
+- Ao levar a `develop` para a `main` de novo, os arquivos removidos aparecem como conflito de modificação/remoção: a resolução é manter a remoção.
+- Os testes da `main` criam seus dois escritórios em `src/test/resources/db/migration/shared/V1000__tenants_de_teste.sql`, que não entra no JAR.
