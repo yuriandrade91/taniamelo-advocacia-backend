@@ -1,74 +1,38 @@
 # taniamelo-advocacia-backend
 Java application
 
-## Run (build + run)
+## Build e execução
 
-**Recommended approach for local development:**
-
-```bash
-# Build (skip tests for speed) and run the generated jar
-mvn -DskipTests clean package && java -jar target/law-firm-0.0.1-SNAPSHOT.jar
-```
-
-**Alternative: run via Maven (auto-recompiles on changes):**
+A aplicação roda em contêiner (Docker Compose) na EC2, atrás de um proxy TLS. O roteiro está em
+`docs/AWS_EC2_ARM64_DEPLOY.md` (instância) e `docs/PROXY_TLS.md` (HTTPS); a configuração é toda por
+variável de ambiente, modelada em `.env.example`. A checklist da virada para produção está em
+`docs/PLANO_VIRADA_PRODUCAO.md`.
 
 ```bash
-mvn spring-boot:run
+mvn clean verify    # build + testes (precisa do Docker: o Testcontainers sobe o Postgres)
 ```
 
-## Important Notes
-
-### DevTools and MapStruct
-- **DevTools automatic restart is DISABLED** to avoid classloader issues with MapStruct-generated classes.
-- When running from VS Code/IDE, the Java extension may use a different classloader that doesn't see generated annotation-processor sources.
-- **Solution:** Always run the build task (Cmd+Shift+B or Terminal → Run Build Task: `mvn: build (generate sources)`) before starting the app from the IDE, OR use the terminal commands above.
-
-### CORS
-- CORS is permissive for development (allows all origins). **Restrict origins before deploying to production.**
-
-### Database
-- PostgreSQL required on `localhost:5432` (database: `system`, user: `postgres`, password: `postgres`).
-- You can start a local Postgres instance using the script: `./scripts/start-postgres.sh` (if available).
+### Banco de dados
+- PostgreSQL 17 (serviço `db` do compose), com o schema gerenciado só pelo Flyway.
+- O banco **sobe vazio e continua vazio**: nenhuma migration ou rotina semeia escritório, usuário ou
+  cliente. O escritório entra por `scripts/tenant/` (ver `docs/CADASTRO_DE_TENANT.md`).
 
 ### Migrations (Flyway)
 - O schema é gerenciado 100% pelo Flyway (`src/main/resources/db/migration`); o app roda as
   migrations sozinho ao subir. `spring.jpa.hibernate.ddl-auto` é sempre `validate` - Hibernate
   nunca altera o schema, só confere se as entidades batem com o que o Flyway criou.
-- Conjunto atual é um baseline limpo `V1__extensions` .. `V8__client_payments` (todas as PKs em
-  UUID). Um banco criado com um conjunto de migrations anterior a este precisa ser recriado do
-  zero - não há caminho de migração incremental entre os dois esquemas.
+- Os números V23, V25, V28 e V29 não existem nesta branch: eram massa de demonstração e ficaram
+  de fora. A próxima migration é a V30.
 - **Nunca edite uma migration já commitada/já aplicada em algum ambiente.** Qualquer ajuste de
   schema vira uma migration nova (`V9`, `V10`, ...).
-- Na inicialização, o app repara automaticamente apenas divergências de checksum históricas
-  explicitamente reconhecidas (edições de comentários em V1–V9 e versões antigas da V23). O
-  reparo atualiza o histórico Flyway, não reaplica a migration; qualquer checksum ou metadado
-  desconhecido, ou migration com falha, interrompe a subida para investigação.
-- **Adotando o Flyway em um banco já existente** (schema criado à mão antes do Flyway): rode uma
-  vez com `SPRING_FLYWAY_BASELINE_ON_MIGRATE=true` e `SPRING_FLYWAY_BASELINE_VERSION=<versão atual>`
-  exportados no shell (ou via `docker-compose`), só nesse boot. Depois disso o `flyway_schema_history`
-  já existe e as próximas migrations aplicam normalmente. Alternativa mais simples para dev local:
-  `docker compose down -v` e deixar o Flyway recriar tudo do zero.
 - Veja `docs/DATA_MODEL.md` para a modelagem completa das tabelas e `docs/ARCHITECTURE.md` para as
   decisões de desenho da API.
 
-### Massa de dados para desenvolvimento local
-- `db/mock-data/seed_mock.sql` popula TODAS as tabelas (usuários, 125 clientes - 5 com dado
-  detalhado de exemplo + 120 variados de massa para testar paginação/filtro -, endereços, histórico
-  de situação, entrevistas, os 11 tipos de documento, simulações com principal, parcelas em todos os
-  status) - o suficiente para exercitar todo endpoint sem cadastrar nada na mão. Arquivo único e
-  autocontido (antes eram dois arquivos que precisavam rodar em ordem exata - unificado para
-  eliminar esse risco). **Não é uma migration** - rode manualmente:
-  ```bash
-  psql "postgresql://postgres:postgres@localhost:5432/system" -f db/mock-data/seed_mock.sql
-  ```
-- Login de teste (senha `password` para os dois): `dra.tania@taniamelo.adv.br` (ADMIN) e
-  `ana.souza@taniamelo.adv.br` (STAFF).
-- Requests de exemplo de todos os endpoints (autenticados, prontos para rodar): `docs/requests.http`.
-
 ### Autenticação e Swagger
 - Todos os endpoints de negócio exigem um token JWT (`Authorization: Bearer <token>`), obtido em
-  `POST /api/v1/auth/login`. Um usuário ADMIN é criado automaticamente no primeiro boot
-  (`APP_ADMIN_EMAIL`/`APP_ADMIN_PASSWORD`, padrão `admin@taniamelo.adv.br` / `changeme123` em dev).
+  `POST /api/v1/auth/login`. Nenhuma conta nasce sozinha: os usuários do
+  escritório vêm de `scripts/tenant/02-criar-usuarios.sql` e o agente de suporte, de
+  `scripts/tenant/04-criar-agente-suporte.sql`.
 - Swagger UI em `/api/docs`. A página em si é pública (só mostra o formato da API), mas as
   chamadas reais de "Try it out" batem no backend de verdade e exigem token igual a qualquer
   outro cliente:
@@ -88,12 +52,11 @@ mvn spring-boot:run
   diferente por tipo, por isso continuam em endpoints separados.
 - `download` e exclusão não variam por tipo, então são únicos para os dois:
   `GET /files/{fileId}/download` e `DELETE /files/{fileId}` (soft delete - o
-  arquivo original é preservado; o tipo é resolvido a partir do próprio id).
+  objeto vai para `<schema>/_trash/` e nada é apagado; o tipo é resolvido a partir do próprio id).
+  `POST /files/{fileId}/restore` desfaz.
   Desenho completo em `docs/DATA_MODEL.md` e `docs/ARCHITECTURE.md`.
-- Arquivos ficam em disco local por padrão (`app.storage.local.base-path`,
-  `./storage` fora de Docker, volume `app-storage` dentro do compose) atrás de
-  uma interface (`FileStorageService`) trocável por S3 depois sem mexer em
-  entidade/DTO/service.
+- Em produção os arquivos ficam no S3 (`APP_STORAGE_TYPE=s3`), cifrados antes de sair da aplicação, atrás
+  de uma interface (`FileStorageService`) que isola o provedor.
 - Limite de upload: 10MB por arquivo, 60MB por requisição
   (`spring.servlet.multipart.max-*`, ajustável via `application.yaml`).
 

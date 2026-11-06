@@ -45,7 +45,7 @@ Labels que o nosso setup acrescenta e que você vai usar para filtrar:
 |---|---|---|
 | `application` | `law-firm` | Separa este serviço de outros no mesmo Prometheus. |
 | `environment` | `dev` (servidor EC2), `local` (app da IDE) | **Filtre sempre por ele** — ver armadilha 6.1. |
-| `instance` | `98.82.73.175:8080`, `host.docker.internal:8080`… | De qual máquina veio. |
+| `instance` | `app:8080`… | De qual máquina veio. |
 
 ### Os tipos de métrica (é isto que decide a função a usar)
 

@@ -20,7 +20,7 @@ const args = new Set(process.argv.slice(2));
 const publicOnly = args.has('--public-only');
 const allowNonDemo = args.has('--allow-non-demo') || process.env.POSTMAN_ALLOW_NON_DEMO === 'true';
 const env = {
-  baseUrl: process.env.API_BASE_URL || 'http://98.82.73.175:8080',
+  baseUrl: process.env.API_BASE_URL || '',
   tenantSlug: process.env.API_TENANT || 'demo',
   tenant: process.env.API_TENANT || 'demo',
   login: process.env.API_LOGIN || '',
@@ -29,6 +29,7 @@ const env = {
 };
 
 function fail(message) { console.error(`ERRO: ${message}`); process.exitCode = 2; }
+if (!env.baseUrl) fail('defina API_BASE_URL (ver api-tests/.env.example): não há alvo padrão.');
 if (!fs.existsSync(manifestPath)) fail(`manifesto ausente: ${manifestPath}`);
 if (process.exitCode) process.exit();
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));

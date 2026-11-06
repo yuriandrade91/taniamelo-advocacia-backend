@@ -92,8 +92,8 @@ Bootstrap concluído.
 ATENÇÃO — dados: o container 'db' começa com um volume NOVO e vazio. O que
 estava no Postgres NATIVO da instância NÃO é migrado automaticamente. Se havia
 dados reais que precisam ser preservados, faça o dump do Postgres nativo ANTES
-e restaure no container 'db' depois de subir (pg_dump | psql). Em base de dev
-(tenant demo), o próprio deploy popula com a massa de teste.
+e restaure no container 'db' depois de subir (pg_dump | psql). Sem isso o banco
+sobe vazio: o escritório entra por scripts/tenant.
 
 Próximos passos:
   1. Garanta o .env preenchido (passo 6 acima).

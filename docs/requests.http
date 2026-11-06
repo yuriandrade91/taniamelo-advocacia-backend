@@ -1,12 +1,11 @@
 ### ============================================================
 ### Tania Melo Advocacia — requests de exemplo (todos os endpoints)
 ### Use com o REST Client do VS Code / IntelliJ HTTP Client.
-### Pré-requisito: banco migrado + db/mock-data/seed_mock.sql aplicado.
-### IDs de exemplo abaixo são os UUIDs (v4) gerados pelo seed para a
-### cliente "Maria Aparecida da Silva" — ajuste se o seed for reaplicado.
+### Pré-requisito: escritório e usuário criados (docs/CADASTRO_DE_TENANT.md).
+### Os IDs abaixo são só de exemplo: troque pelos do seu ambiente.
 ### ============================================================
 
-@host = http://localhost:8080
+@host = https://api.exemplo.invalid
 @clientId = 7d7ff165-cb15-481b-8e9a-b755ba876ca1
 @addressId = fd8b3b47-b7d0-4f4e-bc71-e0caaab5cd6b
 @addressId2 = ea4fcff4-c329-4a44-9a12-4312cf5dbb52

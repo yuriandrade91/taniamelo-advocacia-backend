@@ -60,12 +60,12 @@ class JwtServiceTest {
     }
 
     @Test
-    @DisplayName("segredo curto é preenchido para 256 bits em vez de derrubar a subida")
-    void shortSecretIsPaddedInsteadOfFailing() {
-        JwtService shortSecret = comExpiracao("curto", 10);
-        String token = shortSecret.generateToken(USER_ID, "a@b.com", "STAFF", "t");
-        assertTrue(shortSecret.isValid(token));
-        assertEquals("a@b.com", shortSecret.extractEmail(token));
+    @DisplayName("segredo curto ou ausente derruba a subida em vez de ser completado com zeros")
+    void shortOrMissingSecretFailsTheStartup() {
+        IllegalStateException curto =
+                assertThrows(IllegalStateException.class, () -> comExpiracao("curto", 10));
+        assertTrue(curto.getMessage().contains("APP_JWT_SECRET"));
+        assertThrows(IllegalStateException.class, () -> comExpiracao("", 10));
     }
 
     @Test

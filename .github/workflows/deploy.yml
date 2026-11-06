@@ -104,9 +104,9 @@ jobs:
             #
             # Ele recusa subir com .env ausente, secret de exemplo, chave de
             # criptografia de desenvolvimento ou datasource ainda apontando
-            # pra localhost - e, depois que a aplicação responde UP, popula o
-            # banco de cada tenant (só na primeira vez: os deploys seguintes
-            # encontram usuário já cadastrado e pulam o seed).
+            # pra localhost, perfil diferente de postgres ou storage diferente de s3.
+            # Nada é semeado: o banco sobe vazio e o escritório entra por
+            # scripts/tenant.
             # Antes de subir: garante no .env da instância para onde vão os
             # arquivos dos clientes. Vem do pipeline porque o .env é criado à
             # mão uma vez e depois ninguém lembra dele — foi assim que a

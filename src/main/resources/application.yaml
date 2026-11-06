@@ -1,15 +1,14 @@
 spring:
   application:
     name: law-firm
-  # Credenciais por variável de ambiente, com default só para o Postgres do
-  # docker-compose local. Estavam fixas no arquivo: usuário e senha de banco
-  # versionados no git, e um ambiente novo herdando "postgres/postgres" por
-  # esquecimento em vez de por decisão.
+  # Credenciais por variável de ambiente, sem default: ambiente sem elas não sobe, em vez de
+  # herdar um banco e uma senha por esquecimento. Na suíte, quem define o datasource é o
+  # @ServiceConnection do PostgresContainerConfig.
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/system}
+    url: ${SPRING_DATASOURCE_URL:}
     driver-class-name: org.postgresql.Driver
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
   jpa:
     # Sem isto a conexão fica presa até o fim da resposta, inclusive em download de arquivo, e um
     # acesso lazy esquecido vira consulta escondida fora da transação.
@@ -42,13 +41,6 @@ spring:
   flyway:
     enabled: false
 
-  # Dev resources: avoid caching static resources so LiveReload changes appear immediately
-  web:
-    resources:
-      cache:
-        period: 0
-      static-locations: classpath:/static/
-
   # Limites do upload de documentos/simulações de CNIS. max-request-size é maior
   # que max-file-size porque o upload em lote manda vários arquivos numa única
   # requisição multipart.
@@ -56,14 +48,6 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 60MB
-
-  devtools:
-    restart:
-      enabled: true
-      poll-interval: 1s
-      quiet-period: 400ms
-    livereload:
-      enabled: true
 
 server:
   port: 8080
@@ -127,8 +111,8 @@ management:
 
 app:
   jwt:
-    # MUST be overridden via APP_JWT_SECRET (32+ chars) outside of local dev.
-    secret: ${APP_JWT_SECRET:dev-only-secret-change-me-please-32chars}
+    # Obrigatório (APP_JWT_SECRET, 32+ caracteres); o JwtService recusa a subida sem ele.
+    secret: ${APP_JWT_SECRET:}
     # TTL do access token (JWT no header). Com refresh token ativo, pode ser curto.
     expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:480}
     # TTL do refresh token (cookie httpOnly). Rotacionado a cada /auth/refresh.
@@ -137,11 +121,6 @@ app:
     # token de sessão (curto, acessa o escritório). Ver docs/SUPORTE_MULTITENANT.md.
     support-platform-minutes: ${APP_JWT_SUPPORT_PLATFORM_MINUTES:60}
     support-session-minutes: ${APP_JWT_SUPPORT_SESSION_MINUTES:20}
-  # Agente de suporte inicial (public.support_users), criado no boot se a tabela
-  # estiver vazia. Troque a senha e defina as variáveis em produção.
-  support:
-    email: ${APP_SUPPORT_EMAIL:suporte@plataforma.adv.br}
-    password: ${APP_SUPPORT_PASSWORD:changeme123}
   # Multi-tenancy por schema. Cada tenant = um schema Postgres autocontido.
   # O frontend informa o tenant (slug ou UUID) via cabeçalho X-Tenant-Id, obrigatório em
   # rota de escritório sem JWT (inclusive o login): não há escritório padrão. Os tenants atendidos vêm do catálogo public.tenants (status 'ativo'); cadastrar
@@ -156,10 +135,6 @@ app:
       path: ${APP_AUTH_REFRESH_COOKIE_PATH:/api/v1/auth}
       secure: ${APP_AUTH_REFRESH_COOKIE_SECURE:false}
       same-site: ${APP_AUTH_REFRESH_COOKIE_SAMESITE:Lax}
-  admin:
-    # Seed credentials for the first ADMIN user, created automatically if the users table is empty.
-    email: ${APP_ADMIN_EMAIL:admin@taniamelo.adv.br}
-    password: ${APP_ADMIN_PASSWORD:changeme123}
   # CORS: origens permitidas separadas por vírgula. Default "*" para dev local
   # não travar; na AWS defina APP_CORS_ALLOWED_ORIGINS com o domínio do frontend
   # (ex.: https://app.taniamelo.adv.br).

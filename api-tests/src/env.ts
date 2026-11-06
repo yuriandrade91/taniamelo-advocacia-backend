@@ -16,7 +16,7 @@ function obrigatoria(nome: string): string {
 }
 
 export const env = {
-  baseURL: process.env.API_BASE_URL ?? "http://98.82.73.175:8080",
+  baseURL: obrigatoria("API_BASE_URL"),
   tenant: process.env.API_TENANT ?? "demo",
   login: obrigatoria("API_LOGIN"),
   password: obrigatoria("API_PASSWORD"),

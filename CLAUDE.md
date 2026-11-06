@@ -75,7 +75,6 @@ QUALIDADE_SONAR_HOOKS).
   Sempre com `clean` (ver armadilhas).
 - Formatar: `mvn spotless:apply`. `mvn process-classes` roda compile + `spotless:check` +
   Checkstyle e **falha** o build em violação — é o que o pre-commit roda.
-- App local: `./scripts/dev.sh` (perfil `dev`, porta 8081).
 - Sonar: só o SonarCloud, e só pelo CI (`ci.yml`, `qualitygate.wait=true`). Não rode
   `sonar:sonar` da máquina: publicaria no projeto da nuvem uma análise de árvore não commitada.
   Depois do push, o resultado está no check "SonarCloud Code Analysis" do commit no GitHub e, com
@@ -92,8 +91,8 @@ QUALIDADE_SONAR_HOOKS).
   verifique cada um sozinho: `git worktree add <dir> <sha>` +
   `mvn -q test-compile -Dspotless.check.skip=true` lá dentro.
 - **Migration aplicada não se edita** — o checksum muda e a subida falha. Crie uma nova versão.
-- `db/migration/tenant` roda em **todo** schema do catálogo, inclusive de escritório real. Massa
-  de demonstração só com guarda de `current_schema()` e atrás de `app.seed.demo-data`.
+- `db/migration/tenant` roda em **todo** schema do catálogo, inclusive de escritório real. Migration
+  não semeia dado: o banco sobe vazio e escritório e usuários entram por `scripts/tenant/`.
 - **O Sonar só se vê depois do push.** `mvn clean verify` verde não garante o gate do CI: o
   SonarCloud tem regras que o build não tem (ex.: S9352, beans ambíguos, que ele não resolve por
   `@ConditionalOnProperty`) e analisa PL/SQL e segredos.

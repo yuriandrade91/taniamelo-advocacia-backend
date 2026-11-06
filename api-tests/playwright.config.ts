@@ -23,7 +23,10 @@ if (fs.existsSync(dotenv)) process.loadEnvFile(dotenv);
  * instância já publicada, de fora, sem saber nada do código. É o que responde
  * "o que subiu na AWS funciona?", que nenhum teste de dentro do build responde.
  */
-const baseURL = process.env.API_BASE_URL ?? "http://98.82.73.175:8080";
+const baseURL = process.env.API_BASE_URL;
+if (!baseURL) {
+  throw new Error("Defina API_BASE_URL (ver api-tests/.env.example): a suíte não tem alvo padrão.");
+}
 
 export default defineConfig({
   testDir: "./tests",

@@ -35,7 +35,7 @@ Settings → Secrets and variables → Actions → **New repository secret**:
 
 | Secret | Valor |
 |---|---|
-| `EC2_HOST` | IP público da instância ARM64 (`18.208.158.75`) |
+| `EC2_HOST` | IP público da instância ARM64 |
 | `EC2_USER` | `ec2-user` (Amazon Linux 2023) |
 | `EC2_SSH_KEY` | Conteúdo **completo** da chave privada `.pem` da instância |
 
@@ -63,7 +63,7 @@ Alternativa via `gh` CLI (roda local, no seu terminal - não deixe o Claude
 Code rodar isso por você, já que envolve colar a chave privada):
 
 ```bash
-gh secret set EC2_HOST --body "18.208.158.75"
+gh secret set EC2_HOST --body "<ip-da-instancia>"
 gh secret set EC2_USER --body "ec2-user"
 gh secret set EC2_SSH_KEY < ~/.ssh/SUA_CHAVE.pem
 ```

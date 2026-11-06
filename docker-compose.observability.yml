@@ -2,8 +2,8 @@
 # Tempo (tracing) + Grafana (painéis) + Alloy (coletor de logs dos containers).
 #
 # Sobe junto do app, na MESMA rede do compose, com:
-#   docker compose -f docker-compose.yml -f docker-compose.override.yml \
-#                  -f docker-compose.observability.yml --profile full up -d --build
+#   docker compose -f docker-compose.yml -f docker-compose.observability.yml \
+#                  --profile full up -d --build
 #
 # NÃO entra no deploy automático (restart-app-docker.sh) de propósito: é pesado
 # para uma instância pequena. Ligue sob demanda. Veja docs/OBSERVABILIDADE.md.
@@ -24,24 +24,12 @@ services:
       - --storage.tsdb.retention.time=15d
       - --web.enable-lifecycle
     volumes:
-      # PROMETHEUS_SCRAPE_CONFIG escolhe o alvo (não "PROMETHEUS_CONFIG": esse
-      # nome é lido pelo client Java do Prometheus dentro do app, que tenta
-      # abri-lo como arquivo de propriedades e derruba o boot): prometheus.yml raspa o app em
-      # container ("app:8080"); prometheus.ide.yml raspa o app rodando no host,
-      # pela IDE ("host.docker.internal:8080"). Um arquivo por modo, e não os
-      # dois alvos no mesmo: com o app em container e a porta 8080 publicada, o
-      # host.docker.internal também chegaria nele, e cada série contaria em
-      # dobro nos painéis (que somam por application).
-      - ./observability/prometheus/${PROMETHEUS_SCRAPE_CONFIG:-prometheus.yml}:/etc/prometheus/prometheus.yml:ro
+      # O alvo é o app em container ("app:8080"), na rede do compose.
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
-    # host.docker.internal já existe no Docker Desktop; no Linux precisa disto.
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     # Só loopback: acesso via Grafana (rede interna) ou túnel SSH.
     ports:
       - "127.0.0.1:9090:9090"
-    # required: false - no modo IDE o serviço "app" não sobe (fica no profile
-    # "full"), e sem isto o compose recusa o projeto inteiro.
     depends_on:
       app:
         condition: service_started
@@ -66,8 +54,7 @@ services:
     volumes:
       - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
       - tempo-data:/var/tempo
-    # OTLP http (4318) publicado só em loopback, para o app rodando pela IDE
-    # exportar spans (ver application-dev.yaml). gRPC (4317) e API (3200) ficam
+    # OTLP http (4318) publicado só em loopback. gRPC (4317) e API (3200) ficam
     # só na rede interna do compose.
     ports:
       - "127.0.0.1:4318:4318"

@@ -135,7 +135,7 @@ Também: `open-in-view` desligado e controllers de auth, usuário e tenant sem r
 
 ### 0. A instância está em disco local, não em S3 — verificado em 09/10/2026
 
-`GET http://98.82.73.175:8080/actuator/info` responde `"storage":{"type":"local"}`, no commit
+`GET http://<instância-de-dev>:8080/actuator/info` responde `"storage":{"type":"local"}`, no commit
 `046d24d`. Os arquivos dos clientes — PDFs de perícia, documentos — estão no volume da EC2, sem
 cópia em bucket nenhum.
 

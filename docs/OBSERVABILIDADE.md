@@ -36,7 +36,6 @@ Na instância, com o `.env` já preenchido (inclusive `GRAFANA_ADMIN_PASSWORD`):
 cd ~/taniamelo-advocacia-backend
 docker compose \
   -f docker-compose.yml \
-  -f docker-compose.override.yml \
   -f docker-compose.observability.yml \
   --profile full up -d --build
 ```
@@ -45,42 +44,6 @@ Para subir só o app (sem observabilidade), continue usando o
 `scripts/restart-app-docker.sh` de sempre — a stack **não** entra no deploy
 automático de propósito (é pesada para uma instância pequena).
 
-### Localmente, junto com o app rodando pela IDE
-
-O `spring-boot-docker-compose` sobe containers quando o app inicia, mas por
-padrão só lê o `docker-compose.yml` — ou seja, só o Postgres. Para ele subir
-também a stack, descomente no `.env` (o `launch.json` do VS Code já o carrega):
-
-```bash
-SPRING_DOCKER_COMPOSE_FILE=docker-compose.yml,docker-compose.observability.yml
-SPRING_DOCKER_COMPOSE_LIFECYCLE_MANAGEMENT=start-only
-SPRING_DOCKER_COMPOSE_START_SKIP=never
-PROMETHEUS_SCRAPE_CONFIG=prometheus.ide.yml
-```
-
-- `SPRING_DOCKER_COMPOSE_FILE` soma o arquivo da observabilidade ao do banco.
-  O serviço `app` continua fora (fica no profile `full`) — quem roda é a IDE.
-- `start-only` deixa a stack no ar quando o app para; sem isso, Grafana e cia.
-  seriam derrubados e recriados a cada restart. Para desligar, use a seção
-  [Desligar](#desligar).
-- `START_SKIP=never`: por padrão o Spring pula o `up` inteiro se **qualquer**
-  serviço do projeto já estiver rodando — com o Postgres no ar, a stack nunca
-  subiria. Com `never` ele roda `up` a cada start, que só cria o que falta.
-- `PROMETHEUS_SCRAPE_CONFIG=prometheus.ide.yml` faz o Prometheus raspar o app no host
-  (`host.docker.internal:8080`) em vez de `app:8080`, que só existe dentro da
-  rede do compose.
-- Para olhar o **servidor de dev** em vez do app local, use
-  `PROMETHEUS_SCRAPE_CONFIG=prometheus.dev-server.yml`: o Prometheus local raspa
-  o `/actuator/prometheus` público da EC2 e os painéis mostram o tráfego de lá.
-  Vale só para métricas — traces e logs são empurrados pelo app de dev para o
-  Tempo/Alloy da própria instância, e ela não alcança a sua máquina. O IP da
-  instância está fixo nesse arquivo e muda a cada stop/start enquanto não
-  houver Elastic IP.
-- Traces: no perfil `dev` o app exporta para `localhost:4318`, que o Tempo
-  publica em loopback.
-- **Logs não vão para o Loki nesse modo**: o Alloy lê o stdout dos
-  *containers*, e o app da IDE não é um. Os logs ficam no console da IDE.
-
 ## Acessos
 
 | Serviço | Porta | Exposição |
@@ -88,14 +51,14 @@ PROMETHEUS_SCRAPE_CONFIG=prometheus.ide.yml
 | Grafana | 3000 | Publicada — **abra no Security Group só para o seu IP**, ou use túnel SSH |
 | Prometheus | 9090 | `127.0.0.1` (loopback) — via Grafana ou túnel SSH |
 | Loki | 3100 | `127.0.0.1` |
-| Tempo | 4318 (OTLP http) | `127.0.0.1` — para o app rodando pela IDE |
+| Tempo | 4318 (OTLP http) | `127.0.0.1` |
 | Alloy | — | Só rede interna do compose |
 
 Túnel SSH (mais seguro que abrir portas):
 
 ```bash
 ssh -L 3000:localhost:3000 -L 9090:localhost:9090 ec2-user@<host>
-# Grafana em http://localhost:3000  (login: admin / GRAFANA_ADMIN_PASSWORD)
+# Grafana em http://localhost:3000, no navegador da SUA máquina (login: admin / GRAFANA_ADMIN_PASSWORD)
 ```
 
 Datasources (Prometheus, Loki, Tempo) e o dashboard **“Law Firm — Endpoints
@@ -130,7 +93,7 @@ do scrape/OTLP).
 ## Desligar
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.override.yml \
+docker compose -f docker-compose.yml \
   -f docker-compose.observability.yml --profile full down
 # (sem -v: preserva os dados; com -v: apaga métricas/logs/traces)
 ```

@@ -28,13 +28,13 @@ public class JwtService {
             @Value("${app.jwt.expiration-minutes:480}") long expirationMinutes,
             @Value("${app.jwt.support-platform-minutes:60}") long supportPlatformMinutes,
             @Value("${app.jwt.support-session-minutes:20}") long supportSessionMinutes) {
-        // HS256 requires a key of at least 256 bits (32 chars). Pad defensively so a short
-        // dev secret doesn't blow up at startup; production must set a proper 32+ char secret.
+        // HS256 exige chave de pelo menos 256 bits (32 bytes). Completar com zeros deixaria o
+        // segredo curto ou ausente passar em silêncio, com token forjável; a subida falha.
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
-            keyBytes = padded;
+            throw new IllegalStateException(
+                    "APP_JWT_SECRET deve ter ao menos 32 bytes (openssl rand -base64 48), veio "
+                            + keyBytes.length);
         }
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
         this.expirationMillis = expirationMinutes * 60_000;

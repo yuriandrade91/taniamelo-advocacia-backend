@@ -62,7 +62,6 @@ Variáveis (arquivo `.env`, shell ou secret do CI — **nunca commitadas**):
 
 ```bash
 npm test                  # contra o que estiver em API_BASE_URL
-npm run test:local        # contra localhost:8080
 npm run test:ui           # modo interativo
 npx playwright show-report
 
@@ -168,8 +167,6 @@ Os binários que as requisições de upload enviam ficam em `postman/fixtures/`
 
 ```bash
 npm run postman:all       # alvo definido por API_BASE_URL
-npm run postman:aws       # instância AWS de desenvolvimento
-npm run postman:local     # http://localhost:8080
 npm run postman:public    # somente coleções públicas, sem credenciais
 ```
 
